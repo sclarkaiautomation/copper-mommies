@@ -1,0 +1,32 @@
+{
+  "id": "/",
+  "name": "Copper Mommies Co.",
+  "short_name": "CopperMommies",
+  "description": "A warm, private sovereign sanctuary for American melanated mothers to relax, connect, share wisdom, barter, and build together.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#FAF7F2",
+  "background_color": "#FAF7F2",
+  "categories": [
+    "lifestyle",
+    "family",
+    "community",
+    "education"
+  ],
+  "icons": [
+    {
+      "src": "/Copper_Mommies_w_NoBG4.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/Copper_Mommies_w_NoBG4.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

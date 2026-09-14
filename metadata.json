@@ -1,0 +1,6 @@
+{
+  "name": "Copper Mommies Co.",
+  "description": "A warm, private community for American melanated mothers to relax, connect, share wisdom, support one another, and build together.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Copper Mommies Co. — A Safe, Welcoming Space for Melanated Mothers</title>
+    <meta name="description" content="A warm, private community for American melanated mothers to relax, connect, share wisdom, support one another, and build together." />
+    <meta property="og:title" content="Copper Mommies Co. — A Safe, Welcoming Space for Melanated Mothers" />
+    <meta property="og:description" content="A warm, private community for American melanated mothers to relax, connect, share wisdom, support one another, and build together." />
+    
+    <!-- PWA & Mobile Web App Capabilities -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#FAF7F2" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="CopperMommies" />
+    <link rel="apple-touch-icon" href="/Copper_Mommies_w_NoBG4.png" />
+    <link rel="icon" type="image/png" href="/Copper_Mommies_w_NoBG4.png" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch((err) => {
+            console.warn('Service worker registration note:', err);
+          });
+        });
+      }
+    </script>
+  </body>
+</html>
+
