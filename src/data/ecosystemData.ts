@@ -349,7 +349,7 @@ export const MARKETING_SWIPE_COPIES: MarketingSwipeCopy[] = [
     category: 'WhatsApp / SMS Message',
     title: 'Sister-to-Sister Private Message',
     hook: 'Peace sister! Thinking of you and your business...',
-    body: 'Hey love! I know how slammed you’ve been juggling the kids\' lessons and keeping up with all your custom client orders. I worked with the sisters at SC Automated Solutions to streamline my whole inquiry and booking flow, and it was a complete game changer. They specialize in helping mothers build zero-touch systems so the business runs even when you are tending your hearth.\n\nHere is my VIP link to check out their sovereign consulting stack (it includes a $100 village discount): {YOUR_REFERRAL_LINK}. Let me know if you book an audit—I’d love to celebrate with you!',
+    body: 'Hey love! I know how slammed you’ve been juggling the kids\' lessons and keeping up with all your custom client orders. I worked with the sisters at SC Automated Solutions to streamline my whole inquiry and booking flow, and it was a complete game changer. They specialize in helping mothers build zero-touch systems so the business runs even when you are tending your home and family.\n\nHere is my VIP link to check out their sovereign consulting stack (it includes a $100 village discount): {YOUR_REFERRAL_LINK}. Let me know if you book an audit—I’d love to celebrate with you!',
     cta: 'Click your sister referral link above.'
   },
   {
@@ -963,17 +963,17 @@ export const AMAZON_KDP_MERCH_DATA: AmazonKDPMerchItem[] = [
 // 5. "YOUR BRAIN IS AN ASSET" BLUEPRINT DATA
 // --------------------------------------------------------------------------
 export const YOUR_BRAIN_IS_AN_ASSET_DATA: YourBrainIsAnAssetBlueprint = {
-  title: 'Your Brain Is An Asset: The Sovereign Knowledge Architecture',
+  title: 'Your Brain Is An Asset: Knowledge into Digital Wealth',
   author: 'SC Automated Solutions & The Copper Circle Matriarchs',
   beaconsUrl: 'https://beacons.ai/scautomatedsolutions',
-  tagline: 'Transforming Maternal Lived Experience into Sovereign, Automated Digital Wealth.',
-  philosophyCore: 'For generations, women have given away their finest recipes, organizational blueprints, homeschool strategies, and healing protocols for free or traded their time dollar-for-dollar in corporate gears. "Your Brain Is An Asset" is an operational mandate: package your ancestral and professional intellect into digital property that serves families worldwide while you sleep, nurse, and tend your home.',
+  tagline: 'Transforming Motherhood Lived Experience into Sustainable, Automated Digital Wealth.',
+  philosophyCore: 'For generations, women have given away their finest recipes, organizational blueprints, homeschool strategies, and healing protocols for free or traded their time dollar-for-dollar in corporate gears. "Your Brain Is An Asset" is an operational mandate: package your maternal and professional intellect into digital property that serves families worldwide while you rest, recharge, and tend your home.',
   fourTenets: [
     {
       number: '01',
-      name: 'Intellectual Sovereignty',
+      name: 'Ownership of Your Knowledge',
       tagline: 'Your lived experience has quantifiable market value.',
-      practicalAction: 'Audit your natural strengths: the routines other mothers ask you about, your postpartum protocols, your homeschool scheduling tricks, or your legal research notes.'
+      practicalAction: 'Audit your natural strengths: the routines other mothers ask you about, your family meal plans, your homeschool scheduling tricks, or your organizational systems.'
     },
     {
       number: '02',
@@ -990,8 +990,8 @@ export const YOUR_BRAIN_IS_AN_ASSET_DATA: YourBrainIsAnAssetBlueprint = {
     {
       number: '04',
       name: 'Intergenerational Asset Retention',
-      tagline: 'Build intellectual properties your daughters will inherit.',
-      practicalAction: 'Register trademarks, copyright manuals under private family trusts, and build recurring sovereign cashflow streams that safeguard family autonomy.'
+      tagline: 'Build intellectual properties your children will inherit.',
+      practicalAction: 'Register trademarks, copyright manuals under private family trusts, and build recurring independent cashflow streams that safeguard family freedom.'
     }
   ],
   monetizationSteps: [

@@ -65,9 +65,9 @@ interface GatheringHubProps {
   onEnterContest?: (entry: ScholarshipEntry) => void;
   onOpenAudioLounge?: () => void;
   polls?: VillagePoll[];
-  onVotePoll?: (pollId: string, optionId: string) => Promise<void>;
+  onVotePoll?: (pollId: string, optionId: string) => any;
   userName?: string;
-  onSuggestPoll?: (suggestion: { topic: string; details: string; category: string; suggestedBy: string }) => void;
+  onSuggestPoll?: (pollId: any, suggestionText?: any) => void;
 }
 
 export default function GatheringHub({
@@ -221,7 +221,7 @@ export default function GatheringHub({
       menteeBracket: '30–39 (Builder & Nurturer)',
       giftOffer: 'Generational homesteading, preserving wild blackberries, and raising resilient boys into honorable young men',
       twoWayExchange: 'Mobile bookkeeping tools, farm co-op marketing & digital seed cataloging',
-      meetingRhythm: 'Bi-weekly Thursday Hearth check-in',
+      meetingRhythm: 'Bi-weekly Thursday Circle check-in',
       status: 'Active Circle',
       stateCode: 'TX'
     },
@@ -443,12 +443,12 @@ export default function GatheringHub({
           }`}
         >
           <Award className="w-4 h-4" />
-          <span>Hearth Polls &amp; Ballots</span>
-          {polls.filter(p => p.active).length > 0 && (
+          <span>Community Polls &amp; Ballots</span>
+          {polls.filter(p => p.active !== false && p.isOpen !== false).length > 0 && (
             <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full font-bold ${
               activeCircleTab === 'hearth-polls' ? 'bg-[#D4AF37] text-[#1F140E]' : 'bg-[#B87333] text-white'
             }`}>
-              {polls.filter(p => p.active).length}
+              {polls.filter(p => p.active !== false && p.isOpen !== false).length}
             </span>
           )}
         </button>
@@ -559,7 +559,7 @@ export default function GatheringHub({
             {/* 3. Centered Narrative */}
             <div className="max-w-3xl mx-auto space-y-4">
               <p className="text-xs sm:text-sm sm:leading-relaxed text-[#2A221B]/90 font-medium">
-                Welcome to <strong>The Casual Corner Talk</strong> — our hearthside conversation space where we pull up a seat, kick off our shoes, and talk about the real things on our hearts. No masks, no judgment, just authentic sisters sharing the sacred work of raising children, healing our bodies, and flourishing together.
+                Welcome to <strong>The Casual Corner Talk</strong> — our cozy fireside living room conversation space where we pull up a seat, kick off our shoes, and talk about the real things on our hearts. No masks, no judgment, just authentic sisters sharing the sacred work of raising children, healing our bodies, and flourishing together.
               </p>
               <p className="text-[11px] sm:text-xs text-[#2A221B]/75 leading-relaxed">
                 From natural postpartum recovery and homeschooling navigation to kitchen garden remedies, entrepreneurship, and keeping our cultural traditions alive, we share practical wisdom, laugh together, and support one another through every stage of womanhood.
@@ -612,7 +612,7 @@ export default function GatheringHub({
                   className="px-5 py-2.5 bg-[#FAF5EE] hover:bg-white text-[#1F1813] font-bold text-xs rounded-xl shadow-sm border border-[#D4AF37]/50 hover:border-[#D4AF37] active:scale-95 transition-all flex items-center space-x-2 cursor-pointer"
                 >
                   <Award className="w-4 h-4 text-[#B87333]" />
-                  <span>Vote on Topics &amp; Classes ({polls.filter(p => p.active).length} Open)</span>
+                  <span>Vote on Topics &amp; Classes ({polls.filter(p => p.active !== false && p.isOpen !== false).length} Open)</span>
                 </button>
 
                 <button
@@ -669,9 +669,12 @@ export default function GatheringHub({
         <div id="hearth-polls-section" className="space-y-6">
           <HearthPollsCard 
             polls={polls}
-            onVote={onVotePoll}
+            onVote={onVotePoll || (async () => {})}
             currentUserName={userName}
-            onSuggestPoll={onSuggestPoll}
+            onSuggestPoll={onSuggestPoll ? (sug: any) => {
+              const text = typeof sug === 'string' ? sug : sug.title || sug.topic || 'New suggestion';
+              onSuggestPoll('poll-1', text);
+            } : undefined}
           />
         </div>
       )}
@@ -771,7 +774,7 @@ export default function GatheringHub({
                     <div className="space-y-1.5 pt-1">
                       <span className="text-[10px] font-mono uppercase font-bold text-soft-sage block">Confirmed Sister Deliveries:</span>
                       {mt.pledgedVolunteers.length === 0 ? (
-                        <span className="text-xs text-soft-sage italic block">No sister deliveries pledged yet. Be the first to bless her porch!</span>
+                        <span className="text-xs text-soft-sage italic block">No sister deliveries pledged yet. Be the first to gift her porch!</span>
                       ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {mt.pledgedVolunteers.map((pv) => (
@@ -902,10 +905,10 @@ export default function GatheringHub({
                 </div>
                 <h4 className="font-serif font-extrabold text-lg text-[#1F1813]">The Builders &amp; Nurturers</h4>
                 <p className="text-xs text-[#2A221B]/80 leading-relaxed">
-                  Active in early child-rearing, postpartum restoration, establishing home rhythms, and building creative micro-enterprises.
+                  Active in raising children of all stages, establishing balanced home rhythms, family wellness, career growth, and building creative enterprises.
                 </p>
                 <div className="pt-2 border-t border-copper-penny/10 text-[10px] font-mono text-copper-penny">
-                  <strong>Pours In:</strong> Digital workflows, energy, homeschool innovation &amp; fresh momentum.
+                  <strong>Pours In:</strong> Practical workflows, energy, homeschool innovation &amp; fresh momentum.
                 </div>
               </div>
 
@@ -917,7 +920,7 @@ export default function GatheringHub({
                 </div>
                 <h4 className="font-serif font-extrabold text-lg text-[#1F1813]">The Anchor Matriarchs</h4>
                 <p className="text-xs text-[#2A221B]/80 leading-relaxed">
-                  Guiding older children and teens, deepening home economic sovereignty, family health resilience, and steadying the community foundation.
+                  Guiding older children and teens, deepening family economic freedom and self-reliance, building health resilience, and steadying our community foundation.
                 </p>
                 <div className="pt-2 border-t border-copper-penny/10 text-[10px] font-mono text-copper-penny">
                   <strong>Pours In:</strong> Family balance, adolescent navigation, estate planning &amp; emotional grounding.

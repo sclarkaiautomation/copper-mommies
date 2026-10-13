@@ -112,7 +112,7 @@ export default function AHealthyAddictionSection({ onShowToast }: AHealthyAddict
           <div className="bg-white/10 border border-emerald-400/25 rounded-2xl p-3 text-[11px] text-[#FAF5EE]/85 flex items-start space-x-2.5">
             <Info className="w-4 h-4 text-emerald-300 shrink-0 mt-0.5" />
             <span>
-              <strong>Affiliate Disclosure:</strong> When you purchase organic herbs, cold-pressed butters, and glassware using these verified links, Amazon pays a modest affiliate commission directly to the Copper Mommies Community Apothecary Fund, sustaining free herbal care for new mothers.
+              <strong>Affiliate Disclosure:</strong> When you purchase organic herbs, cold-pressed butters, and glassware using these verified links, Amazon pays a modest affiliate commission directly to the Copper Mommies Community Apothecary Fund, sustaining holistic herbal care for mothers and families across our community.
             </span>
           </div>
         </div>
@@ -336,7 +336,7 @@ export default function AHealthyAddictionSection({ onShowToast }: AHealthyAddict
               The Copper Circle Master Herbalist Directory
             </h3>
             <p className="text-xs sm:text-sm text-[#2A221B]/80 leading-relaxed max-w-3xl">
-              Connect directly with verified melanated herbalists, folk medicine compounders, and postpartum birth workers across our sovereign state hubs. Book personalized maternal consultations or request traditional apothecary barters.
+              Connect directly with verified melanated herbalists, folk medicine compounders, and holistic family practitioners across our 50-state community hubs. Book personalized maternal consultations or request traditional apothecary barters.
             </p>
           </div>
 

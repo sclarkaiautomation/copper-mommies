@@ -89,6 +89,7 @@ export default function ApothecaryHub({ onConsult, aiLoading, aiResponse, getLoa
               ? 'bg-[#2E4F32] text-white shadow-md'
               : 'bg-white text-[#1F1813] hover:bg-emerald-50/50 border border-copper-penny/20'
           }`}
+          title="Soil Stewardship, Homestead & Botanical Logs"
         >
           <Sprout className="w-4 h-4 text-emerald-400" />
           <span>Soil Stewardship, Homestead &amp; Botanical Logs</span>
@@ -101,6 +102,7 @@ export default function ApothecaryHub({ onConsult, aiLoading, aiResponse, getLoa
               ? 'bg-[#1C271E] text-emerald-300 shadow-md border-2 border-emerald-500/40'
               : 'bg-white text-[#1F1813] hover:bg-emerald-50/50 border border-copper-penny/20'
           }`}
+          title="A Healthy Addiction (Remedy Alternatives & Amazon Affiliate)"
         >
           <Sparkles className="w-4 h-4 text-emerald-500" />
           <span>A Healthy Addiction (Remedy Alternatives &amp; Amazon Affiliate)</span>
@@ -189,7 +191,7 @@ export default function ApothecaryHub({ onConsult, aiLoading, aiResponse, getLoa
                     American Heritage Gardening &amp; Ancestral Homesteading
                   </h3>
                   <p className="text-[10px] font-mono text-soft-sage uppercase tracking-wider font-bold">
-                    Time-Honored Soil Stewardship, Heritage Seeds &amp; Self-Sustaining Hearth Sovereignty
+                    Time-Honored Soil Stewardship, Heritage Seeds &amp; Self-Sustaining Family Living
                   </p>
                 </div>
               </div>
@@ -261,10 +263,10 @@ export default function ApothecaryHub({ onConsult, aiLoading, aiResponse, getLoa
               {homesteadSeason === 'winter' && (
                 <div className="text-xs text-[#2A221B]/85 space-y-2">
                   <p className="font-serif font-bold text-copper-penny flex items-center space-x-1.5">
-                    <span>❄️ Winter Soil Regeneration &amp; Hearth Sourdough Craft</span>
+                    <span>❄️ Winter Soil Regeneration &amp; Artisan Sourdough Craft</span>
                   </p>
                   <p className="text-[11px] leading-relaxed">
-                    Blanket empty garden beds with shredded autumn leaves, straw, and well-rotted manure to feed earthworms during frost. Clean and condition forged carbon steel garden hoes and shears with boiled linseed oil. Tend wild yeast sourdough hearth breads and host evening seed-swapping circles by the fireplace.
+                    Blanket empty garden beds with shredded autumn leaves, straw, and well-rotted manure to feed earthworms during frost. Clean and condition forged carbon steel garden hoes and shears with boiled linseed oil. Bake wild yeast artisan sourdough loaves and host cozy evening seed-swapping circles.
                   </p>
                 </div>
               )}
@@ -290,7 +292,7 @@ export default function ApothecaryHub({ onConsult, aiLoading, aiResponse, getLoa
               <div className="bg-white border border-copper-penny/15 rounded-2xl p-4 space-y-2.5 shadow-xs hover:border-copper-penny/30 transition-all">
                 <div className="flex items-center space-x-2">
                   <span className="text-base">🌱</span>
-                  <h4 className="font-serif font-bold text-sm text-[#1F1813]">Matriarchal Heirloom Seed Sovereignty</h4>
+                  <h4 className="font-serif font-bold text-sm text-[#1F1813]">Heirloom Seeds &amp; Family Food Security</h4>
                 </div>
                 <p className="text-[11px] text-[#2A221B]/80 leading-relaxed">
                   Saving true-to-type, open-pollinated seed varieties that have sustained American families across centuries—Georgia Southern collards, Cherokee Purple tomatoes, Carolina Gold rice, Clemson spineless okra, and Seminole pumpkin—protecting our lineage from commercial seed dependency.

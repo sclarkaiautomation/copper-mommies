@@ -8,7 +8,7 @@ import {
 export const INITIAL_SKILL_POTS: VillageSkillPot[] = [
   {
     id: 'pot-1',
-    title: 'Sovereign Land Trust Formulation & Allodial Title Security',
+    title: 'Family Land Trusts & Protecting Generational Property',
     instructor: 'Sister Attorney Kamilah Adeyemi',
     instructorRole: 'Constitutional Land Trust Counsel & Georgia Matriarch',
     category: 'Wealth & Estate Trusts',
@@ -18,9 +18,9 @@ export const INITIAL_SKILL_POTS: VillageSkillPot[] = [
     description: 'Crowdfunded masterclass teaching melanated families how to structure private irrevocable land trusts, shield family homesteads from property tax forfeitures, and pass multi-generational acreage unencumbered by probate.',
     curriculumHighlights: [
       'Drafting Private Family Land Trust Declarations',
-      'Severing public franchise liabilities without civil confrontation',
+      'Protecting family property from predatory sales and probate',
       'Setting up trustee succession structures for 5 generations',
-      'Homestead tax exemption filings and affidavit templates'
+      'Homestead property tax protections and filing guides'
     ],
     scheduledDate: 'Saturday, October 24, 2026 • 2:00 PM EST',
     status: 'active',
@@ -89,7 +89,7 @@ export const INITIAL_SKILL_POTS: VillageSkillPot[] = [
   },
   {
     id: 'pot-5',
-    title: 'Sovereign Homeschool Transcript & State Portfolio Defense',
+    title: 'Independent Homeschool Transcript & State Portfolio Defense',
     instructor: 'Matriarch Denise Washington',
     instructorRole: 'Homeschool Mother of 5 • Certified Educational Consultant',
     category: 'Homeschool Mastery',
@@ -266,7 +266,7 @@ export const INITIAL_TEA_GIFTS: TeaLoveGift[] = [
     amount: 10,
     paymentMethod: 'Stripe',
     transactionRef: 'STRIPE-CH-9382104',
-    note: 'Blessing the servers and technical team that keeps our conversations private and encrypted. Love to all my sisters.',
+    note: 'Supporting the servers and technical team that keeps our conversations private and encrypted. Love to all my sisters.',
     date: 'Yesterday at 8:40 PM',
     isTaxExempt508: true,
     pmaCovenantAcknowledged: true
@@ -301,8 +301,8 @@ export const DUAL_CHAMBER_SPECS = {
   tier1: {
     title: 'Tier 1: Sanctuary & Founder Ministry',
     legalForm: 'Private Membership Association (PMA) & Title 26 U.S.C. § 508(c)(1)(a)',
-    jurisdiction: 'Private Domain • Inherent First & Fourteenth Amendment Ecclesiastical Sovereignty',
-    purpose: 'Free-will love gifts ("Buy Us a Tea"), spiritual fellowship, ancestral lineage archives, private herbal remedy preservation under A Healthy Addiction, sacred prayer circles, peer-to-peer time credits, and direct stewardship under Mama Shantrece. 100% statutory tax-exempt status.',
+    jurisdiction: 'Private Domain • First & Fourteenth Amendment Religious & Assembly Protections',
+    purpose: 'Free-will love gifts ("Buy Us a Tea"), spiritual fellowship, ancestral lineage archives, private herbal remedy preservation under A Healthy Addiction, sacred maternal circles, peer-to-peer time credits, and direct stewardship under Mama Shantrece. 100% statutory tax-exempt status.',
     taxStatus: 'Mandatory statutory tax-exempt status under IRC § 508(c)(1)(a) without state application or 501(c)(3) bureaucratic surveillance.',
     rules: [
       'Strictly non-public, closed-circuit association reserved for vetted matriarchs born 1995 or earlier.',
@@ -346,7 +346,7 @@ ARTICLE III: CODE OF HONESTY AND PEACE
 Every sister agrees to walk with integrity, to protect the privacy of her sisters, to never disclose private conversations or family records to external third parties, and to resolve any grievance through our Elder Council rather than civil litigation.
 
 AFFIRMATION & EMBLEM
-By signing or checking this covenant, you declare on your maternal honor that your actions are in peace, honor, and alignment with the sovereign sanctuary of Copper Mommies Co.
+By signing or checking this covenant, you declare on your maternal honor that your actions are in peace, honor, and alignment with the private sanctuary of Copper Mommies Co.
 `;
 
 export const SOVEREIGN_PAYMENT_CONFIG = {

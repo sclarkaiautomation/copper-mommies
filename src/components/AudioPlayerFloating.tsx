@@ -514,7 +514,7 @@ export default function AudioPlayerFloating({
                     }`}
                   >
                     <Heart className={`w-3.5 h-3.5 ${liked ? 'fill-rose-400 text-rose-400' : ''}`} />
-                    <span>{(currentTrack.likesCount || 0) + (liked ? 1 : 0)} Sister Blessings</span>
+                    <span>{(currentTrack.likesCount || 0) + (liked ? 1 : 0)} Sister Appreciations</span>
                   </button>
                 </div>
               </div>

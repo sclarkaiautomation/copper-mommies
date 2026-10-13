@@ -9,7 +9,7 @@ export const HEARTH_MOODS: Record<HearthMoodId, HearthMoodConfig> = {
     subtitle: 'Evening Wind-Down & Mother Journaling',
     emoji: '🕯️',
     vibe: 'Serene & Grounding',
-    tagline: 'Gentle candlelight warmth for evening prayers, journaling, and deep unwinding.',
+    tagline: 'Gentle candlelight warmth for evening reflection, journaling, and deep unwinding.',
     bgClass: 'bg-[#FAF7F2]',
     meshStyle: 'radial-gradient(circle at 10% 10%, rgba(212, 175, 55, 0.07) 0%, transparent 45%), radial-gradient(circle at 90% 90%, rgba(184, 115, 51, 0.06) 0%, transparent 50%), #FAF7F2',
     accentColor: '#D4AF37',

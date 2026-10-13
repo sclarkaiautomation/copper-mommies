@@ -165,7 +165,7 @@ export default function SovereignTreasuryHub({
       return pot;
     }));
 
-    onShowToast(`Blessed! You chipped in $${addedAmount} toward "${pledgingPot.title}". Progress bar updated!`);
+    onShowToast(`Grateful! You chipped in $${addedAmount} toward "${pledgingPot.title}". Progress bar updated!`);
     setPledgingPot(null);
   };
 
@@ -268,7 +268,7 @@ export default function SovereignTreasuryHub({
       amount,
       paymentMethod: teaPaymentMethod,
       transactionRef: `${teaPaymentMethod.toUpperCase()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
-      note: teaNote.trim() || 'Pouring love and blessing into the Copper Mommies Sanctuary.',
+      note: teaNote.trim() || 'Pouring love and care into the Copper Mommies Sanctuary.',
       date: 'Just now',
       isTaxExempt508: true,
       pmaCovenantAcknowledged: true
@@ -1072,7 +1072,7 @@ export default function SovereignTreasuryHub({
                   <span className="text-2xl font-mono font-black text-[#D4AF37] block mt-1">$3</span>
                 </div>
                 <p className="text-xs opacity-85 leading-relaxed">
-                  A warm cup of wild peppermint &amp; elderberry to fuel daily maternal prayer circles and database encryption.
+                  A warm cup of wild peppermint &amp; elderberry to fuel daily maternal reflection circles and database encryption.
                 </p>
               </div>
               <div className="mt-4 pt-3 border-t border-white/10 text-xs font-mono font-bold text-[#D4AF37]">
@@ -1213,7 +1213,7 @@ export default function SovereignTreasuryHub({
                   </button>
                 </div>
                 <p className="text-[11px] text-emerald-800 leading-relaxed">
-                  Send your gift directly via Cash App. Include "Love Gift 508" in the memo note, then click the button below to record your public blessing.
+                  Send your gift directly via Cash App. Include "Love Gift 508" in the memo note, then click the button below to record your public contribution.
                 </p>
               </div>
             )}
@@ -1241,7 +1241,7 @@ export default function SovereignTreasuryHub({
               </div>
             )}
 
-            {/* Donor Name & Blessing Note */}
+            {/* Donor Name & Care Note */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-[10px] font-mono uppercase tracking-wider font-extrabold text-[#B87333] block">
@@ -1259,13 +1259,13 @@ export default function SovereignTreasuryHub({
 
               <div className="space-y-1">
                 <label className="text-[10px] font-mono uppercase tracking-wider font-extrabold text-[#B87333] block">
-                  Encouragement / Blessing Note
+                  Encouragement / Support Note
                 </label>
                 <input
                   type="text"
                   value={teaNote}
                   onChange={(e) => setTeaNote(e.target.value)}
-                  placeholder="e.g. In honor of our grandmothers' prayers and gardens..."
+                  placeholder="e.g. In honor of our grandmothers' wisdom and gardens..."
                   className="w-full bg-[#FAF5EE] border border-copper-penny/25 rounded-xl px-3.5 py-2 text-xs text-[#1F1813] focus:outline-none focus:border-[#D4AF37]"
                 />
               </div>

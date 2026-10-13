@@ -363,7 +363,7 @@ export default function CommerceHub({
       requirements: [
         'Enjoys outdoor physical homestead rhythm in beautiful mountain air',
         'Careful handling of heritage seed strains to prevent cross-contamination',
-        'Mothers and adolescent children welcome to participate together'
+        'Great for mothers and youth participating together'
       ],
       contactEmail: 'danielle@highlandheritage.org',
       createdAt: '2026-09-05',
@@ -510,7 +510,7 @@ export default function CommerceHub({
       format: 'Pop-up Market',
       date: 'Saturday, Oct 24, 2026',
       time: '11:00 AM - 3:30 PM EST',
-      location: 'Historic Gullah-Geechee Community Hearth, Beaufort, SC',
+      location: 'Historic Gullah-Geechee Community Center, Beaufort, SC',
       locationState: 'SC',
       description: 'An open-air gathering showcasing natural indigo dyeing demonstrations, fresh herbal salves, cold-process lye soaps, and traditional maternal postpartum wraps. Children welcoming playground adjacent.',
       rsvpCount: 51,
@@ -529,7 +529,7 @@ export default function CommerceHub({
       description: 'How to turn your homeschool curriculum, herbal formulations, or homemaking checklists into recurring digital assets. Set up automated distribution with zero monthly software subscriptions.',
       rsvpCount: 29,
       isVirtual: true,
-      topics: ['Digital Products', 'No-Code Distribution', 'Copyright Sovereignty', 'Printable Guides']
+      topics: ['Digital Products', 'No-Code Distribution', 'Content Ownership & Copyright', 'Printable Guides']
     }
   ];
 
@@ -567,7 +567,7 @@ export default function CommerceHub({
       category: 'Business Formation',
       format: 'PDF Guide',
       downloadSize: '2.4 MB',
-      description: 'Comprehensive legal and structural blueprint on shifting single-owner LLCs into sovereign matriarchal cooperatives. Includes sample Member Agreements and Capital Retain clauses.',
+      description: 'Comprehensive legal and structural blueprint on shifting single-owner LLCs into cooperative family enterprises. Includes sample Member Agreements and Capital Retain clauses.',
       actionLabel: 'Download Blueprint'
     },
     {
@@ -663,7 +663,7 @@ export default function CommerceHub({
               </span>
               <div>
                 <span className="text-[10px] font-mono uppercase tracking-widest font-extrabold text-[#B87333]">
-                  Economic Sovereignty Hub
+                  Economic Self-Reliance Hub
                 </span>
                 <h1 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#1F1813]">
                   Enterprise &amp; Commerce Hub
@@ -1068,7 +1068,7 @@ export default function CommerceHub({
                   <option value="Digital & Tech">Digital &amp; Tech</option>
                   <option value="Creative & Artisan">Creative &amp; Artisan</option>
                   <option value="Admin & Operations">Admin &amp; Operations</option>
-                  <option value="Culinary & Hearth">Culinary &amp; Hearth</option>
+                  <option value="Culinary & Kitchen">Culinary &amp; Kitchen</option>
                 </select>
 
                 <label className="flex items-center space-x-1.5 px-3 py-2 bg-[#FAF5EE]/50 border border-copper-penny/25 rounded-xl text-xs cursor-pointer select-none">
@@ -1354,7 +1354,7 @@ export default function CommerceHub({
               {[
                 { id: 'all', label: 'All Blueprints' },
                 { id: 'Business Formation', label: 'Business Formation' },
-                { id: 'Financial Sovereignty', label: 'Financial Sovereignty' },
+                { id: 'Financial Sovereignty', label: 'Financial Self-Reliance' },
                 { id: 'Digital Asset Creation', label: 'Digital Assets' },
                 { id: 'Automated Workflows', label: 'Automated Workflows' }
               ].map((cat) => (
@@ -1475,7 +1475,7 @@ export default function CommerceHub({
                   required
                   value={newBiz.name}
                   onChange={(e) => setNewBiz({ ...newBiz, name: e.target.value })}
-                  placeholder="e.g., Honeycomb Hearth Botanicals"
+                  placeholder="e.g., Honeycomb Kitchen Botanicals"
                   className="w-full px-3 py-2 bg-white border border-[#B87333]/30 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#B87333]"
                 />
               </div>
@@ -1683,7 +1683,7 @@ export default function CommerceHub({
                     <option value="Digital & Tech">Digital &amp; Tech</option>
                     <option value="Creative & Artisan">Creative &amp; Artisan</option>
                     <option value="Admin & Operations">Admin &amp; Operations</option>
-                    <option value="Culinary & Hearth">Culinary &amp; Hearth</option>
+                    <option value="Culinary & Kitchen">Culinary &amp; Kitchen</option>
                   </select>
                 </div>
               </div>

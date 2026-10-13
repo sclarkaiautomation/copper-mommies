@@ -3,16 +3,16 @@ import { AudioTrack, VoiceNoteReflection, FiresideVoiceRoom } from '../types';
 export const INITIAL_AUDIO_TRACKS: AudioTrack[] = [
   {
     id: 'track-cc-14',
-    title: 'The Casual Corner Talk — Episode 14: Restoring the Sacred 40-Day Postpartum',
+    title: 'The Casual Corner Talk — Episode 14: Motherhood Real Talk: Beating Burnout, Setting Boundaries & Raising Confident Kids',
     episodeNumber: 14,
     series: 'casual-corner',
     host: 'Mama Jamila & Doula Brenda',
     hostRole: 'Grandmother Council & Master Herbalist',
     durationSeconds: 2420, // 40m 20s
-    audioUrl: 'https://cdn.freesound.org/previews/568/568468_11861866-lq.mp3', // Relaxing ambient river & hearth sound stream
+    audioUrl: 'https://cdn.freesound.org/previews/568/568468_11861866-lq.mp3', // Relaxing ambient river & crackling fire sound stream
     coverImage: '/The Casual Corner Talk.jpeg',
     releaseDate: 'Sept 12, 2026',
-    description: 'An unhurried, soul-enriching dialogue exploring traditional 40-day maternal seclusion, womb-wrapping with copper-colored linens, preparing rich bone and nettle broths, and setting non-negotiable boundaries against outside burnout.',
+    description: 'An unhurried, real sisterhood dialogue exploring practical ways to beat motherhood burnout in our 30s and 40s, raising children across every age stage, preparing mineral-rich nourishing family broths, and protecting our peace with healthy boundaries.',
     isFeatured: true,
     listenCount: 412,
     likesCount: 189,
@@ -20,7 +20,7 @@ export const INITIAL_AUDIO_TRACKS: AudioTrack[] = [
     timestamps: [
       {
         timeSeconds: 0,
-        label: 'Opening Hearth Blessing & Grounding',
+        label: 'Opening Community Dedication & Grounding',
         summary: 'Pouring ancestral libations and setting the room frequency in love and peace.',
         attachmentNote: 'Lighting pure beeswax candle infused with sweetgrass.'
       },
@@ -44,7 +44,7 @@ export const INITIAL_AUDIO_TRACKS: AudioTrack[] = [
       },
       {
         timeSeconds: 2100,
-        label: 'Audience Sister Q&A & Closing Hearth Prayer',
+        label: 'Audience Sister Q&A & Closing Community Reflection',
         summary: 'Sister Nia from Texas asks how to coordinate an offline meal train when family lives out of state.',
         attachmentNote: 'Download the Copper Mommies 1-Click Meal Train PDF template.'
       }
@@ -233,17 +233,17 @@ export const INITIAL_AUDIO_TRACKS: AudioTrack[] = [
       },
       {
         timeSeconds: 1420,
-        label: 'Blessing the Young Mothers of Tomorrow',
+        label: 'Honoring the Young Mothers of Tomorrow',
         summary: 'Grandmother Bessie’s spoken ancestral benediction for every mother listening.'
       }
     ]
   },
   {
     id: 'track-radio-live',
-    title: 'Copper Sanctuary 24/7 Live Stream: Casual Corner Hearth Radio & Ambient Healing Loops',
+    title: 'Copper Sanctuary 24/7 Live Stream: Casual Corner Community Radio & Ambient Healing Loops',
     series: 'live-radio',
     host: 'Sovereign Copper Radio Broadcast',
-    hostRole: 'Continuous 432Hz Ambient Hearth Stream',
+    hostRole: 'Continuous 432Hz Ambient Soundscape Stream',
     durationSeconds: 86400, // 24 hours
     audioUrl: 'https://cdn.freesound.org/previews/568/568468_11861866-lq.mp3',
     coverImage: '/The Casual Corner Talk.jpeg',
@@ -318,9 +318,9 @@ export const INITIAL_VOICE_NOTES: VoiceNoteReflection[] = [
 
 export const INITIAL_FIRESIDE_ROOM: FiresideVoiceRoom = {
   id: 'fireside-room-live',
-  title: '🔥 Live Fireside Audio Lounge: Casual Corner Hearth Talk',
-  topic: 'Restoring Sacred Postpartum Seclusion & Natural Village Shielding',
-  category: 'Postpartum & Motherhood Sovereignty',
+  title: '🔥 Live Fireside Audio Lounge: Casual Corner Community Talk',
+  topic: 'Real Motherhood Across Every Stage: Setting Boundaries, Healing Burnout & Protecting Family Peace',
+  category: 'Motherhood Realities & Village Wellness',
   isLive: true,
   hostSister: 'Mama Jamila (GA Spearhead)',
   hostRole: 'Grandmother Council Lead',

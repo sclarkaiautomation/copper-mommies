@@ -139,10 +139,10 @@ export default function HearthPollsCard({
                 <span>The Sisterhood Democratic Voice</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-serif font-black text-[#1F1813] tracking-tight">
-                Hearth Polls &amp; Topic Voting
+                Community Polls &amp; Topic Voting
               </h2>
               <p className="text-xs sm:text-sm text-[#2A221B]/80 max-w-2xl">
-                Every sister holds equal voice at the hearth. Vote on upcoming Casual Corner podcast topics, co-fund community masterclasses, and guide collective village initiatives.
+                Every sister holds an equal voice in the community. Vote on upcoming Casual Corner podcast topics, co-fund community masterclasses, and guide collective village initiatives.
               </p>
             </div>
 
@@ -167,7 +167,7 @@ export default function HearthPollsCard({
                   : 'bg-white text-[#1F1813]/70 hover:bg-[#FAF5EE] border border-copper-penny/20'
               }`}
             >
-              All Hearth Ballots ({polls.length})
+              All Community Ballots ({polls.length})
             </button>
             <button
               onClick={() => setSelectedCategory('casual-corner')}
@@ -469,7 +469,7 @@ export default function HearthPollsCard({
                       Propose a Community Poll
                     </h3>
                     <p className="text-[10px] font-mono text-soft-sage uppercase font-bold">
-                      Hearth Democratic Suggestion
+                      Community Suggestion &amp; Ballot Proposal
                     </p>
                   </div>
                 </div>
@@ -558,7 +558,7 @@ export default function HearthPollsCard({
                   Ballot Proposal Received!
                 </h3>
                 <p className="text-xs text-[#2A221B]/80 max-w-sm mx-auto">
-                  Thank you! The Grandmother Council has received your question. If approved, it will be published to the live Hearth Ballots!
+                  Thank you! The Grandmother Council has received your question. If approved, it will be published to the live Community Ballots!
                 </p>
               </div>
             )}
@@ -611,7 +611,7 @@ export default function HearthPollsCard({
                 ))}
               </div>
               <p className="pt-2">
-                👉 <strong>Vote directly on our sanctuary hearth:</strong>{' '}
+                👉 <strong>Vote directly on our sanctuary community hub:</strong>{' '}
                 <span className="text-[#B87333] underline break-all font-mono text-[10px]">
                   {window.location.origin}/#poll={shareModalPoll.id}
                 </span>

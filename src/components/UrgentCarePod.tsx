@@ -105,7 +105,7 @@ export default function UrgentCarePod({
             </h3>
           </div>
           <p className="text-xs text-soft-sage font-mono mt-0.5">
-            Rapid local response for postpartum meals, urgent ride-sharing, and emergency co-care in the {selectedState} pod.
+            Rapid local response for family meals, urgent ride-sharing, and emergency co-care in the {selectedState} pod.
           </p>
         </div>
 
@@ -282,7 +282,7 @@ export default function UrgentCarePod({
                   required
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="e.g. Postpartum broth & rest drop for mother of newborn"
+                  placeholder="e.g. Fresh family meal drop & respite support for sister"
                   className="w-full bg-white border border-copper-penny/20 rounded-xl px-3 py-2 text-xs"
                 />
               </div>

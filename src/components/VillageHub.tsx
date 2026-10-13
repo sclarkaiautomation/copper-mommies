@@ -36,7 +36,7 @@ const defaultNestBrightBanner: PageSpotlightBanner = {
   bannerImage: '/nestbright_banner.jpg',
   externalLink: 'https://nestbrightacademy.com',
   linkText: 'Visit NestBrightAcademy.com',
-  description: 'NestBright Academy empowers young scholars with engaging, high-standard elementary curricula designed to inspire mastery and curiosity. We are blessing 5 Copper Mommies with free 1-year access for elementary students (grades 3–5), while all sisters receive an exclusive village rate of just $5.99/month!',
+  description: 'NestBright Academy empowers young scholars with engaging, high-standard elementary curricula designed to inspire mastery and curiosity. We are gifting 5 Copper Mommies with free 1-year access for elementary students (grades 3–5), while all sisters receive an exclusive village rate of just $5.99/month!',
   promoCode: 'COPPERMOMMIES',
   promoHeadline: 'Exclusive Village Member Rate',
   promoPrice: '$5.99/mo',

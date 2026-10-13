@@ -92,33 +92,50 @@ export interface Applicant {
   name: string;
   email: string;
   
-  // Part 1: Basic Demographics & Birth Year Gating
-  birthYear: number; // Must be 1995 or earlier
-  ageRange?: string; // e.g. "30-39"
+  // Part 1: Basic Demographics & Profile
+  birthYear: number; // Enforce 1995 or earlier (1990 = 36 years old in 2026 timeline)
+  ageRange?: string; // e.g. "36 years old"
   currentLocation: string; // City & State, e.g. "Atlanta, GA"
-  childrenAndAges: string; // e.g. "3 children: Ages 2, 5, and 9"
+  childrenAndAges: string; // Maternal/Motherhood Status details
   socialHandle?: string; // e.g. "@username"
   phoneNumber: string; // e.g. "(404) 555-0192"
 
-  // Part 2: Sacred Lineage & Motherhood Qualification
+  // Part 2: Maternal Lineage & Indigenous Ancestry
   maternalLineageConfirmed: boolean; // Confirmed melanated American-born mother & heritage
-  maternalGeography: string; // Town / County / State for birth mother and maternal grandmother
-  isMotherConfirmed: boolean; // Has birthed or raised children
-  connectionStatement: string; // Brief memory, tradition, or ancestral value passed down
+  maternal_lineage?: string; // "Yes, I confirm both myself and maternal grandmother are American-born melanated lineage." | "Other (Lineage African, Afro-Caribbean, Asiatic, Caribbean, etc.)"
+  lineage_perspective?: string; // "I lean in with curiosity and want to study the data for myself." | "I may not know much yet, but I am ready to unlearn and relearn with my sisters." | "I reject it immediately if it contradicts what I learned."
+  maternalGeography?: string; // Town / County / State for birth mother and maternal grandmother
+  isMotherConfirmed?: boolean; // Has birthed or raised children
+  connectionStatement?: string; // Brief memory, tradition, or ancestral value passed down
 
-  // Part 3: Spiritual & Ancestral Openness
-  spiritualAlignment: 'fully_aligned' | 'open_receptive' | 'traditional_seeker';
+  // Part 3: Spiritual & Ancestral Openness (Optional/Extended)
+  spiritualAlignment?: 'fully_aligned' | 'open_receptive' | 'traditional_seeker';
   spiritualStatement?: string; // Receptivity to ancestral ways & open-minded spiritual discussions
 
-  // Part 4: Vocation, Trade & Barter Contribution
+  // Part 3 / Vocation, Trade, Barter Gifts & Community Contribution
   currentVocation: string; // Current work / profession
+  vocation_trade?: string; // Current Work / Profession
+  barterContribution: string; // Products or Services provided for internal network
+  barter_perks?: string; // Products or Services provided for internal network
+  communityContributionTypes?: string[]; // Traditional skills, wellness/herbal, teaching, business, sisterhood support, donations, barter
+  communityContributionDetails?: string; // Personal write-in description of what they bring to the community
   businessName?: string; // Business or trade name
   businessOfferings?: string; // Products or services provided
-  barterContribution: string; // Skills, homemade goods, garden produce, or care she offers to the village
+  
+  // Chapter Lead / State Coordinator Vetting
+  wantsToBeStateLead?: boolean; // Interested in becoming local state lead
+  stateLeadWhy?: string; // Why she feels called to lead local chapter/pod
+  stateLeadExperience?: string; // Coordination experience (workplace, community, informal, eager to learn)
+  stateLeadGroundSupport?: string; // Local ground support & meetup assistance (spots, venue/space, online only)
+  stateLeadPeopleManagement?: string; // People management / team leadership experience
+  stateLeadConflictApproach?: string; // Approach to keeping peace and calm leadership
+  stateLeadStatus?: 'certified_candidate' | 'on_hold' | 'declined' | 'not_applied';
 
-  // Part 5: Private Membership Association (PMA) Covenant
-  agreedToPmaCovenant: boolean; // Agreement to 508/PMA private association & code of conduct
-  agreedToCodeOfConduct: boolean; // Compatibility
+  // Part 4: Private Membership Association (PMA) Covenant
+  pma_declaration?: boolean; // Must be checked true
+  code_of_conduct?: boolean; // Must be checked true
+  agreedToPmaCovenant: boolean; // Agreement to 508/PMA private association
+  agreedToCodeOfConduct: boolean; // Agreement to sisterhood code of conduct
 
   // Compatibility & Legacy fields
   isMotherOrGuardian?: boolean;
@@ -127,7 +144,21 @@ export interface Applicant {
   grandmotherBirthplace?: string;
   paternalGrandmotherBirthplace?: string;
 
-  status: 'pending' | 'approved' | 'denied';
+  // Pipeline Status & Sifting Data
+  status: 'pending' | 'approved' | 'denied' | 'disqualified';
+  disqualificationReason?: string;
+  activationToken?: string;
+  activationTokenLink?: string;
+  appDownloadLink?: string;
+  transactionalEmailSent?: boolean;
+  transactionalEmail?: {
+    to: string;
+    subject: string;
+    body: string;
+    sentAt: string;
+    tokenLink: string;
+    appDownloadLink: string;
+  };
   submittedAt: string;
   isStateSpearhead?: boolean;
   stateCode?: string;
@@ -228,7 +259,7 @@ export interface OpportunityJob {
   postedBy: string;
   businessName?: string;
   type: 'Gig Work' | 'Contract' | 'Part-Time' | 'Full-Time' | 'Trade Exchange' | 'Apprenticeship';
-  category: 'Childcare & Doula' | 'Homestead & Farm' | 'Digital & Tech' | 'Creative & Artisan' | 'Admin & Operations' | 'Culinary & Hearth';
+  category: 'Childcare & Doula' | 'Homestead & Farm' | 'Digital & Tech' | 'Creative & Artisan' | 'Admin & Operations' | 'Culinary & Kitchen';
   locationState: string;
   isRemote: boolean;
   compensation: string;
@@ -299,6 +330,36 @@ export interface PageSpotlightBanner {
   // Contact / Inquiries
   contactEmail?: string;
   contactActionLabel?: string;
+}
+
+export interface BusinessAdSubmission {
+  id: string;
+  businessName: string;
+  ownerName: string;
+  email: string;
+  phone?: string;
+  socialHandle?: string; // Instagram / TikTok
+  websiteUrl: string;
+  placementType: 'header_banner' | 'commons_sidebar' | 'both_bundle';
+  // Top Header Banner specs: 1200 x 300 (landscape hero ratio)
+  // Commons Sidebar specs: 300 x 250 / 300 x 360 (medium rectangle / tall sponsor card)
+  bannerImageUrl: string;
+  headline: string;
+  tagline: string;
+  description: string;
+  callToActionText: string;
+  exclusiveDiscountCode: string; // e.g. "COPPER15"
+  discountOfferText: string; // e.g. "15% off all botanical remedies for Copper Mommies"
+  pricingTier: 'pioneer_free' | 'member_sidebar' | 'member_header' | 'sidebar_monthly' | 'header_monthly' | 'bundle_monthly';
+  pricingAmount: string; // "$0 (Pioneer 30-Day Pass)" | "$5/mo (Member Spotlight)" | "$15/mo (Member Header)" | "$25/mo" | "$50/mo" | "$65/mo"
+  singleMelanatedWomanOwnedConfirmed: boolean;
+  status: 'pending_review' | 'approved_live' | 'rejected';
+  rejectionNote?: string;
+  targetCategory?: string; // e.g. "Botanicals & Wellness", "Homeschool & Learning", "Artisan Crafts", "Services"
+  submittedAt: string;
+  approvedAt?: string;
+  viewsCount?: number;
+  clicksCount?: number;
 }
 
 export interface ScholarshipEntry {
@@ -501,16 +562,23 @@ export interface OfflinePodMeetup {
 // Phase 2: Admin Command Center & Matriarch Desk Types
 export interface BroadcastBulletin {
   id: string;
-  title: string;
-  message: string;
-  urgency: 'normal' | 'high' | 'critical' | 'celebration';
+  title?: string;
+  headline?: string;
+  message?: string;
+  detail?: string;
+  urgency?: 'normal' | 'high' | 'critical' | 'celebration';
   active: boolean;
-  targetHub: 'all' | 'village' | 'healing' | 'economy' | 'commerce' | 'gathering' | 'kinship';
+  targetHub?: 'all' | 'village' | 'healing' | 'economy' | 'commerce' | 'gathering' | 'kinship';
+  targetState?: string;
+  category?: string;
   actionLink?: string;
+  actionUrl?: string;
   actionText?: string;
-  createdAt: string;
-  pinnedBy: string;
-  colorTheme: 'gold' | 'copper' | 'emerald' | 'rose' | 'slate';
+  createdAt?: string;
+  publishedAt?: string;
+  pinnedBy?: string;
+  priority?: 'normal' | 'high' | 'critical';
+  colorTheme?: 'gold' | 'copper' | 'emerald' | 'rose' | 'slate';
 }
 
 export interface BarterDisputeRecord {
@@ -519,7 +587,7 @@ export interface BarterDisputeRecord {
   barterTitle: string;
   claimantName: string;
   respondentName: string;
-  disputeType: 'Incomplete Transfer' | 'Point Value Mismatch' | 'Damaged/Expired Remedy' | 'No-Show at Meetup' | 'Honorary Community Blessing';
+  disputeType: 'Incomplete Transfer' | 'Point Value Mismatch' | 'Damaged/Expired Remedy' | 'No-Show at Meetup' | 'Honorary Community Grant';
   description: string;
   status: 'Open Dispute' | 'Under Elder Review' | 'Resolved & Recredited' | 'Dismissed';
   requestedAdjustmentHours: number;
@@ -735,20 +803,213 @@ export interface PollOption {
 export interface VillagePoll {
   id: string;
   title: string;
-  question: string;
+  question?: string;
   description?: string;
   category: PollCategory;
   options: PollOption[];
-  totalVotes: number;
+  totalVotes?: number;
   votedUserIds?: string[];
-  isOpen: boolean;
-  isFeatured: boolean;
+  isOpen?: boolean;
+  active?: boolean;
+  isFeatured?: boolean;
+  featuredOnCasualCorner?: boolean;
   expiresAt?: string;
-  createdAt: string;
+  closesAt?: string;
+  createdAt?: string;
+  creatorName?: string;
+  creatorRole?: string;
+  allowCustomSuggestions?: boolean;
+  isCrowdfundedClass?: boolean;
+  crowdfundGoal?: number;
+  crowdfundRaised?: number | string;
+  memberSuggestions?: any[];
   announcementText?: string;
   targetLink?: string;
   winningOptionId?: string;
 }
+
+// ==========================================
+// VILLAGE COMMONS INTERFACES
+// ==========================================
+
+export type CommonsForumTopic = 
+  | 'herbal-remedies' 
+  | 'birth-postpartum' 
+  | 'homeschool-nestbright' 
+  | 'homestead-seeds' 
+  | 'wealth-strategies' 
+  | 'daily-uplift';
+
+export interface CommonsPostComment {
+  id: string;
+  authorName: string;
+  authorAvatar?: string;
+  authorLocation: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface CommonsPost {
+  id: string;
+  authorName: string;
+  authorRole: 'Verified Mother' | 'Circle Host' | 'Circle Lead (Admin)' | 'Council Grandmother';
+  authorState: string;
+  authorCity: string;
+  authorAvatar?: string;
+  topic: CommonsForumTopic;
+  title?: string;
+  content: string;
+  imageUrl?: string;
+  likesCount: number;
+  likedBy: string[];
+  comments: CommonsPostComment[];
+  createdAt: string;
+  isFlagged?: boolean;
+  reportCount?: number;
+}
+
+export interface CommonsExchangeItem {
+  id: string;
+  title: string;
+  description: string;
+  type: 'free' | 'barter' | 'time-credit';
+  category: 'Baby & Toddler' | 'Homeschool Books & Supplies' | 'Homestead & Farm' | 'Herbal Remedies' | 'Furniture & Household' | 'Clothing & Apparel';
+  imageUrl: string;
+  locationCity: string;
+  locationState: string;
+  distanceMiles?: number;
+  terms: string; // e.g. "100% Free Gift" or "Trade for 4oz Elderberry" or "2 Hours Time-Credit"
+  authorName: string;
+  authorContactType: 'in-app' | 'direct';
+  createdAt: string;
+  active: boolean;
+}
+
+export interface HousingListing {
+  id: string;
+  title: string;
+  spaceType: 'room' | 'maternity' | 'land' | 'rental' | 'work-trade';
+  transactionType: 'rent' | 'buy' | 'barter' | 'trade' | 'work-trade' | 'emergency-stay';
+  pricingTerms: string; // Clearly specified: e.g. "$650/mo all utilities included" or "Work-Trade: 10 hrs/wk garden help"
+  regionOrCity: string;
+  stateCode: string;
+  showAddressAndPhone: boolean; // Member privacy toggle
+  phone?: string;
+  address?: string;
+  accommodatesChildren: boolean;
+  childrenDetails?: string;
+  privateBath: boolean;
+  privateEntrance: boolean;
+  landAcreage?: string;
+  rulesAndExpectations: string;
+  imageUrl: string;
+  authorName: string;
+  authorEmail?: string;
+  createdAt: string;
+  isVerifiedSpace?: boolean;
+}
+
+export interface VouchedBusiness {
+  id: string;
+  name: string;
+  ownerName: string;
+  industry: 'Holistic Health' | 'Doula & Midwifery' | 'Homestead & Food' | 'Artisan & Textiles' | 'Education & Childcare' | 'Professional Services';
+  locationCity: string;
+  locationState: string;
+  website?: string;
+  contactEmail: string;
+  offerDescription: string;
+  sisterDiscountOrBarter: string;
+  imageUrl: string;
+  vouchesCount: number;
+  vouchedBy: string[];
+  sisterTestimonials: Array<{
+    id: string;
+    author: string;
+    text: string;
+    date: string;
+    vouchedProductOrService?: string;
+  }>;
+  isMemberOwned: boolean;
+  isFeaturedSponsor: boolean;
+  createdAt: string;
+}
+
+export interface CommonsEvent {
+  id: string;
+  title: string;
+  coverImageUrl: string;
+  date: string; // formatted e.g. "Sat, Oct 10, 2026"
+  time: string; // e.g. "2:00 PM - 5:00 PM"
+  locationType: 'in-person' | 'virtual';
+  venueOrCity: string;
+  stateCode: string;
+  address?: string;
+  virtualLink?: string;
+  description: string;
+  category: 'Circle Gathering' | 'Homestead & Seed Swap' | 'Herbal Workshop' | 'Maternal Celebration' | 'Homeschool Field Day';
+  postedByRole: 'admin' | 'spearhead';
+  postedByName: string;
+  rsvps: Record<string, 'interested' | 'going' | 'declined'>;
+  createdAt: string;
+}
+
+export interface SavedCommonsItem {
+  id: string;
+  type: 'exchange' | 'housing' | 'business' | 'event' | 'discussion';
+  title: string;
+  subtitle: string;
+  imageUrl: string;
+  categoryBadge?: string;
+  location?: string;
+  terms?: string;
+  linkTab?: string;
+}
+
+export interface DirectChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderAvatar?: string;
+  text: string;
+  timestamp: string;
+  isMe: boolean;
+  isEdited?: boolean;
+  isPinned?: boolean;
+  reactions?: { emoji: string; count: number; reactedByMe?: boolean }[];
+  replyTo?: { id: string; text: string; senderName: string };
+  linkPreviewUrl?: string;
+  linkPreviewTitle?: string;
+  imageUrl?: string;
+}
+
+export interface DirectChatThread {
+  id: string;
+  participantId: string;
+  participantName: string;
+  participantAvatar?: string;
+  participantNeighborhood: string;
+  participantRole?: string;
+  category: 'dm' | 'housing' | 'exchange' | 'business';
+  originSectionLabel?: string; // e.g., 'Housing Haven: Garden Cottage', 'For Sale & Free'
+  originListingId?: string;
+  lastMessage: string;
+  lastMessageTime: string;
+  unreadCount: number;
+  isMuted?: boolean;
+  isArchived?: boolean;
+  messages: DirectChatMessage[];
+}
+
+export interface ChatMember {
+  id: string;
+  name: string;
+  avatar?: string;
+  neighborhood: string;
+  role: string;
+}
+
+
 
 
 

@@ -44,7 +44,7 @@ export default function DeviMommieCreativeStudio({ onShowToast }: DeviMommieCrea
     { title: 'The Three Sisters Stretch', prompt: 'Stand tall like a golden corn stalk! Reach high toward the sun, then sway side to side like beans climbing a trellis. Breathe in for 4 seconds, exhale for 4 seconds.' },
     { title: 'Turbo Pit Stop Jumping Jacks', prompt: 'Rev your engine! Do 10 rapid jumping jacks while counting by 5s to 50: 5, 10, 15, 20... 50! Finish with a turbo spin.' },
     { title: 'Nature Observation Pause', prompt: 'Close your eyes. Listen carefully to 3 distinct sounds around your home. Name them out loud in full descriptive sentences.' },
-    { title: 'The Deep Hearth Belly Breath', prompt: 'Place one hand on your heart and one hand on your belly. Inhale deeply through your nose like smelling sweet sweetgrass, hold for 3, and blow out like cooling warm soup.' }
+    { title: 'The Deep Belly Calm Breath', prompt: 'Place one hand on your heart and one hand on your belly. Inhale deeply through your nose like smelling sweet sweetgrass, hold for 3, and blow out like cooling warm soup.' }
   ];
 
   useEffect(() => {

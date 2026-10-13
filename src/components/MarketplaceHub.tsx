@@ -697,7 +697,7 @@ export default function MarketplaceHub({
       <SpotlightBanner banners={banners} banner={spotlightBanner} selectedState={selectedState} userName={userName} />
 
       {/* Phase 1 Community Sub-Navigation Bar */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs font-mono font-bold">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs font-mono font-bold scrollbar-none">
         <button
           onClick={() => setMarketSubTab('listings')}
           className={`px-4 py-2 rounded-2xl transition-all flex items-center space-x-2 shrink-0 cursor-pointer ${
@@ -705,6 +705,7 @@ export default function MarketplaceHub({
               ? 'bg-[#B87333] text-white shadow-md'
               : 'bg-white text-[#1F1813] hover:bg-amber-50 border border-copper-penny/20'
           }`}
+          title="Barter & Exchange Board: view and post goods and service trades"
         >
           <ArrowLeftRight className="w-4 h-4" />
           <span>Barter &amp; Exchange Board</span>
@@ -717,6 +718,7 @@ export default function MarketplaceHub({
               ? 'bg-[#B87333] text-white shadow-md'
               : 'bg-white text-[#1F1813] hover:bg-amber-50 border border-copper-penny/20'
           }`}
+          title="My Active Trades: track ongoing sister handshakes and exchanges"
         >
           <Clock className="w-4 h-4" />
           <span>My Active Trades ({activeTrades.length})</span>
@@ -729,6 +731,7 @@ export default function MarketplaceHub({
               ? 'bg-rose-700 text-white shadow-md'
               : 'bg-white text-[#1F1813] hover:bg-rose-50 border border-rose-300'
           }`}
+          title="Local Pod Urgent Care (Village SOS): emergency meals and mother care"
         >
           <AlertTriangle className="w-4 h-4 text-rose-500" />
           <span>Local Pod Urgent Care (Village SOS)</span>
@@ -738,9 +741,10 @@ export default function MarketplaceHub({
           onClick={() => setMarketSubTab('wisdom')}
           className={`px-4 py-2 rounded-2xl transition-all flex items-center space-x-2 shrink-0 cursor-pointer ${
             marketSubTab === 'wisdom'
-              ? 'bg-[#1F1813] text-[#D4AF37] shadow-md border border-[#D4AF37]/50'
+              ? 'bg-[#1F140E] text-[#D4AF37] shadow-md border border-[#D4AF37]/50'
               : 'bg-white text-[#1F1813] hover:bg-amber-50 border border-copper-penny/20'
           }`}
+          title="Sisterhood Wisdom & Tiers: generosity scores and time-banking rules"
         >
           <Sprout className="w-4 h-4 text-[#D4AF37]" />
           <span>Sisterhood Wisdom &amp; Tiers</span>
@@ -886,7 +890,7 @@ export default function MarketplaceHub({
               )}
 
               {/* Hand-drawn Earthy Center Anchor */}
-              <div className="absolute w-4 h-4 bg-amber-500/20 border border-amber-700 rounded-full flex items-center justify-center shadow-sm select-none pointer-events-none" title="Village Hearth">
+              <div className="absolute w-4 h-4 bg-amber-500/20 border border-amber-700 rounded-full flex items-center justify-center shadow-sm select-none pointer-events-none" title="Village Center">
                 <div className="w-1.5 h-1.5 bg-amber-700 rounded-full" />
               </div>
               

@@ -169,7 +169,7 @@ export default function AudioSanctuaryLounge({
   const handleStopRecording = () => {
     setIsRecording(false);
     if (!newNoteTranscription) {
-      setNewNoteTranscription('Recorded voice message: sharing heartfelt reflections from the maternal hearth circle.');
+      setNewNoteTranscription('Recorded voice message: sharing heartfelt reflections from the maternal sanctuary circle.');
     }
   };
 
@@ -678,7 +678,7 @@ export default function AudioSanctuaryLounge({
                 <div className="flex items-center space-x-2 text-[#D4AF37] mb-1">
                   <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
                   <span className="font-mono text-xs uppercase tracking-widest font-extrabold text-rose-400">
-                    Live Audio-Only Hearth Stage • No Cameras Required
+                    Live Audio-Only Sanctuary Stage • No Cameras Required
                   </span>
                 </div>
                 <h3 className="font-serif text-2xl sm:text-3xl font-extrabold text-white">
@@ -774,7 +774,7 @@ export default function AudioSanctuaryLounge({
             <div className="space-y-3 pt-3 border-t border-white/10">
               <span className="font-mono text-xs uppercase font-bold text-white/70 flex items-center space-x-2">
                 <Users className="w-4 h-4 text-white/60" />
-                <span>Listening from the Sanctuary Hearth</span>
+                <span>Listening from the Audio Sanctuary</span>
               </span>
 
               <div className="flex flex-wrap gap-3">
@@ -943,7 +943,7 @@ export default function AudioSanctuaryLounge({
                   </p>
 
                   <div className="flex items-center justify-between text-[11px] font-mono text-soft-sage pt-1">
-                    <span className="text-[10px]">🌿 {vn.audioFrequency || 432}Hz Hearth Resonance</span>
+                    <span className="text-[10px]">🌿 {vn.audioFrequency || 432}Hz Sanctuary Resonance</span>
                     <button 
                       onClick={() => {
                         if (onLikeVoiceNote) {
@@ -955,7 +955,7 @@ export default function AudioSanctuaryLounge({
                       className="text-[#B87333] hover:text-rose-600 flex items-center space-x-1 cursor-pointer"
                     >
                       <Heart className="w-3.5 h-3.5 fill-current" />
-                      <span>{vn.likes} Sister Blessings</span>
+                      <span>{vn.likes} Sister Appreciations</span>
                     </button>
                   </div>
                 </div>

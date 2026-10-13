@@ -140,7 +140,7 @@ export const INITIAL_ACTIVE_TRADES: ActiveTradeRecord[] = [
   {
     id: 'trade-103',
     barterId: 'b-3',
-    listingTitle: 'Organic Sourdough Starter & Fresh Hearth Loaf',
+    listingTitle: 'Organic Sourdough Starter & Fresh Artisan Loaf',
     listingCategory: 'Daily Life/Pantry',
     role: 'trader',
     partnerName: 'Sister Nicole',
@@ -162,11 +162,11 @@ export const INITIAL_SISTER_PROFILES: SisterMicroStore[] = [
   {
     id: 'sis-1',
     sisterName: 'Mama Shantrece',
-    sisterHandle: '@shantrece_hearth',
+    sisterHandle: '@shantrece_coop',
     birthYear: 1988,
     location: 'Decatur, GA',
     stateCode: 'GA',
-    bio: 'Homeschooling mother of 3, traditional apothecary crafter, and sovereign hearth keeper. Deeply rooted in Georgia soil and ancestral nourishment.',
+    bio: 'Homeschooling mother of 3, traditional apothecary crafter, and sovereign home & village keeper. Deeply rooted in Georgia soil and ancestral nourishment.',
     wisdomTier: 'Homestead Pillar',
     trustScore: 98,
     barterCount: 24,
@@ -182,7 +182,7 @@ export const INITIAL_SISTER_PROFILES: SisterMicroStore[] = [
       { id: 'dp-2', title: 'Sovereign Homestead Pantry Storage Checklist', fileType: 'PDF', description: 'Year-long dry storage and fermentation rotation system.' }
     ],
     businessContactLinks: [
-      { label: 'Hearth Herbal Orders', url: 'https://coppermommies.co', type: 'Website' },
+      { label: 'Community Herbal Orders', url: 'https://coppermommies.co', type: 'Website' },
       { label: 'Schedule 30-min Homeschool Consult', url: '#consult', type: 'Consultation' },
       { label: 'Direct Village Inquiries', url: 'mailto:shantrece@coop.net', type: 'Email' }
     ]

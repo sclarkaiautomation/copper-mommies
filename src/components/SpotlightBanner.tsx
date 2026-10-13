@@ -106,9 +106,14 @@ export default function SpotlightBanner({
   const currentBanner = activeBanners[currentIndex] || activeBanners[0];
 
   // Manual navigation handlers
+  const startTimeRef = useRef<number>(Date.now());
+  const elapsedBeforePauseRef = useRef<number>(0);
+
   const handlePrev = () => {
     if (totalFeatures <= 1) return;
     setSlideDirection('prev');
+    startTimeRef.current = Date.now();
+    elapsedBeforePauseRef.current = 0;
     setProgress(0);
     setCurrentIndex(prev => (prev === 0 ? totalFeatures - 1 : prev - 1));
   };
@@ -116,6 +121,8 @@ export default function SpotlightBanner({
   const handleNext = () => {
     if (totalFeatures <= 1) return;
     setSlideDirection('next');
+    startTimeRef.current = Date.now();
+    elapsedBeforePauseRef.current = 0;
     setProgress(0);
     setCurrentIndex(prev => (prev === totalFeatures - 1 ? 0 : prev + 1));
   };
@@ -123,44 +130,52 @@ export default function SpotlightBanner({
   const handleSelectIndex = (idx: number) => {
     if (idx === currentIndex) return;
     setSlideDirection(idx > currentIndex ? 'next' : 'prev');
+    startTimeRef.current = Date.now();
+    elapsedBeforePauseRef.current = 0;
     setProgress(0);
     setCurrentIndex(idx);
   };
 
   const toggleManualPlayPause = () => {
     setIsManuallyPaused(prev => !prev);
+    startTimeRef.current = Date.now();
+    elapsedBeforePauseRef.current = 0;
     setProgress(0);
   };
 
   // Check if automatic scrolling is currently active
-  // Rule: If only one feature, automatic scroll is OFF.
-  // Also paused on hover, when user manually pauses, or when any interactive modal is open
-  const isAutoScrollActive = totalFeatures > 1 && !isHovered && !isManuallyPaused && !showEntryModal && !showContactModal;
+  // Rule: If only one feature, automatic scroll is OFF (banner stays completely still).
+  // When 2 or more features are displayed, it auto-scrolls in exact alignment with the moving colored bar!
+  // It will NOT sit idle on mouse hover. Only manual pause or open dialogs pause it.
+  const isAutoScrollActive = totalFeatures > 1 && !isManuallyPaused && !showEntryModal && !showContactModal;
 
-  // Auto-scroll Timer & Progress bar loop
+  // Auto-scroll Timer & Progress bar loop (strict synchronization with colored bar)
   useEffect(() => {
     if (!isAutoScrollActive) {
       setProgress(0);
       return;
     }
 
-    const stepMs = 50;
-    const totalSteps = autoScrollIntervalMs / stepMs;
-    const increment = 100 / totalSteps;
+    startTimeRef.current = Date.now();
+    setProgress(0);
 
+    const stepMs = 30;
     const timer = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 100) {
-          setSlideDirection('next');
-          setCurrentIndex(current => (current === totalFeatures - 1 ? 0 : current + 1));
-          return 0;
-        }
-        return prev + increment;
-      });
+      const now = Date.now();
+      const elapsed = now - startTimeRef.current;
+      const currentPct = Math.min(100, (elapsed / autoScrollIntervalMs) * 100);
+      setProgress(currentPct);
+
+      if (elapsed >= autoScrollIntervalMs) {
+        startTimeRef.current = Date.now();
+        setProgress(0);
+        setSlideDirection('next');
+        setCurrentIndex(current => (current === totalFeatures - 1 ? 0 : current + 1));
+      }
     }, stepMs);
 
     return () => clearInterval(timer);
-  }, [isAutoScrollActive, autoScrollIntervalMs, totalFeatures]);
+  }, [isAutoScrollActive, autoScrollIntervalMs, totalFeatures, currentIndex]);
 
   const handleCopyCode = (code?: string) => {
     if (code) {
@@ -342,26 +357,26 @@ export default function SpotlightBanner({
 
         {/* Auto-scroll Progress Bar (Only visible when > 1 feature and auto-scroll active) */}
         {totalFeatures > 1 && (
-          <div className="w-full h-1 bg-[#2A221B]/20 relative overflow-hidden">
+          <div className="w-full h-1.5 bg-[#2A221B]/30 relative overflow-hidden shrink-0" title="Auto-scrolling progress indicator">
             <div 
-              className={`h-full bg-gradient-to-r from-[#B87333] via-[#D4AF37] to-[#B87333] transition-all duration-75 ${
-                isAutoScrollActive ? 'opacity-100' : 'opacity-30'
+              className={`h-full bg-gradient-to-r from-[#B87333] via-[#D4AF37] to-[#E5A65E] transition-all duration-30 ease-linear ${
+                isAutoScrollActive ? 'opacity-100' : 'opacity-40'
               }`}
               style={{ width: `${progress}%` }}
             />
           </div>
         )}
 
-        {/* Animated Banner Content Body */}
-        <div className="p-4 sm:p-6 space-y-5">
+        {/* Animated Banner Content Body - Expanded Uniform Frame so All Content Fits Cleanly Without Scrollbars */}
+        <div className="p-4 sm:p-6 min-h-[580px] lg:min-h-[540px] flex flex-col justify-between relative overflow-hidden shrink-0" style={{ contain: 'layout style' }}>
           <AnimatePresence mode="wait">
             <motion.div
               key={currentBanner.id || currentIndex}
-              initial={{ opacity: 0, x: slideDirection === 'next' ? 25 : -25 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: slideDirection === 'next' ? -25 : 25 }}
-              transition={{ duration: 0.35, ease: 'easeOut' }}
-              className="space-y-5"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              className="space-y-4 w-full h-full flex flex-col justify-between"
             >
               
               {/* Proportioned Clickable Banner Image */}
@@ -377,7 +392,7 @@ export default function SpotlightBanner({
                     <img 
                       src={currentBanner.bannerImage} 
                       alt={currentBanner.title} 
-                      className="w-full h-36 sm:h-48 md:h-56 object-cover object-center transform group-hover:scale-[1.015] transition-transform duration-500"
+                      className="w-full h-32 sm:h-40 md:h-44 object-cover object-center transform group-hover:scale-[1.015] transition-transform duration-500"
                       referrerPolicy="no-referrer"
                     />
                     
@@ -591,12 +606,11 @@ export default function SpotlightBanner({
             </motion.div>
           </AnimatePresence>
 
-          {/* Bottom Pagination Indicators / Dots & Manual Controls for Multiple Features */}
+          {/* Bottom Pagination: Clean Minimal Dots & Chevron Arrows without bulky pill tabs */}
           {totalFeatures > 1 && (
-            <div className="pt-2 border-t border-[#B87333]/20 flex flex-col sm:flex-row items-center justify-between gap-3">
-              
-              {/* Feature Title Pills / Direct selector */}
-              <div className="flex flex-wrap items-center gap-1.5 max-w-xl">
+            <div className="pt-2 border-t border-[#B87333]/20 flex items-center justify-between gap-2">
+              {/* Minimal Pagination Dots */}
+              <div className="flex items-center space-x-1.5">
                 {activeBanners.map((b, idx) => {
                   const isActive = idx === currentIndex;
                   return (
@@ -604,23 +618,21 @@ export default function SpotlightBanner({
                       key={b.id || idx}
                       type="button"
                       onClick={() => handleSelectIndex(idx)}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold transition-all flex items-center space-x-1.5 cursor-pointer ${
+                      className={`h-2 rounded-full transition-all cursor-pointer ${
                         isActive 
-                          ? 'bg-[#B87333] text-white shadow-sm border border-[#B87333]' 
-                          : 'bg-white/80 hover:bg-[#FAF5EE] text-[#1F1813]/70 border border-[#B87333]/20 hover:border-[#B87333]/40'
+                          ? 'w-6 bg-[#D4AF37] shadow-xs' 
+                          : 'w-2 bg-[#1F1813]/25 hover:bg-[#B87333]/60'
                       }`}
-                      title={`Jump to: ${b.title}`}
-                    >
-                      <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-[#D4AF37]' : 'bg-[#1F1813]/30'}`} />
-                      <span className="truncate max-w-[140px] sm:max-w-[180px]">{b.categoryBadge || `Feature ${idx + 1}`}</span>
-                    </button>
+                      title={`Jump to feature ${idx + 1}: ${b.title}`}
+                      aria-label={`Jump to feature ${idx + 1}: ${b.title}`}
+                    />
                   );
                 })}
               </div>
 
-              {/* Step Navigation Pill Buttons */}
+              {/* Minimal Counter & Chevron Controls */}
               <div className="flex items-center space-x-2">
-                <span className="text-[10px] font-mono text-[#1F1813]/70 font-semibold">
+                <span className="text-[10px] font-mono text-[#1F1813]/70 font-bold">
                   {currentIndex + 1} of {totalFeatures}
                 </span>
 
@@ -628,7 +640,7 @@ export default function SpotlightBanner({
                   <button
                     type="button"
                     onClick={handlePrev}
-                    className="p-1.5 bg-white hover:bg-[#FAF5EE] text-[#1F1813] border border-[#B87333]/30 rounded-lg shadow-xs hover:shadow transition-all cursor-pointer"
+                    className="p-1 bg-white hover:bg-[#FAF5EE] text-[#1F1813] border border-[#B87333]/30 rounded-lg shadow-2xs hover:shadow transition-all cursor-pointer"
                     title="Previous Feature"
                     aria-label="Previous Feature"
                   >
@@ -638,7 +650,7 @@ export default function SpotlightBanner({
                   <button
                     type="button"
                     onClick={handleNext}
-                    className="p-1.5 bg-white hover:bg-[#FAF5EE] text-[#1F1813] border border-[#B87333]/30 rounded-lg shadow-xs hover:shadow transition-all cursor-pointer"
+                    className="p-1 bg-white hover:bg-[#FAF5EE] text-[#1F1813] border border-[#B87333]/30 rounded-lg shadow-2xs hover:shadow transition-all cursor-pointer"
                     title="Next Feature"
                     aria-label="Next Feature"
                   >
@@ -646,7 +658,6 @@ export default function SpotlightBanner({
                   </button>
                 </div>
               </div>
-
             </div>
           )}
 
@@ -687,7 +698,7 @@ export default function SpotlightBanner({
                 </div>
 
                 <p className="text-xs text-[#2A221B]/80 leading-relaxed">
-                  Enter to win free complimentary access for your child. Winners will be announced during our New Moon Hearth Circle.
+                  Enter to win free complimentary access for your child. Winners will be announced during our New Moon Sister Circle.
                 </p>
 
                 <form onSubmit={handleSubmitEntry} className="space-y-3.5 text-xs">

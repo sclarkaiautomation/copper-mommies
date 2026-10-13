@@ -5,21 +5,21 @@ export const initialVillagePolls: VillagePoll[] = [
     id: 'poll-cc-live-15',
     title: 'Casual Corner Live Topic Ballot — Episode 15',
     question: 'Which sacred heart-topic should we unpack during this Thursday’s live Casual Corner Talk?',
-    description: 'Pull up a seat and cast your vote! The winning topic will be featured during our Thursday 7:30 PM EST live hearth circle and recorded for the Audio Sanctuary.',
+    description: 'Pull up a seat and cast your vote! The winning topic will be featured during our Thursday 7:30 PM EST live community circle and recorded for the Audio Sanctuary.',
     category: 'casual-corner',
     isOpen: true,
     isFeatured: true,
     totalVotes: 38,
     createdAt: '2026-09-12T14:00:00.000Z',
     expiresAt: '2026-09-17T23:59:59.000Z',
-    announcementText: '🗳️ Live Hearth Ballot: Vote for Thursday’s Casual Corner Talk Topic!',
+    announcementText: '🗳️ Live Community Ballot: Vote for Thursday’s Casual Corner Talk Topic!',
     targetLink: '#casual-corner',
     votedUserIds: ['user-sample-1', 'user-sample-2'],
     options: [
       {
         id: 'opt-1',
-        text: 'Restoring the Sacred 40-Day Postpartum & Traditional Mother-Warming Herbal Soups',
-        description: 'Deep dive into bone broths, belly binding, womb warming teas, and organizing seamless meal trains.',
+        text: 'Raising Confident Kids, Beating Motherhood Burnout & Daily Rest Protocols',
+        description: 'Real talk on setting boundaries, herbal nervous system reset, managing kids of all ages, and organizing village meal trains.',
         votes: 16,
         proposer: 'Mama Jamila (GA)'
       },
@@ -32,8 +32,8 @@ export const initialVillagePolls: VillagePoll[] = [
       },
       {
         id: 'opt-3',
-        text: 'Backyard Meat Birds & Open-Pollinated Seed Preserving for Food Sovereignty',
-        description: 'Practical guide to heritage breeds, pasture fencing, harvesting rainwater, and non-hybrid seeds.',
+        text: 'Backyard Chickens, Home Gardens & Food Self-Reliance for Busy Families',
+        description: 'A realistic modern guide to healthy homegrown food, clean soil, and self-sufficient living without the overwhelm.',
         votes: 7,
         proposer: 'Auntie Brenda (CA)'
       },
@@ -48,8 +48,8 @@ export const initialVillagePolls: VillagePoll[] = [
   },
   {
     id: 'poll-treasury-class-q4',
-    title: 'Sovereign Skill Pot — Next Crowdfunded Masterclass',
-    question: 'Which village masterclass should our Sovereign Treasury crowdfund and host next month?',
+    title: 'Village Skill Pot — Next Community-Funded Masterclass',
+    question: 'Which village masterclass should our Community Treasury fund and host next month?',
     description: 'Each quarter, our collective pledges co-fund deep-dive practical skills taught by trusted matriarchs. Cast your vote to choose our next funded curriculum.',
     category: 'crowdfunded-class',
     isOpen: true,

@@ -638,7 +638,7 @@ export default function SCAutomatedPortal({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-copper-penny/15 pb-4">
               <div>
                 <span className="text-[10px] font-mono text-[#D4AF37] uppercase tracking-widest font-extrabold px-2 py-0.5 rounded bg-[#D4AF37]/15 border border-[#D4AF37]/35 inline-block mb-1">
-                  Intellectual Property &amp; Sovereignty Manual
+                  Intellectual Property &amp; Business Ownership Manual
                 </span>
                 <h3 className="font-serif font-extrabold text-2xl sm:text-3xl text-[#1F1813]">
                   {YOUR_BRAIN_IS_AN_ASSET_DATA.title}
@@ -800,7 +800,7 @@ export default function SCAutomatedPortal({
                   <option value="Holistic Health & Apothecary">Holistic Health &amp; Apothecary</option>
                   <option value="Doula & Postpartum Midwifery">Doula &amp; Postpartum Midwifery</option>
                   <option value="Homeschool Co-op / Educational Academy">Homeschool Co-op / Educational Academy</option>
-                  <option value="Homestead, Agriculture & Seed Sovereignty">Homestead, Agriculture &amp; Seed Sovereignty</option>
+                  <option value="Homestead, Agriculture & Seed Sovereignty">Homestead, Agriculture &amp; Seed Preservation</option>
                   <option value="Artisan Crafts & Natural Apparel">Artisan Crafts &amp; Natural Apparel</option>
                   <option value="Professional Legal / Trust Services">Professional Legal / Trust Services</option>
                 </select>

@@ -1121,14 +1121,14 @@ const villagePolls: VillagePoll[] = [
     id: 'poll-cc-live-15',
     title: 'Casual Corner Live Topic Ballot — Episode 15',
     question: 'Which sacred heart-topic should we unpack during this Thursday’s live Casual Corner Talk?',
-    description: 'Pull up a seat and cast your vote! The winning topic will be featured during our Thursday 7:30 PM EST live hearth circle and recorded for the Audio Sanctuary.',
+    description: 'Pull up a seat and cast your vote! The winning topic will be featured during our Thursday 7:30 PM EST live community circle and recorded for the Audio Sanctuary.',
     category: 'casual-corner',
     isOpen: true,
     isFeatured: true,
     totalVotes: 38,
     createdAt: '2026-09-12T14:00:00.000Z',
     expiresAt: '2026-09-17T23:59:59.000Z',
-    announcementText: '🗳️ Live Hearth Ballot: Vote for Thursday’s Casual Corner Talk Topic!',
+    announcementText: '🗳️ Live Community Ballot: Vote for Thursday’s Casual Corner Talk Topic!',
     targetLink: '#casual-corner',
     votedUserIds: ['user-sample-1', 'user-sample-2'],
     options: [
@@ -1283,7 +1283,7 @@ app.post('/api/polls/:id/vote', (req, res) => {
   poll.totalVotes += 1;
   poll.votedUserIds.push(voterKey);
 
-  res.json({ success: true, poll, message: 'Your sacred vote has been recorded at the hearth!' });
+  res.json({ success: true, poll, message: 'Your sacred vote has been recorded in the community circle!' });
 });
 
 // POST /api/polls (Admin creates poll)
@@ -1312,7 +1312,7 @@ app.post('/api/polls', (req, res) => {
     isFeatured: !!isFeatured,
     expiresAt: expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     createdAt: new Date().toISOString(),
-    announcementText: announcementText || `🗳️ Live Hearth Ballot: ${title}`,
+    announcementText: announcementText || `🗳️ Live Community Ballot: ${title}`,
     targetLink: targetLink || '#casual-corner'
   };
 
@@ -1336,6 +1336,410 @@ app.delete('/api/polls/:id', (req, res) => {
   if (idx === -1) return res.status(404).json({ error: 'Poll ballot not found' });
   villagePolls.splice(idx, 1);
   res.json({ success: true });
+});
+
+// ============================================================================
+// PMA SANCTUARY APPLICATION: AUTOMATED SIFTING & TRANSACTIONAL EMAIL PIPELINE
+// ============================================================================
+
+interface SanctuaryAppRecord {
+  id: string;
+  full_name: string;
+  email_address: string;
+  birth_year: number;
+  current_location: string;
+  children_ages: string;
+  social_handle?: string;
+  phone_number: string;
+  maternal_lineage: string;
+  lineage_perspective: string;
+  vocation_trade: string;
+  barter_perks: string;
+  communityContributionTypes?: string[];
+  communityContributionDetails?: string;
+  wantsToBeStateLead?: boolean;
+  stateLeadStatus?: 'certified_candidate' | 'on_hold' | 'declined' | 'not_applied';
+  stateLeadGroundSupport?: string;
+  stateLeadExperience?: string;
+  stateLeadPeopleManagement?: string;
+  stateLeadConflictApproach?: string;
+  stateLeadContributionGift?: string;
+  pma_declaration: boolean;
+  code_of_conduct: boolean;
+  status: 'approved' | 'disqualified' | 'pending';
+  disqualificationReason?: string;
+  submittedAt: string;
+  activationToken?: string;
+  activationTokenLink?: string;
+  appDownloadLink?: string;
+}
+
+interface DispatchedEmailRecord {
+  id: string;
+  to: string;
+  recipientName: string;
+  subject: string;
+  body: string;
+  sentAt: string;
+  tokenLink: string;
+  appDownloadLink: string;
+}
+
+interface BusinessAdRecord {
+  id: string;
+  businessName: string;
+  ownerName: string;
+  email: string;
+  phone?: string;
+  socialHandle?: string;
+  websiteUrl: string;
+  headline: string;
+  tagline?: string;
+  description: string;
+  placementType: 'header_banner' | 'commons_sidebar' | 'both_bundle';
+  bannerImageUrl: string;
+  ctaText: string;
+  specialCommunityDiscount?: string;
+  discountCode?: string;
+  pricingTierSelected: string;
+  pricingAmount: number;
+  isSingleMelanatedWomanOwner: boolean;
+  status: 'pending_review' | 'approved' | 'rejected' | 'active';
+  submittedAt: string;
+  approvedAt?: string;
+  adminNotes?: string;
+}
+
+const sanctuaryApplications: SanctuaryAppRecord[] = [];
+const dispatchedEmails: DispatchedEmailRecord[] = [];
+
+// In-memory business ad submissions with authentic initial showcase ads
+const businessAdSubmissions: BusinessAdRecord[] = [
+  {
+    id: 'ad-showcase-1',
+    businessName: 'Copper Roots Botanicals',
+    ownerName: 'Sister Maya N.',
+    email: 'maya@copperrootsbotanicals.com',
+    phone: '(404) 555-0144',
+    socialHandle: '@copperrootsbotanicals',
+    websiteUrl: 'https://copperrootsbotanicals.com',
+    headline: 'Ancestral Tinctures & Wildcrafted Herbal Tonics',
+    tagline: 'Handcrafted by Melanated Mothers for Sovereign Wellness',
+    description: 'Nourishing organic elixirs, red raspberry leaf postpartum tea blends, and cold-pressed elderberry wellness tonics for families.',
+    placementType: 'both_bundle',
+    bannerImageUrl: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1200&q=80',
+    ctaText: 'Shop Herbal Tonics',
+    specialCommunityDiscount: '20% off all mother & baby wellness herbal remedies',
+    discountCode: 'COPPERMAMA20',
+    pricingTierSelected: 'pioneer_free',
+    pricingAmount: 0,
+    isSingleMelanatedWomanOwner: true,
+    status: 'approved',
+    submittedAt: '2026-10-01T12:00:00Z',
+    approvedAt: '2026-10-02T10:00:00Z',
+    adminNotes: 'Founder-approved pioneer featured advertiser.'
+  },
+  {
+    id: 'ad-showcase-2',
+    businessName: 'Sol Haven Natural Fiber Apparel',
+    ownerName: 'Sister Alicia J.',
+    email: 'alicia@solhavenapparel.com',
+    phone: '(312) 555-0198',
+    socialHandle: '@solhaven.fibers',
+    websiteUrl: 'https://solhavenapparel.com',
+    headline: '100% Raw Linen & Organic Cotton Children Wear',
+    tagline: 'Breathable, non-toxic heirloom garments for active children',
+    description: 'Durable, handcrafted garments made from natural unbleached fibers designed to nurture skin health and ancestral living.',
+    placementType: 'commons_sidebar',
+    bannerImageUrl: 'https://images.unsplash.com/photo-1596870230751-ebdfce98ec42?auto=format&fit=crop&w=600&q=80',
+    ctaText: 'View Heirlooms',
+    specialCommunityDiscount: 'Free shipping + 15% off first order for Copper Mommies',
+    discountCode: 'VILLAGEGIFT15',
+    pricingTierSelected: 'commons_sidebar',
+    pricingAmount: 25,
+    isSingleMelanatedWomanOwner: true,
+    status: 'approved',
+    submittedAt: '2026-10-04T15:30:00Z',
+    approvedAt: '2026-10-05T09:15:00Z',
+    adminNotes: 'Active sidebar sponsor with verified discount code.'
+  }
+];
+
+// Business Ads Endpoints
+app.get('/api/business-ads', (req, res) => {
+  const { status } = req.query;
+  let ads = [...businessAdSubmissions];
+  if (status && status !== 'all') {
+    ads = ads.filter(a => a.status === status);
+  }
+  res.json({
+    total: businessAdSubmissions.length,
+    approved: businessAdSubmissions.filter(a => a.status === 'approved' || a.status === 'active').length,
+    pending: businessAdSubmissions.filter(a => a.status === 'pending_review').length,
+    ads
+  });
+});
+
+app.post('/api/business-ads', (req, res) => {
+  const data = req.body;
+  if (!data.businessName || !data.ownerName || !data.email || !data.headline || !data.bannerImageUrl) {
+    return res.status(400).json({ error: 'Missing required business details, owner name, headline, or banner image URL.' });
+  }
+
+  const newAd: BusinessAdRecord = {
+    id: `ad-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+    businessName: data.businessName.trim(),
+    ownerName: data.ownerName.trim(),
+    email: data.email.trim(),
+    phone: data.phone?.trim() || '',
+    socialHandle: data.socialHandle?.trim() || '',
+    websiteUrl: data.websiteUrl?.trim() || '',
+    headline: data.headline.trim(),
+    tagline: data.tagline?.trim() || '',
+    description: data.description?.trim() || '',
+    placementType: data.placementType || 'commons_sidebar',
+    bannerImageUrl: data.bannerImageUrl.trim(),
+    ctaText: data.ctaText?.trim() || 'Learn More',
+    specialCommunityDiscount: data.specialCommunityDiscount?.trim() || '',
+    discountCode: data.discountCode?.trim() || '',
+    pricingTierSelected: data.pricingTierSelected || 'pioneer_free',
+    pricingAmount: Number(data.pricingAmount) || 0,
+    isSingleMelanatedWomanOwner: !!data.isSingleMelanatedWomanOwner,
+    status: 'pending_review',
+    submittedAt: new Date().toISOString()
+  };
+
+  businessAdSubmissions.unshift(newAd);
+  res.status(201).json({
+    success: true,
+    message: 'Business advertising application submitted successfully. Founder Shantrece and the Matriarch Council will review your ad.',
+    ad: newAd
+  });
+});
+
+app.patch('/api/business-ads/:id/status', (req, res) => {
+  const { id } = req.params;
+  const { status, adminNotes } = req.body;
+  const ad = businessAdSubmissions.find(a => a.id === id);
+  if (!ad) {
+    return res.status(404).json({ error: 'Business ad not found' });
+  }
+
+  if (status) ad.status = status;
+  if (adminNotes !== undefined) ad.adminNotes = adminNotes;
+  if (status === 'approved' || status === 'active') {
+    ad.approvedAt = new Date().toISOString();
+  }
+
+  res.json({ success: true, ad });
+});
+
+// Helper to generate transactional email content
+function buildSanctuaryWelcomeEmail(fullName: string, email: string, phone: string, token: string) {
+  const tokenLink = `https://coppermommies.co/portal/activate?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`;
+  const appDownloadLink = `https://coppermommies.co/download/mobile-app?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`;
+
+  const subject = `Welcome to the Village, Matriarch ${fullName} - Secure Portal Access Inside`;
+  const body = `Greetings Sister ${fullName},
+
+Your private application to The Sovereign Sanctuary for Melanated American Mothers has been processed and authenticated by the Matriarch Council. Your verified alignment with our generational parameters, American-born maternal lineage, and private covenant guidelines has been fully confirmed.
+
+You have officially crossed the threshold from the public domain into our private village. To finalize your account setup, access your perks, and step into our community ecosystem, follow these two mandatory steps:
+
+1. Claim Your Portal Access & Profile Setup:
+Click the secure link below to officially establish your password and unlock your profile dashboard within our custom AI Studio workspace. Your contact info (${email} and ${phone}) has already been locked into the system based on your approved application:
+👉 ${tokenLink}
+
+2. Download the Copper Mommies App to Your Phone:
+Our private ecosystem requires active proximity synchronization, mutual aid coordination, and decentralized communication. Download the mobile Copper Mommies App directly to your device via the private link below. Once installed, log in with the account credentials you create in Step 1 to instantly access your 50-State Pod, localized barter boards, and the private Nextdoor network:
+👉 ${appDownloadLink}
+
+We look forward to honoring our ancestral lineage, trading gifts, and sharing sacred botanical wisdom with you in the private feeds.
+
+In Sovereignty and Cooperative Economy,
+The Matriarch Council & Founder
+Copper Mommies Co. PMA`;
+
+  return { subject, body, tokenLink, appDownloadLink };
+}
+
+// POST /api/sanctuary/apply - Evaluates conditional logic and knock-out rules
+app.post('/api/sanctuary/apply', (req, res) => {
+  const {
+    full_name,
+    email_address,
+    birth_year,
+    current_location,
+    children_ages,
+    social_handle,
+    phone_number,
+    maternal_lineage,
+    lineage_perspective,
+    vocation_trade,
+    barter_perks,
+    pma_declaration,
+    code_of_conduct
+  } = req.body;
+
+  const birthYearNum = Number(birth_year);
+  const appId = `app-pma-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
+  const now = new Date().toISOString();
+
+  // --------------------------------------------------------------------------
+  // AUTOMATED SIFTING & KNOCK-OUT RULES (AUTO-REJECTION LOGIC)
+  // --------------------------------------------------------------------------
+  let isDisqualified = false;
+  let reason = '';
+
+  // Rule A (Age Gate): If birth_year is 1996 or later
+  if (birthYearNum >= 1996) {
+    isDisqualified = true;
+    reason = 'Rule A (Age Gate): Birth year is 1996 or later. Membership is reserved for mothers born in 1995 or earlier.';
+  }
+  // Rule B (Maternal Lineage): If user selects "Other (Lineage African, Afro-Caribbean, Asiatic, Caribbean, etc.)"
+  else if (maternal_lineage === 'Other (Lineage African, Afro-Caribbean, Asiatic, Caribbean, etc.)' || maternal_lineage === 'other') {
+    isDisqualified = true;
+    reason = 'Rule B (Maternal Lineage Gate): Non-American-born melanated maternal lineage selected.';
+  }
+  // Rule C (Lineage Perspective Gate): If user selects "I reject it immediately if it contradicts what I've learned."
+  else if (
+    lineage_perspective === "I reject it immediately if it contradicts what I've learned." ||
+    lineage_perspective === 'I reject it immediately if it contradicts what I learned.' ||
+    lineage_perspective === 'reject_contradictions'
+  ) {
+    isDisqualified = true;
+    reason = 'Rule C (Lineage Perspective Gate): Selected immediate rejection of lineage study without inquiry.';
+  }
+  // Rule D (Motherhood Gate): If user specifies 0 children or no children
+  else if (
+    children_ages === '0' ||
+    children_ages?.startsWith('0 children') ||
+    children_ages?.toLowerCase().includes('0 children') ||
+    children_ages?.toLowerCase().includes('0 child')
+  ) {
+    isDisqualified = true;
+    reason = 'Rule D (Motherhood Gate): Applicant indicated 0 children. Membership is reserved for active mothers.';
+  }
+
+  // Knock-Out Halt: Update database status to "Disqualified", do NOT create user profiles or trigger invitation emails
+  if (isDisqualified) {
+    const disqualifiedRecord: SanctuaryAppRecord = {
+      id: appId,
+      full_name: full_name?.trim() || '',
+      email_address: email_address?.trim() || '',
+      birth_year: birthYearNum,
+      current_location: current_location?.trim() || '',
+      children_ages: children_ages?.trim() || '',
+      social_handle: social_handle?.trim() || '',
+      phone_number: phone_number?.trim() || '',
+      maternal_lineage: maternal_lineage || '',
+      lineage_perspective: lineage_perspective || '',
+      vocation_trade: vocation_trade?.trim() || '',
+      barter_perks: barter_perks?.trim() || '',
+      pma_declaration: !!pma_declaration,
+      code_of_conduct: !!code_of_conduct,
+      status: 'disqualified',
+      disqualificationReason: reason,
+      submittedAt: now
+    };
+
+    sanctuaryApplications.unshift(disqualifiedRecord);
+
+    return res.status(200).json({
+      status: 'disqualified',
+      applicationId: appId,
+      disqualificationReason: reason,
+      redirectMessage: "Thank you for sharing your profile details with Copper Mommies Co. Our current structural space and private research cohorts are bound to strict generational, lineage-specific, and constitutional criteria matching our active tribal matrices. Based on your answers, there is not an exact alignment with this specific pod's current focus. We honor your path and wish you great success on your journey forward."
+    });
+  }
+
+  // --------------------------------------------------------------------------
+  // APPROVAL PIPELINE & PRE-POPULATED ACCOUNT CREATION
+  // Passed all gates: Birth Year <= 1995, confirms American lineage, open-minded perspective, checks both covenant boxes
+  // --------------------------------------------------------------------------
+  const secureToken = `pma-token-${Buffer.from(email_address || 'member').toString('hex').slice(0, 8)}-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 8)}`;
+  const emailPayload = buildSanctuaryWelcomeEmail(full_name, email_address, phone_number, secureToken);
+
+  const approvedRecord: SanctuaryAppRecord = {
+    id: appId,
+    full_name: full_name.trim(),
+    email_address: email_address.trim(),
+    birth_year: birthYearNum,
+    current_location: current_location.trim(),
+    children_ages: children_ages.trim(),
+    social_handle: social_handle?.trim() || '',
+    phone_number: phone_number.trim(),
+    maternal_lineage: maternal_lineage,
+    lineage_perspective: lineage_perspective,
+    vocation_trade: vocation_trade.trim(),
+    barter_perks: barter_perks.trim(),
+    pma_declaration: !!pma_declaration,
+    code_of_conduct: !!code_of_conduct,
+    status: 'approved',
+    submittedAt: now,
+    activationToken: secureToken,
+    activationTokenLink: emailPayload.tokenLink,
+    appDownloadLink: emailPayload.appDownloadLink
+  };
+
+  sanctuaryApplications.unshift(approvedRecord);
+
+  // Execute transactional automated email trigger
+  const emailLog: DispatchedEmailRecord = {
+    id: `email-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+    to: email_address.trim(),
+    recipientName: full_name.trim(),
+    subject: emailPayload.subject,
+    body: emailPayload.body,
+    sentAt: now,
+    tokenLink: emailPayload.tokenLink,
+    appDownloadLink: emailPayload.appDownloadLink
+  };
+  dispatchedEmails.unshift(emailLog);
+
+  // Pre-populated user profile record
+  const userProfile = {
+    id: `mem-${Date.now()}`,
+    name: full_name.trim(),
+    email: email_address.trim(),
+    phone: phone_number.trim(),
+    location: current_location.trim(),
+    children: children_ages.trim(),
+    profession: vocation_trade.trim(),
+    barterContribution: barter_perks.trim(),
+    role: 'member',
+    status: 'active_good_standing',
+    joinedDate: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+    activationToken: secureToken
+  };
+
+  return res.status(200).json({
+    status: 'approved',
+    application: approvedRecord,
+    userProfile,
+    activationToken: secureToken,
+    tokenLink: emailPayload.tokenLink,
+    appDownloadLink: emailPayload.appDownloadLink,
+    transactionalEmail: emailLog
+  });
+});
+
+// GET /api/sanctuary/applications (Admin review & audit)
+app.get('/api/sanctuary/applications', (req, res) => {
+  res.json({
+    total: sanctuaryApplications.length,
+    approved: sanctuaryApplications.filter(a => a.status === 'approved').length,
+    disqualified: sanctuaryApplications.filter(a => a.status === 'disqualified').length,
+    applications: sanctuaryApplications
+  });
+});
+
+// GET /api/notifications/emails (Audit sent transactional emails)
+app.get('/api/notifications/emails', (req, res) => {
+  res.json({
+    total: dispatchedEmails.length,
+    emails: dispatchedEmails
+  });
 });
 
 // Serve frontend assets

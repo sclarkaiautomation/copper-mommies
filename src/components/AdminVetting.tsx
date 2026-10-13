@@ -8,6 +8,7 @@ import {
   MapPin, 
   Users, 
   Info, 
+  AlertCircle,
   Filter, 
   Award, 
   Flag, 
@@ -53,8 +54,18 @@ import {
   DollarSign,
   Tag,
   CreditCard,
-  ArrowRight
+  ArrowRight,
+  Heart,
+  Droplets,
+  FolderLock,
+  Lock
 } from 'lucide-react';
+import AdminApothecaryManager from './admin/AdminApothecaryManager';
+import AdminCarePodsManager from './admin/AdminCarePodsManager';
+import AdminCovenantVault from './admin/AdminCovenantVault';
+import AdminMemberDirectory from './admin/AdminMemberDirectory';
+import AdminModerationQueue from './admin/AdminModerationQueue';
+import AdminKinshipNestBright from './admin/AdminKinshipNestBright';
 import { 
   Applicant, 
   BarterOffer,
@@ -69,7 +80,8 @@ import {
   ReferencedRemedy,
   VillagePoll,
   PollCategory,
-  PollOption
+  PollOption,
+  BusinessAdSubmission
 } from '../types';
 import { 
   INITIAL_BROADCAST_BULLETINS, 
@@ -163,7 +175,82 @@ export default function AdminVetting({
   onBroadcastPoll
 }: AdminVettingProps) {
   // Navigation Tabs for Admin Command Center
-  const [adminTab, setAdminTab] = useState<'inquiries' | 'spotlights' | 'bulletins' | 'polls' | 'disputes' | 'hearths' | 'podcasts' | 'scholarships' | 'treasury'>('inquiries');
+  const [adminTab, setAdminTab] = useState<
+    'inquiries' | 
+    'business_ads' |
+    'spotlights' | 
+    'bulletins' | 
+    'polls' | 
+    'disputes' | 
+    'hearths' | 
+    'podcasts' | 
+    'scholarships' | 
+    'treasury' |
+    'apothecary' |
+    'care_pods' |
+    'covenant_vault' |
+    'member_directory' |
+    'moderation' |
+    'kinship_vault' |
+    'aistudio_vault'
+  >('inquiries');
+
+  // Business Advertising Submissions State
+  const [businessAds, setBusinessAds] = useState<BusinessAdSubmission[]>(() => {
+    try {
+      const stored = localStorage.getItem('copper_business_ad_submissions');
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return [
+      {
+        id: 'ad-default-1',
+        businessName: 'Roots & Resilience Master Apothecary',
+        ownerName: 'Sister Keisha B.',
+        email: 'keisha@rootsresilience.org',
+        phone: '(301) 555-0143',
+        socialHandle: '@roots_resilience',
+        websiteUrl: 'https://coppermommies.co/apothecary',
+        placementType: 'both_bundle',
+        bannerImageUrl: '/apothecary_sister_herbal.jpg',
+        headline: 'Roots & Resilience Master Apothecary — Ancestral Lowcountry Formulas',
+        tagline: 'Ancestral botanical oxymels & nettle infusions',
+        description: 'Traditional herbal oxymels, wildcrafted Lowcountry tinctures, and postpartum replenishments formulated for melanated mothers.',
+        callToActionText: 'Shop Herbal Offerings',
+        exclusiveDiscountCode: 'COPPER15',
+        discountOfferText: '15% Off all botanical orders with code COPPER15',
+        pricingTier: 'pioneer_free',
+        pricingAmount: '$0 (Pioneer 30-Day Pass)',
+        singleMelanatedWomanOwnedConfirmed: true,
+        status: 'approved_live',
+        targetCategory: 'Botanicals & Wellness',
+        submittedAt: 'Today'
+      },
+      {
+        id: 'ad-pending-2',
+        businessName: 'Sunstone Heritage Quilts & Fiber Arts',
+        ownerName: 'Sister Althea Vance',
+        email: 'althea@sunstonequilts.example',
+        phone: '(804) 555-0188',
+        socialHandle: '@sunstone_fiber',
+        websiteUrl: 'https://sunstonequilts.example',
+        placementType: 'commons_sidebar',
+        bannerImageUrl: 'https://images.unsplash.com/photo-1594980596870-8aa52a78d8cd?auto=format&fit=crop&w=600&q=80',
+        headline: 'Sunstone Heritage Quilts & Organic Cottons',
+        tagline: 'Hand-stitched family heirlooms & baby blankets',
+        description: 'Gullah and Southern storytelling patterns made from 100% unbleached organic cotton for infant cribs and peaceful nurseries.',
+        callToActionText: 'View Blanket Gallery',
+        exclusiveDiscountCode: 'SISTERHOOD20',
+        discountOfferText: '20% Off all handmade baby blankets',
+        pricingTier: 'sidebar_monthly',
+        pricingAmount: '$25/mo',
+        singleMelanatedWomanOwnedConfirmed: true,
+        status: 'pending_review',
+        targetCategory: 'Artisan Crafts',
+        submittedAt: 'Today'
+      }
+    ];
+  });
+  const [adFeedbackNote, setAdFeedbackNote] = useState<Record<string, string>>({});
 
   // Treasury & Classifieds Back Office States
   const [adminVendors, setAdminVendors] = useState([
@@ -242,7 +329,7 @@ export default function AdminVetting({
   ]);
 
   const [teaGifts] = useState([
-    { id: 'tea-1', sister: 'Mama Keisha (SC)', amount: '$9.00', date: '2026-09-12', note: 'Blessings to Mama Shantrece for holding this sacred space!' },
+    { id: 'tea-1', sister: 'Mama Keisha (SC)', amount: '$9.00', date: '2026-09-12', note: 'Gratitude to Mama Shantrece for holding this sacred space!' },
     { id: 'tea-2', sister: 'Mama Danielle (NC)', amount: '$27.00', date: '2026-09-13', note: 'For our server costs and keeping the sisterhood sovereign.' },
     { id: 'tea-3', sister: 'Sister Joy (GA)', amount: '$3.00', date: '2026-09-14', note: 'A cup of warm tea from Atlanta sisters 🍵' }
   ]);
@@ -279,7 +366,7 @@ export default function AdminVetting({
   const [newPollOptions, setNewPollOptions] = useState<string[]>([
     'Herbal Tinctures & Winter Wellness Protocols',
     'Homeschool Unit Studies on Indigenous Agriculture',
-    'Financial Sovereignty & Multi-Family Homestead Trusts'
+    'Family Economic Self-Reliance & Multi-Family Homestead Trusts'
   ]);
 
   // Podcast Publisher States
@@ -296,7 +383,7 @@ export default function AdminVetting({
     releaseDate: 'Sept 14, 2026',
     description: '',
     timestamps: [
-      { timeSeconds: 0, label: 'Opening Libations & Hearth Blessing', summary: 'Grounding the sisterhood in ancestral peace.' },
+      { timeSeconds: 0, label: 'Opening Libations & Hearth Dedication', summary: 'Grounding the sisterhood in ancestral peace.' },
       { timeSeconds: 600, label: 'Main Discussion & Traditional Wisdom', summary: 'Core practical insights and maternal guidance.' },
       { timeSeconds: 1500, label: 'Sister Q&A and Benediction', summary: 'Closing remarks and herbal homework.' }
     ],
@@ -313,7 +400,7 @@ export default function AdminVetting({
 
   // 1. Inquiries & Role Arbitrator States
   const [selectedStateFilter, setSelectedStateFilter] = useState<string>('ALL');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'approved' | 'pending' | 'denied'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'approved' | 'pending' | 'denied' | 'disqualified'>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [copiedAppId, setCopiedAppId] = useState<string | null>(null);
 
@@ -393,9 +480,9 @@ export default function AdminVetting({
       sister: 'Mama Jamila',
       amount: 4.0,
       type: 'earn',
-      reason: 'Honorary Community Blessing: Organic Poultry Broth Prep',
+      reason: 'Honorary Community Grant: Organic Poultry Broth Prep',
       timestamp: 'Today, 2:15 PM',
-      txHash: '0xCOPPER_7B9A_BLESSING_CONFIRMED'
+      txHash: '0xCOPPER_7B9A_GRANT_CONFIRMED'
     },
     {
       id: 'tx-02',
@@ -468,6 +555,7 @@ export default function AdminVetting({
   const approvedMothers = applicants.filter(a => a.status === 'approved');
   const pendingApplications = applicants.filter(a => a.status === 'pending');
   const deniedApplications = applicants.filter(a => a.status === 'denied');
+  const disqualifiedApplications = applicants.filter(a => a.status === 'disqualified');
   const spearheads = approvedMothers.filter(a => a.isStateSpearhead);
   const activeStatesRepresented = new Set(approvedMothers.map(a => getApplicantStateCode(a))).size;
 
@@ -614,7 +702,7 @@ export default function AdminVetting({
       alert('Please specify the sister name, valid credit hours, and audit reason.');
       return;
     }
-    const txHash = `0xCOPPER_${Date.now().toString(16).toUpperCase()}_BLESSING`;
+    const txHash = `0xCOPPER_${Date.now().toString(16).toUpperCase()}_GRANT`;
     const newAudit = {
       id: `tx-${Date.now()}`,
       sister: manualSisterName,
@@ -699,7 +787,7 @@ export default function AdminVetting({
       setLocalHearths(prev => [newH, ...prev]);
     }
     setShowAddHearthModal(false);
-    alert(`🔥 Hearth gathering "${newH.title}" scheduled!`);
+    alert(`🔥 Circle gathering "${newH.title}" scheduled!`);
   };
 
   const handleToggleHearthLiveState = (id: string) => {
@@ -843,7 +931,7 @@ export default function AdminVetting({
   const handleCopyNewsletterSnippet = (poll: VillagePoll) => {
     const totalVotes = poll.options.reduce((sum, opt) => sum + opt.votes, 0);
     const optionsText = poll.options.map((opt, i) => `  ${i + 1}. ${opt.text} (${opt.votes} votes)`).join('\n');
-    const snippet = `🌿 [THE COPPER CIRCLE HEARTH POLL] 🗳️\n\nTopic: ${poll.title}\nCategory: ${poll.category === 'casual-corner' ? 'Casual Corner Talk' : poll.category === 'crowdfunded-class' ? 'Crowdfunded Sister Class' : 'Village Governance'}\nCloses: ${poll.closesAt}\n\nCurrent Community Options:\n${optionsText}\n\n👉 Cast your vote directly on our Sovereign Platform in the Hearth Polls Hub!\nTogether We Grow in Wisdom and Sovereignty.`;
+    const snippet = `🌿 [THE COPPER CIRCLE HEARTH POLL] 🗳️\n\nTopic: ${poll.title}\nCategory: ${poll.category === 'casual-corner' ? 'Casual Corner Talk' : poll.category === 'crowdfunded-class' ? 'Crowdfunded Sister Class' : 'Village Governance'}\nCloses: ${poll.closesAt}\n\nCurrent Community Options:\n${optionsText}\n\n👉 Cast your vote directly in the Hearth Polls Hub!\nTogether We Grow and Learn in Sisterhood.`;
     navigator.clipboard.writeText(snippet);
     setCopiedPollSnippetId(poll.id);
     setTimeout(() => setCopiedPollSnippetId(null), 3000);
@@ -1060,6 +1148,19 @@ export default function AdminVetting({
           </button>
 
           <button
+            id="admin-tab-business-ads-btn"
+            onClick={() => setAdminTab('business_ads')}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
+              adminTab === 'business_ads' 
+                ? 'bg-gradient-to-r from-[#D4AF37] to-[#B87333] text-[#1F140E] shadow-xl font-black ring-2 ring-white/30' 
+                : 'bg-white/10 text-white/90 hover:bg-white/20 border border-white/10'
+            }`}
+          >
+            <Building2 className="w-4 h-4 text-[#D4AF37]" />
+            <span>🛍️ Business Ads &amp; Sponsors ({businessAds.length})</span>
+          </button>
+
+          <button
             onClick={() => setAdminTab('spotlights')}
             className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
               adminTab === 'spotlights' 
@@ -1155,6 +1256,91 @@ export default function AdminVetting({
             <Coins className="w-4 h-4" />
             <span>Treasury &amp; Classifieds Back Office</span>
           </button>
+
+          <button
+            onClick={() => setAdminTab('apothecary')}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
+              adminTab === 'apothecary' 
+                ? 'bg-emerald-500 text-[#1F140E] shadow-lg font-black' 
+                : 'bg-white/10 text-white/90 hover:bg-white/20 border border-white/10'
+            }`}
+          >
+            <Droplets className="w-4 h-4 text-emerald-300" />
+            <span>🌿 Apothecary &amp; Dispensary</span>
+          </button>
+
+          <button
+            onClick={() => setAdminTab('care_pods')}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
+              adminTab === 'care_pods' 
+                ? 'bg-rose-500 text-white shadow-lg font-black' 
+                : 'bg-white/10 text-white/90 hover:bg-white/20 border border-white/10'
+            }`}
+          >
+            <Heart className="w-4 h-4 text-rose-300 fill-rose-300" />
+            <span>🍲 Care Pods &amp; Meal Trains</span>
+          </button>
+
+          <button
+            onClick={() => setAdminTab('covenant_vault')}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
+              adminTab === 'covenant_vault' 
+                ? 'bg-indigo-500 text-white shadow-lg font-black' 
+                : 'bg-white/10 text-white/90 hover:bg-white/20 border border-white/10'
+            }`}
+          >
+            <FolderLock className="w-4 h-4 text-indigo-300" />
+            <span>⚖️ 508 Trust &amp; Signed Covenants</span>
+          </button>
+
+          <button
+            onClick={() => setAdminTab('member_directory')}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
+              adminTab === 'member_directory' 
+                ? 'bg-amber-500 text-[#1F140E] shadow-lg font-black' 
+                : 'bg-white/10 text-white/90 hover:bg-white/20 border border-white/10'
+            }`}
+          >
+            <Users className="w-4 h-4 text-amber-300" />
+            <span>👥 Member Directory &amp; Spearheads</span>
+          </button>
+
+          <button
+            onClick={() => setAdminTab('moderation')}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
+              adminTab === 'moderation' 
+                ? 'bg-red-500 text-white shadow-lg font-black' 
+                : 'bg-white/10 text-white/90 hover:bg-white/20 border border-white/10'
+            }`}
+          >
+            <ShieldAlert className="w-4 h-4 text-red-300" />
+            <span>🛡️ Content Moderation &amp; Push</span>
+          </button>
+
+          <button
+            onClick={() => setAdminTab('kinship_vault')}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
+              adminTab === 'kinship_vault' 
+                ? 'bg-teal-500 text-[#1F140E] shadow-lg font-black' 
+                : 'bg-white/10 text-white/90 hover:bg-white/20 border border-white/10'
+            }`}
+          >
+            <BookOpen className="w-4 h-4 text-teal-300" />
+            <span>📚 NestBright Promo &amp; Vault Library</span>
+          </button>
+
+          <button
+            id="admin-tab-aistudio-vault-btn"
+            onClick={() => setAdminTab('aistudio_vault')}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
+              adminTab === 'aistudio_vault' 
+                ? 'bg-gradient-to-r from-[#D4AF37] via-amber-400 to-[#B87333] text-[#1F140E] shadow-xl font-black ring-2 ring-white/30' 
+                : 'bg-[#D4AF37]/15 text-[#D4AF37] hover:bg-[#D4AF37]/30 border border-[#D4AF37]/40'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-[#D4AF37] animate-pulse" />
+            <span>⚡ AI Studio Admin Portal (Vault Applet)</span>
+          </button>
         </div>
       </div>
 
@@ -1172,7 +1358,7 @@ export default function AdminVetting({
                   <span>50-State Autonomous Sanctuary Rings</span>
                 </h3>
                 <p className="text-xs text-[#FAF5EE]/70 font-mono mt-0.5">
-                  Decentralized state hearths anchored by vetted mothers and local spearheads.
+                  Decentralized state pods anchored by vetted mothers and local spearheads.
                 </p>
               </div>
 
@@ -1212,7 +1398,7 @@ export default function AdminVetting({
                     <span className="text-[9px] block text-soft-sage font-mono truncate max-w-full">
                       {hasApprovedAppAsSpearhead 
                         ? applicants.find(a => getApplicantStateCode(a) === st.code && a.isStateSpearhead && a.status === 'approved')?.name 
-                        : st.activeSpearhead || 'Awaiting Hearth Keeper'}
+                        : st.activeSpearhead || 'Awaiting Chapter Lead'}
                     </span>
                   </div>
                 );
@@ -1295,6 +1481,20 @@ export default function AdminVetting({
                 >
                   Denied ({deniedApplications.length})
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('disqualified')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer flex items-center space-x-1.5 ${
+                    statusFilter === 'disqualified'
+                      ? 'bg-slate-700 text-white shadow-sm ring-2 ring-slate-400'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300'
+                  }`}
+                >
+                  <span>Disqualified</span>
+                  <span className="bg-slate-900/20 text-[10px] px-1.5 py-0.2 rounded-full font-extrabold">
+                    {disqualifiedApplications.length}
+                  </span>
+                </button>
               </div>
             </div>
 
@@ -1339,6 +1539,8 @@ export default function AdminVetting({
                           ? 'border-emerald-300 ring-1 ring-emerald-100' 
                           : app.status === 'denied' 
                           ? 'border-red-200 bg-red-50/10' 
+                          : app.status === 'disqualified'
+                          ? 'border-slate-300 bg-slate-50/60'
                           : 'border-copper-penny/20'
                       }`}
                     >
@@ -1354,6 +1556,12 @@ export default function AdminVetting({
                                 <span>👑 State Spearhead</span>
                               </span>
                             )}
+                            {app.wantsToBeStateLead && (
+                              <span className="text-[10px] font-mono font-extrabold uppercase bg-[#B87333]/15 text-[#B87333] px-2.5 py-0.5 rounded-full border border-copper-penny/30 flex items-center space-x-1">
+                                <Award className="w-3 h-3 text-[#D4AF37]" />
+                                <span>⭐ State Lead Volunteer</span>
+                              </span>
+                            )}
                           </div>
                           <p className="text-xs text-soft-sage font-mono mt-0.5">
                             {app.email} • {app.currentLocation || 'American Born'} • {app.childrenAndAges || 'Mother of Children'}
@@ -1367,9 +1575,17 @@ export default function AdminVetting({
                               ? 'bg-emerald-100 text-emerald-800 border-emerald-300' 
                               : app.status === 'denied' 
                               ? 'bg-red-100 text-red-800 border-red-300' 
+                              : app.status === 'disqualified'
+                              ? 'bg-slate-200 text-slate-800 border-slate-300'
                               : 'bg-amber-100 text-amber-800 border-amber-300'
                           }`}>
-                            {app.status === 'approved' ? '✓ Verified Sanctuary Member' : app.status === 'denied' ? '✕ Denied Entry' : '⏳ Pending Vetting'}
+                            {app.status === 'approved' 
+                              ? '✓ Verified Sanctuary Member' 
+                              : app.status === 'denied' 
+                              ? '✕ Denied Entry' 
+                              : app.status === 'disqualified'
+                              ? '⛔ Disqualified (Knock-Out Triggered)'
+                              : '⏳ Pending Vetting'}
                           </span>
 
                           {app.status === 'pending' && (
@@ -1395,7 +1611,7 @@ export default function AdminVetting({
                             <button
                               onClick={() => onApproveSpearhead(app.id)}
                               className="px-3 py-1.5 bg-[#FAF5EE] hover:bg-[#D4AF37]/20 text-[#B87333] border border-copper-penny/30 font-mono text-[11px] font-bold uppercase rounded-xl transition-all cursor-pointer flex items-center space-x-1"
-                              title="Assign sister as local State Hearth Spearhead"
+                              title="Assign sister as local State Chapter Lead"
                             >
                               <Award className="w-3.5 h-3.5 text-[#D4AF37]" />
                               <span>Assign Spearhead</span>
@@ -1418,13 +1634,98 @@ export default function AdminVetting({
                           )}
                         </div>
 
-                        <div className="p-3.5 bg-[#FAF5EE]/60 rounded-2xl border border-copper-penny/10 space-y-1.5">
-                          <span className="font-mono text-[9px] uppercase tracking-wider text-soft-sage font-extrabold">Sisterhood Intent &amp; Trade Contribution</span>
-                          <p className="text-xs text-[#1F1813] font-medium leading-relaxed line-clamp-3">
+                        <div className="p-3.5 bg-[#FAF5EE]/60 rounded-2xl border border-copper-penny/10 space-y-2">
+                          <span className="font-mono text-[9px] uppercase tracking-wider text-soft-sage font-extrabold block">
+                            Sisterhood Intent, Gifting &amp; Trade Contribution
+                          </span>
+                          <p className="text-xs text-[#1F1813] font-medium leading-relaxed">
                             "{app.connectionStatement || app.barterContribution || 'Committed to mutual aid, herbal wisdom, and cooperative schooling.'}"
                           </p>
+
+                          {/* Community Contribution Badges */}
+                          {app.communityContributionTypes && app.communityContributionTypes.length > 0 && (
+                            <div className="pt-2 border-t border-copper-penny/10 space-y-1">
+                              <span className="text-[9px] font-mono uppercase font-bold text-gray-500 block">
+                                Planned Contributions to the Village:
+                              </span>
+                              <div className="flex flex-wrap gap-1">
+                                {app.communityContributionTypes.map((c, i) => (
+                                  <span key={i} className="px-2 py-0.5 rounded-md bg-white border border-[#D4AF37]/30 text-[9px] font-mono text-[#1F1813]">
+                                    &bull; {c}
+                                  </span>
+                                ))}
+                              </div>
+                              {app.communityContributionDetails && (
+                                <p className="text-[10px] text-gray-700 italic pt-0.5">
+                                  "{app.communityContributionDetails}"
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Comprehensive Chapter Lead Vetting Section */}
+                          {app.wantsToBeStateLead && (
+                            <div className="mt-2.5 p-2.5 bg-amber-50/90 rounded-xl border border-[#D4AF37]/40 text-[11px] text-[#1F1813] font-sans space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="font-mono text-[9px] uppercase font-bold text-[#B87333] flex items-center space-x-1">
+                                  <Award className="w-3 h-3 text-[#D4AF37]" />
+                                  <span>State Lead Vetting Evaluation:</span>
+                                </span>
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-bold ${
+                                  app.stateLeadStatus === 'certified_candidate'
+                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                    : 'bg-amber-100 text-amber-800 border border-amber-300'
+                                }`}>
+                                  {app.stateLeadStatus === 'certified_candidate' ? '🌟 Certified Candidate' : '🕊️ Lead On Hold'}
+                                </span>
+                              </div>
+
+                              {app.stateLeadGroundSupport && (
+                                <div className="text-[10px]">
+                                  <strong className="text-gray-700">Ground Support &amp; Local Spots:</strong>
+                                  <p className="text-gray-900 leading-tight mt-0.5">{app.stateLeadGroundSupport}</p>
+                                </div>
+                              )}
+
+                              {app.stateLeadExperience && (
+                                <div className="text-[10px]">
+                                  <strong className="text-gray-700">Coordination Experience:</strong>
+                                  <p className="text-gray-900 leading-tight mt-0.5">{app.stateLeadExperience}</p>
+                                </div>
+                              )}
+
+                              {app.stateLeadPeopleManagement && (
+                                <div className="text-[10px]">
+                                  <strong className="text-gray-700">People Management / Teams:</strong>
+                                  <p className="text-gray-900 leading-tight mt-0.5">{app.stateLeadPeopleManagement}</p>
+                                </div>
+                              )}
+
+                              {app.stateLeadConflictApproach && (
+                                <div className="text-[10px]">
+                                  <strong className="text-gray-700">Approach to Peace in Circle:</strong>
+                                  <p className="italic text-gray-800 mt-0.5">"{app.stateLeadConflictApproach}"</p>
+                                </div>
+                              )}
+
+                              {app.stateLeadWhy && (
+                                <div className="text-[10px] pt-1 border-t border-amber-200">
+                                  <strong className="text-gray-700">Calling to Lead:</strong>
+                                  <p className="italic text-gray-800 mt-0.5">"{app.stateLeadWhy}"</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
+
+                      {/* Disqualification / Knock-Out Banner */}
+                      {app.disqualificationReason && (
+                        <div className="p-3 bg-red-50/80 rounded-2xl border border-red-200 text-xs text-red-900 font-mono flex items-center space-x-2">
+                          <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                          <span><strong>Automatic Sifting Gate Halt:</strong> {app.disqualificationReason}</span>
+                        </div>
+                      )}
 
                       {/* Invite Link copy bar */}
                       <div className="flex flex-col sm:flex-row items-center justify-between gap-2 p-3 bg-white rounded-2xl border border-copper-penny/15 text-xs font-mono">
@@ -1446,6 +1747,254 @@ export default function AdminVetting({
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB: SINGLE MELANATED WOMEN-OWNED BUSINESS ADS & SPONSORS MANAGER        */}
+      {/* ========================================================================= */}
+      {adminTab === 'business_ads' && (
+        <div className="space-y-6 animate-fade-in">
+          
+          {/* Header Summary Banner */}
+          <div className="bg-gradient-to-r from-[#1F140E] via-[#2A1D16] to-[#140F0B] text-[#FAF5EE] rounded-3xl p-6 border-2 border-[#D4AF37]/50 shadow-xl space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-4">
+              <div>
+                <div className="flex items-center space-x-2 text-[#D4AF37] mb-1">
+                  <Building2 className="w-5 h-5 text-[#D4AF37]" />
+                  <span className="font-mono text-xs uppercase font-bold tracking-wider">
+                    Sister Business Commercial Partner Desk
+                  </span>
+                </div>
+                <h3 className="font-serif text-2xl font-black text-white">
+                  Melanated Women-Owned Business Ads
+                </h3>
+                <p className="text-xs text-white/80 max-w-2xl mt-0.5">
+                  Review ad submissions, verify single melanated woman-ownership, test discount codes, and 1-click approve banners into the live Top Header and Village Commons Sidebar.
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <span className="bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-xs font-mono font-bold px-3 py-1.5 rounded-xl">
+                  {businessAds.filter(a => a.status === 'approved_live').length} Active Live
+                </span>
+                <span className="bg-amber-950/80 border border-amber-500/40 text-amber-300 text-xs font-mono font-bold px-3 py-1.5 rounded-xl">
+                  {businessAds.filter(a => a.status === 'pending_review').length} In Review
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+              <div className="bg-white/5 p-3 rounded-xl border border-white/10">
+                <span className="text-[10px] text-gray-400 block uppercase">Total Submissions</span>
+                <strong className="text-lg text-white font-serif">{businessAds.length}</strong>
+              </div>
+              <div className="bg-white/5 p-3 rounded-xl border border-white/10">
+                <span className="text-[10px] text-gray-400 block uppercase">Pioneer $0 Passes</span>
+                <strong className="text-lg text-emerald-400 font-serif">
+                  {businessAds.filter(a => a.pricingTier === 'pioneer_free').length}
+                </strong>
+              </div>
+              <div className="bg-white/5 p-3 rounded-xl border border-white/10">
+                <span className="text-[10px] text-gray-400 block uppercase">Header Placements</span>
+                <strong className="text-lg text-[#D4AF37] font-serif">
+                  {businessAds.filter(a => a.placementType === 'header_banner' || a.placementType === 'both_bundle').length}
+                </strong>
+              </div>
+              <div className="bg-white/5 p-3 rounded-xl border border-white/10">
+                <span className="text-[10px] text-gray-400 block uppercase">Sidebar Placements</span>
+                <strong className="text-lg text-[#D4AF37] font-serif">
+                  {businessAds.filter(a => a.placementType === 'commons_sidebar' || a.placementType === 'both_bundle').length}
+                </strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Business Ads List */}
+          <div className="space-y-4">
+            {businessAds.map((ad) => {
+              const isApproved = ad.status === 'approved_live';
+              const isRejected = ad.status === 'rejected';
+
+              return (
+                <div 
+                  key={ad.id}
+                  className={`bg-white rounded-3xl border transition-all p-6 shadow-sm space-y-4 ${
+                    isApproved 
+                      ? 'border-emerald-300 ring-1 ring-emerald-100' 
+                      : isRejected 
+                      ? 'border-red-200 bg-red-50/10 opacity-70' 
+                      : 'border-[#D4AF37]/50 shadow-md'
+                  }`}
+                >
+                  {/* Top Bar of Card */}
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <h4 className="font-serif font-black text-lg text-[#1F1813]">{ad.businessName}</h4>
+                        <span className="text-[10px] font-mono font-bold uppercase bg-[#FAF5EE] text-[#B87333] px-2.5 py-0.5 rounded-full border border-copper-penny/20">
+                          {ad.pricingAmount}
+                        </span>
+                        <span className="text-[10px] font-mono font-bold uppercase bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-full">
+                          {ad.placementType === 'both_bundle' ? 'Header + Sidebar' : ad.placementType === 'header_banner' ? 'Header Banner' : 'Commons Sidebar'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 font-mono mt-0.5">
+                        Owner: <strong className="text-[#1F1813]">{ad.ownerName}</strong> &bull; {ad.email} {ad.phone ? `&bull; ${ad.phone}` : ''} {ad.socialHandle ? `&bull; ${ad.socialHandle}` : ''}
+                      </p>
+                    </div>
+
+                    {/* Status & Actions */}
+                    <div className="flex items-center space-x-2 shrink-0">
+                      <span className={`text-[10px] font-mono font-bold uppercase px-3 py-1 rounded-full border ${
+                        isApproved 
+                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300' 
+                          : isRejected 
+                          ? 'bg-red-100 text-red-800 border-red-300' 
+                          : 'bg-amber-100 text-amber-800 border-amber-300 animate-pulse'
+                      }`}>
+                        {isApproved ? '✓ Live in Community' : isRejected ? '✕ Declined' : '⏳ Pending Review'}
+                      </span>
+
+                      {!isApproved && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const targetAd = businessAds.find(a => a.id === ad.id);
+                            if (!targetAd) return;
+                            const updated = businessAds.map(a => a.id === ad.id ? { ...a, status: 'approved_live' as const, approvedAt: 'Just now' } : a);
+                            setBusinessAds(updated);
+                            try {
+                              localStorage.setItem('copper_business_ad_submissions', JSON.stringify(updated));
+                              window.dispatchEvent(new Event('copper_ads_updated'));
+                            } catch (e) {}
+
+                            // If header placement, push to spotlights
+                            if (targetAd.placementType === 'header_banner' || targetAd.placementType === 'both_bundle') {
+                              const newSpotlight: PageSpotlightBanner = {
+                                id: `spotlight-ad-${targetAd.id}`,
+                                pageId: 'all',
+                                categoryBadge: 'Verified Sister Business Partner',
+                                title: targetAd.headline,
+                                subtitle: targetAd.tagline || targetAd.businessName,
+                                description: targetAd.description,
+                                bannerImage: targetAd.bannerImageUrl,
+                                externalLink: targetAd.websiteUrl,
+                                buttonText: targetAd.callToActionText || 'Visit Shop',
+                                promoCode: targetAd.exclusiveDiscountCode,
+                                promoPrice: targetAd.discountOfferText,
+                                active: true
+                              };
+                              if (onAddSpotlight) {
+                                onAddSpotlight(newSpotlight);
+                              }
+                            }
+                            alert(`Business Ad for "${targetAd.businessName}" is now Approved and Live in the community!`);
+                          }}
+                          className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-mono text-[11px] font-bold uppercase rounded-xl transition-all shadow-xs cursor-pointer flex items-center space-x-1"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Approve &amp; Push Live</span>
+                        </button>
+                      )}
+
+                      {!isRejected && !isApproved && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const note = prompt('Enter a brief decline / revision note for the applicant:', 'Please provide higher resolution creative and confirm store availability.');
+                            if (note === null) return;
+                            const updated = businessAds.map(a => a.id === ad.id ? { ...a, status: 'rejected' as const, rejectionNote: note } : a);
+                            setBusinessAds(updated);
+                            try {
+                              localStorage.setItem('copper_business_ad_submissions', JSON.stringify(updated));
+                              window.dispatchEvent(new Event('copper_ads_updated'));
+                            } catch (e) {}
+                            alert('Application marked as declined.');
+                          }}
+                          className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-mono text-[11px] font-bold uppercase rounded-xl transition-all cursor-pointer flex items-center space-x-1"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          <span>Decline</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Creative Preview Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4 text-xs">
+                    
+                    {/* Visual Media Preview (4 Cols) */}
+                    <div className="md:col-span-4 space-y-2">
+                      <div className="relative aspect-[16/10] w-full rounded-2xl overflow-hidden bg-gray-100 border border-gray-200 shadow-inner">
+                        <img 
+                          src={ad.bannerImageUrl} 
+                          alt={ad.businessName} 
+                          className="w-full h-full object-cover" 
+                        />
+                        <span className="absolute top-2 left-2 bg-[#1F140E]/85 text-[#D4AF37] text-[8px] font-mono font-bold px-2 py-0.5 rounded-md">
+                          {ad.targetCategory || 'Sister Business'}
+                        </span>
+                      </div>
+                      <a
+                        href={ad.websiteUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] text-[#B87333] hover:underline font-mono font-bold flex items-center space-x-1"
+                      >
+                        <span>Visit Site: {ad.websiteUrl}</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+
+                    {/* Copy & Offer Details (8 Cols) */}
+                    <div className="md:col-span-8 space-y-2.5">
+                      <div>
+                        <h5 className="font-serif font-bold text-sm text-[#1F1813]">{ad.headline}</h5>
+                        {ad.tagline && <p className="text-xs text-[#B87333] font-medium mt-0.5">{ad.tagline}</p>}
+                        <p className="text-xs text-gray-700 leading-relaxed font-sans mt-1">
+                          {ad.description}
+                        </p>
+                      </div>
+
+                      {/* Exclusive Discount Box */}
+                      <div className="p-3 bg-amber-50 rounded-xl border border-[#D4AF37]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <span className="text-[9px] uppercase font-mono text-gray-500 font-bold block">
+                            Exclusive Member Promo Offer:
+                          </span>
+                          <span className="text-xs text-[#1F1813] font-medium font-sans">
+                            {ad.discountOfferText}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className="px-2.5 py-1 bg-white border border-[#D4AF37]/50 rounded-lg font-mono font-bold text-xs text-[#B87333] shadow-2xs">
+                            Code: {ad.exclusiveDiscountCode}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Verification confirmation */}
+                      <div className="text-[10px] text-gray-500 font-mono flex items-center space-x-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Applicant confirmed: Single Melanated Woman-Owned Business &bull; Submitted {ad.submittedAt}</span>
+                      </div>
+
+                      {ad.rejectionNote && (
+                        <div className="p-2.5 bg-red-50 rounded-xl border border-red-200 text-xs text-red-800 font-mono">
+                          <strong>Admin Feedback Note:</strong> {ad.rejectionNote}
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
+
+                </div>
+              );
+            })}
+          </div>
+
         </div>
       )}
 
@@ -2499,7 +3048,7 @@ export default function AdminVetting({
                   <span>Flagged Barter Trades &amp; Sisterhood Arbitration</span>
                 </h3>
                 <p className="text-xs text-soft-sage font-mono mt-0.5">
-                  Resolve trade discrepancies, damaged remedies, or grant honorary community blessing credits.
+                  Resolve trade discrepancies, damaged remedies, or grant honorary community grant credits.
                 </p>
               </div>
 
@@ -2567,7 +3116,7 @@ export default function AdminVetting({
               </div>
             </div>
 
-            {/* Right 5 Columns: Sovereign Ledger Manual Adjuster & Honorary Blessing Tool */}
+            {/* Right 5 Columns: Sovereign Ledger Manual Adjuster & Honorary Grant Tool */}
             <div className="lg:col-span-5 space-y-4">
               <div className="bg-white border border-copper-penny/15 rounded-3xl p-5 shadow-xs space-y-4">
                 <div className="flex items-center space-x-2 text-[#B87333]">
@@ -2575,7 +3124,7 @@ export default function AdminVetting({
                   <h3 className="font-serif font-extrabold text-lg text-[#1F1813]">Sovereign Ledger Adjuster</h3>
                 </div>
                 <p className="text-xs text-[#2A221B]/80 leading-relaxed font-sans">
-                  Manually mint or deduct verified time credits. Used for honorary grandmother blessing credits or resolving offline co-op hours.
+                  Manually mint or deduct verified time credits. Used for honorary grandmother honor credits or resolving offline co-op hours.
                 </p>
 
                 <form onSubmit={handleManualLedgerAdjust} className="space-y-3.5 text-xs">
@@ -2619,11 +3168,11 @@ export default function AdminVetting({
                   </div>
 
                   <div>
-                    <label className="font-mono uppercase font-bold text-soft-sage block mb-1">Audit Reason / Blessing Memo *</label>
+                    <label className="font-mono uppercase font-bold text-soft-sage block mb-1">Audit Reason / Honor Memo *</label>
                     <textarea
                       required
                       rows={2}
-                      placeholder="e.g. Honorary Matriarch Blessing for postpartum meal delivery..."
+                      placeholder="e.g. Honorary Matriarch Grant for postpartum meal delivery..."
                       value={manualReason}
                       onChange={(e) => setManualReason(e.target.value)}
                       className="w-full bg-[#FAF5EE] border border-copper-penny/20 rounded-xl p-2"
@@ -2677,7 +3226,7 @@ export default function AdminVetting({
             <div>
               <h3 className="font-serif font-extrabold text-xl text-[#1F1813] flex items-center space-x-2">
                 <Video className="w-5 h-5 text-[#B87333]" />
-                <span>The Casual Corner Talk &amp; Live Hearth Studio</span>
+                <span>The Casual Corner Talk &amp; Live Studio</span>
               </h3>
               <p className="text-xs text-soft-sage font-mono mt-0.5">
                 Schedule weekly live talks, new moon fire circles, and embed sovereign meeting rooms (Jitsi / Zoom).
@@ -2689,7 +3238,7 @@ export default function AdminVetting({
               className="px-4 py-2.5 bg-[#B87333] hover:bg-[#A85138] text-white font-mono text-xs font-bold uppercase tracking-wider rounded-xl shadow-md transition-all active:scale-95 cursor-pointer flex items-center space-x-2 shrink-0"
             >
               <Plus className="w-4 h-4 text-[#D4AF37]" />
-              <span>Schedule New Hearth Gathering</span>
+              <span>Schedule New Circle Gathering</span>
             </button>
           </div>
 
@@ -2758,7 +3307,7 @@ export default function AdminVetting({
                 <div className="flex items-center justify-between border-b border-copper-penny/20 pb-3">
                   <h3 className="font-serif font-extrabold text-lg text-[#1F1813] flex items-center space-x-2">
                     <Video className="w-5 h-5 text-[#B87333]" />
-                    <span>Schedule Hearth Live Gathering</span>
+                    <span>Schedule Circle Live Gathering</span>
                   </h3>
                   <button onClick={() => setShowAddHearthModal(false)} className="text-gray-400 hover:text-gray-600 font-bold">✕</button>
                 </div>
@@ -2993,7 +3542,7 @@ export default function AdminVetting({
                       releaseDate: newPodcastData.releaseDate || 'Sept 14, 2026',
                       description: newPodcastData.description || '',
                       timestamps: newPodcastData.timestamps || [
-                        { timeSeconds: 0, label: 'Opening Hearth Blessing', summary: 'Grounding in ancestral peace.' },
+                        { timeSeconds: 0, label: 'Opening Circle Dedication', summary: 'Grounding in ancestral peace.' },
                         { timeSeconds: 600, label: 'Traditional Herbal Wisdom', summary: 'Practical maternal steps.' }
                       ],
                       referencedRemedies: newPodcastData.referencedRemedies || [],
@@ -3443,7 +3992,7 @@ export default function AdminVetting({
                   ☕ "Buy Us a Tea" &amp; Sister Love Gifts Registry
                 </h4>
                 <p className="text-xs text-[#2A221B]/70 mt-0.5">
-                  Heartfelt contributions from sisters ($3, $9, $27, $81) received to bless the founder and maintain server infrastructure.
+                  Heartfelt contributions from sisters ($3, $9, $27, $81) received to honor the founder and maintain server infrastructure.
                 </p>
               </div>
               <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
@@ -3463,6 +4012,133 @@ export default function AdminVetting({
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 10: APOTHECARY & BOTANICAL DISPENSARY MANAGER                         */}
+      {/* ========================================================================= */}
+      {adminTab === 'apothecary' && (
+        <AdminApothecaryManager />
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 11: POSTPARTUM CARE PODS & EMERGENCY MEAL TRAIN DISPATCH               */}
+      {/* ========================================================================= */}
+      {adminTab === 'care_pods' && (
+        <AdminCarePodsManager />
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 12: 508(c)(1)(a) PMA LEGAL & SIGNED COVENANT AUDIT VAULT             */}
+      {/* ========================================================================= */}
+      {adminTab === 'covenant_vault' && (
+        <AdminCovenantVault />
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 13: MASTER MEMBER DIRECTORY & SAFETY MODERATION                       */}
+      {/* ========================================================================= */}
+      {adminTab === 'member_directory' && (
+        <AdminMemberDirectory />
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 14: CONTENT MODERATION & TARGETED PUSH DESK                           */}
+      {/* ========================================================================= */}
+      {adminTab === 'moderation' && (
+        <AdminModerationQueue onAddBulletin={onAddBulletin} />
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 15: NESTBRIGHT PROMO VOUCHERS & KINSHIP VAULT LIBRARY                */}
+      {/* ========================================================================= */}
+      {adminTab === 'kinship_vault' && (
+        <AdminKinshipNestBright />
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 16: EMBEDDED AI STUDIO EXTERNAL ADMIN VAULT PORTAL (ADMIN ONLY)       */}
+      {/* ========================================================================= */}
+      {adminTab === 'aistudio_vault' && (
+        <div className="space-y-6 animate-fade-in">
+          
+          {/* Header & Control Bar */}
+          <div className="bg-gradient-to-r from-[#180E08] via-[#2A1D16] to-[#120A05] text-[#FAF5EE] border-2 border-[#D4AF37]/50 rounded-3xl p-6 shadow-2xl space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-[#D4AF37]/25 pb-4">
+              <div>
+                <div className="flex items-center space-x-2 text-[#D4AF37] mb-1">
+                  <Lock className="w-4 h-4 text-[#D4AF37]" />
+                  <span className="font-mono text-xs uppercase font-extrabold tracking-widest">
+                    🔒 Restricted Admin Access Only • Applet ID: c9b1ec1b-3902-4a00-a551-43176e58c789
+                  </span>
+                </div>
+                <h3 className="font-serif text-2xl font-black text-[#FAF5EE] flex items-center space-x-2">
+                  <Sparkles className="w-6 h-6 text-[#D4AF37]" />
+                  <span>AI Studio External Admin Vault Console</span>
+                </h3>
+                <p className="text-xs text-[#FAF5EE]/80 font-mono mt-1 max-w-3xl">
+                  Embedded high-security AI Studio Admin Console portal for Matriarch Elders &amp; Admin Staff. Run, test, and manage external admin tools directly within Copper Mommies.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                <a 
+                  href="https://ai.studio/apps/c9b1ec1b-3902-4a00-a551-43176e58c789?fullscreenApplet=true" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-[#D4AF37] hover:bg-[#C5A02E] text-[#1F140E] font-mono text-xs font-black rounded-xl border border-white flex items-center space-x-2 shadow-lg transition-all active:scale-95"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>Open Fullscreen in New Window</span>
+                </a>
+
+                <button
+                  onClick={() => {
+                    const iframe = document.getElementById('aistudio-vault-iframe') as HTMLIFrameElement;
+                    if (iframe) {
+                      iframe.src = iframe.src;
+                    }
+                  }}
+                  className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-[#FAF5EE] font-mono text-xs font-bold rounded-xl border border-white/20 flex items-center space-x-1.5 cursor-pointer"
+                  title="Reload Portal Frame"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-[#D4AF37]" />
+                  <span>Reload Frame</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Editing & Workflow Explanatory Notice */}
+            <div className="bg-[#140B06] p-4 rounded-2xl border border-[#D4AF37]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+              <div className="space-y-1">
+                <span className="font-mono font-bold text-[#D4AF37] block">
+                  💡 How Chat Editing &amp; Embedding Works:
+                </span>
+                <p className="text-[#FAF5EE]/85 text-[11px] leading-relaxed">
+                  • <strong>This chat workspace</strong> edits and controls Copper Mommies (navigation, admin security locks, backend integrations, and how this embedded portal is displayed).<br />
+                  • <strong>The embedded frame below</strong> loads your live external AI Studio applet (<code className="bg-black/50 px-1 py-0.5 rounded text-[#D4AF37]">c9b1ec1b-3902-4a00-a551-43176e58c789</code>). You can test, use, and run its tools live right here! To edit the internal code of that external applet, open its dedicated project chat in AI Studio.
+                </p>
+              </div>
+
+              <span className="px-3 py-1 bg-emerald-950 text-emerald-300 font-mono text-[10px] font-bold rounded-full border border-emerald-500/40 shrink-0">
+                🟢 Live Portal Active
+              </span>
+            </div>
+          </div>
+
+          {/* Embedded Interactive Portal iFrame Container */}
+          <div className="relative w-full rounded-3xl overflow-hidden border-2 border-[#D4AF37]/50 shadow-2xl bg-[#180E08] min-h-[850px]">
+            <iframe 
+              id="aistudio-vault-iframe"
+              src="https://ai.studio/apps/c9b1ec1b-3902-4a00-a551-43176e58c789?fullscreenApplet=true" 
+              className="w-full h-[880px] border-0"
+              allow="clipboard-read; clipboard-write; autoplay; camera; microphone; geolocation"
+              title="AI Studio External Admin Vault Portal"
+            />
+          </div>
+
         </div>
       )}
 

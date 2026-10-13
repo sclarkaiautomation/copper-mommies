@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Heart, 
   MapPin, 
@@ -29,9 +30,14 @@ import {
   Globe,
   Info,
   ChevronRight,
+  ChevronDown,
   Shield,
   Trash2,
-  LockKeyhole
+  LockKeyhole,
+  User,
+  Bookmark,
+  Settings,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -62,6 +68,9 @@ import MarketplaceHub from './components/MarketplaceHub';
 import CommerceHub from './components/CommerceHub';
 import GatheringHub from './components/GatheringHub';
 import KinshipVault from './components/KinshipVault';
+import VillageCommonsHub from './components/VillageCommonsHub';
+import MemberProfileHub from './components/MemberProfileHub';
+import BusinessAdvertisingPortal from './components/BusinessAdvertisingPortal';
 import SpotlightBanner from './components/SpotlightBanner';
 import BroadcastPushBar from './components/BroadcastPushBar';
 import HearthMoodToggle, { HEARTH_MOODS } from './components/HearthMoodToggle';
@@ -69,7 +78,11 @@ import PWAInstallPrompt from './components/PWAInstallPrompt';
 import AudioPlayerFloating from './components/AudioPlayerFloating';
 import AudioSanctuaryLounge from './components/AudioSanctuaryLounge';
 import SovereignTreasuryHub from './components/SovereignTreasuryHub';
+import MothersAcademyHub from './components/MothersAcademyHub';
 import ScrollToTopButton from './components/ScrollToTopButton';
+import BottomFloatingChatDock from './components/BottomFloatingChatDock';
+import { SavedCommonsItem, DirectChatThread, ChatMember, DirectChatMessage } from './types';
+import { INITIAL_DIRECT_CHAT_THREADS, INITIAL_CHAT_MEMBERS } from './data/initialDirectChats';
 import { 
   INITIAL_BROADCAST_BULLETINS, 
   INITIAL_DISPUTES, 
@@ -103,7 +116,11 @@ const POPULAR_STATES = [
 
 export default function App() {
   // Navigation State
-  const [activeTab, setActiveTab] = useState<'landing' | 'vetting' | 'village' | 'healing' | 'economy' | 'commerce' | 'gathering' | 'kinship' | 'audio' | 'treasury' | 'admin'>('landing');
+  const [activeTab, setActiveTab] = useState<'landing' | 'vetting' | 'commons' | 'profile' | 'village' | 'healing' | 'economy' | 'commerce' | 'gathering' | 'kinship' | 'audio' | 'treasury' | 'admin' | 'advertise' | 'academy'>('landing');
+  const [commonsSubTab, setCommonsSubTab] = useState<'feed' | 'exchange' | 'housing' | 'businesses' | 'events' | 'map'>('feed');
+  const [commonsSelectedTopic, setCommonsSelectedTopic] = useState<string>('all');
+  const [showMobilePostSheet, setShowMobilePostSheet] = useState<boolean>(false);
+  const [createPostTriggerType, setCreatePostTriggerType] = useState<'feed' | 'exchange' | 'housing' | null>(null);
   const [showGlobalSupportModal, setShowGlobalSupportModal] = useState(false);
   
   // App Config & Personalization State
@@ -112,6 +129,58 @@ export default function App() {
   const [complianceNotice, setComplianceNotice] = useState<StateComplianceConfig | null>(null);
   const [showComplianceDetail, setShowComplianceDetail] = useState(false);
   const [consentAccepted, setConsentAccepted] = useState(true);
+
+  // Global Saved & Bookmarked Items across Copper Mommies
+  const [savedItems, setSavedItems] = useState<SavedCommonsItem[]>(() => {
+    try {
+      const local = localStorage.getItem('copper_commons_saved_items');
+      if (local) return JSON.parse(local);
+    } catch (e) {
+      console.error(e);
+    }
+    return [
+      {
+        id: 'sugg-1',
+        type: 'exchange',
+        title: 'Solid Hardwood Montessori Bookshelf',
+        subtitle: 'Free giveaway in West End / Cascade, Atlanta',
+        imageUrl: 'https://images.unsplash.com/photo-1594980596870-8aa52a78d8cd?auto=format&fit=crop&w=600&q=80',
+        categoryBadge: 'Free Giveaway',
+        location: 'Atlanta, GA',
+        terms: '100% Free Gift'
+      },
+      {
+        id: 'sugg-2',
+        type: 'housing',
+        title: 'Garden Cottage & Private Guest Suite',
+        subtitle: 'Private garden entrance, peaceful work nook & bath',
+        imageUrl: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=600&q=80',
+        categoryBadge: 'Housing Haven',
+        location: 'Stone Mountain, GA',
+        terms: '$650/mo utilities included'
+      },
+      {
+        id: 'sugg-3',
+        type: 'business',
+        title: 'Roots & Resilience Master Apothecary',
+        subtitle: 'Ancestral botanical oxymels & nettle infusions',
+        imageUrl: '/apothecary_sister_herbal.jpg',
+        categoryBadge: 'Sister Business',
+        location: 'Atlanta, GA',
+        terms: '15% Off with code COPPERMOMMIE'
+      }
+    ];
+  });
+
+  const handleRemoveSavedItem = (id: string) => {
+    setSavedItems(prev => {
+      const updated = prev.filter(item => item.id !== id);
+      try {
+        localStorage.setItem('copper_commons_saved_items', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  };
 
   // Phase 3: Audio Sanctuary Lounge & Persistent Audio State
   const [audioTracks, setAudioTracks] = useState<AudioTrack[]>(INITIAL_AUDIO_TRACKS);
@@ -167,13 +236,238 @@ export default function App() {
 
   // Founder Admin Login Modal state
   const [showAdminLoginModal, setShowAdminLoginModal] = useState(false);
+  const [showMemberLoginModal, setShowMemberLoginModal] = useState(false);
+  const [showSisterProfileMenu, setShowSisterProfileMenu] = useState(false);
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
   const [adminLoginError, setAdminLoginError] = useState('');
+  const [memberEmailInput, setMemberEmailInput] = useState('shantrecetogetherwewin@gmail.com');
+  const [stayLoggedIn, setStayLoggedIn] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('copper_mommies_stay_logged_in') !== 'false';
+    } catch {
+      return true;
+    }
+  });
 
-  // Database / Feed State
+  // Navigation History State for Return Breadcrumbs
+  const [lastVisitedTab, setLastVisitedTab] = useState<string | null>(null);
+  const [profileInitialTab, setProfileInitialTab] = useState<'overview' | 'chats' | 'bookmarks' | 'posts' | 'events' | 'faves' | 'groups' | 'ledger'>('overview');
   const [barterList, setBarterList] = useState<BarterOffer[]>([]);
   const [eventsList, setEventsList] = useState<CoopEvent[]>([]);
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
+  
+  // Real-Time Member Direct Chat Threads
+  const [chatThreads, setChatThreads] = useState<DirectChatThread[]>(() => {
+    try {
+      const local = localStorage.getItem('copper_mommies_chat_threads');
+      if (local) return JSON.parse(local);
+    } catch (e) {}
+    return INITIAL_DIRECT_CHAT_THREADS;
+  });
+  const [chatMembers] = useState<ChatMember[]>(INITIAL_CHAT_MEMBERS);
+
+  const handleSendDirectMessage = (threadId: string, text: string, replyTo?: { id: string; text: string; senderName: string }) => {
+    const newMsg: DirectChatMessage = {
+      id: `msg-${Date.now()}`,
+      senderId: 'me',
+      senderName: userName || 'Shantrece Clark',
+      senderAvatar: '/coppermommies-selflove1-cmc.jpg',
+      text: text.trim(),
+      timestamp: 'Just now',
+      isMe: true,
+      replyTo: replyTo
+    };
+
+    setChatThreads(prev => {
+      const updated = prev.map(t => {
+        if (t.id === threadId) {
+          return {
+            ...t,
+            lastMessage: `You: ${text.trim()}`,
+            lastMessageTime: 'Just now',
+            messages: [...t.messages, newMsg]
+          };
+        }
+        return t;
+      });
+      try {
+        localStorage.setItem('copper_mommies_chat_threads', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  };
+
+  const handleEditDirectMessage = (threadId: string, messageId: string, newText: string) => {
+    setChatThreads(prev => {
+      const updated = prev.map(t => {
+        if (t.id === threadId) {
+          return {
+            ...t,
+            messages: t.messages.map(m => m.id === messageId ? { ...m, text: newText, isEdited: true } : m)
+          };
+        }
+        return t;
+      });
+      try {
+        localStorage.setItem('copper_mommies_chat_threads', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  };
+
+  const handleDeleteDirectMessage = (threadId: string, messageId: string) => {
+    setChatThreads(prev => {
+      const updated = prev.map(t => {
+        if (t.id === threadId) {
+          return {
+            ...t,
+            messages: t.messages.filter(m => m.id !== messageId)
+          };
+        }
+        return t;
+      });
+      try {
+        localStorage.setItem('copper_mommies_chat_threads', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  };
+
+  const handlePinDirectMessage = (threadId: string, messageId: string) => {
+    setChatThreads(prev => {
+      const updated = prev.map(t => {
+        if (t.id === threadId) {
+          return {
+            ...t,
+            messages: t.messages.map(m => m.id === messageId ? { ...m, isPinned: !m.isPinned } : m)
+          };
+        }
+        return t;
+      });
+      try {
+        localStorage.setItem('copper_mommies_chat_threads', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  };
+
+  const handleReactDirectMessage = (threadId: string, messageId: string, emoji: string) => {
+    setChatThreads(prev => {
+      const updated = prev.map(t => {
+        if (t.id === threadId) {
+          return {
+            ...t,
+            messages: t.messages.map(m => {
+              if (m.id === messageId) {
+                const prevReactions = m.reactions || [];
+                const exists = prevReactions.find(r => r.emoji === emoji);
+                const updatedReactions = exists
+                  ? prevReactions.map(r => r.emoji === emoji ? { ...r, count: r.count + 1 } : r)
+                  : [...prevReactions, { emoji, count: 1 }];
+                return { ...m, reactions: updatedReactions };
+              }
+              return m;
+            })
+          };
+        }
+        return t;
+      });
+      try {
+        localStorage.setItem('copper_mommies_chat_threads', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  };
+
+  const handleCreateNewChat = (participantId: string, initialMessage?: string) => {
+    const targetMember = chatMembers.find(m => m.id === participantId);
+    if (!targetMember) return;
+
+    const existing = chatThreads.find(t => t.participantId === participantId);
+    if (existing) {
+      if (initialMessage?.trim()) {
+        handleSendDirectMessage(existing.id, initialMessage.trim());
+      }
+      return;
+    }
+
+    const newThread: DirectChatThread = {
+      id: `chat-${Date.now()}`,
+      participantId: targetMember.id,
+      participantName: targetMember.name,
+      participantAvatar: targetMember.avatar,
+      participantNeighborhood: targetMember.neighborhood,
+      category: 'dm',
+      originSectionLabel: 'Direct Sister Inquiry',
+      lastMessage: initialMessage?.trim() ? `You: ${initialMessage.trim()}` : 'Conversation started',
+      lastMessageTime: 'Just now',
+      unreadCount: 0,
+      messages: initialMessage?.trim() ? [
+        {
+          id: `m-${Date.now()}`,
+          senderId: 'me',
+          senderName: userName || 'Shantrece Clark',
+          senderAvatar: '/coppermommies-selflove1-cmc.jpg',
+          text: initialMessage.trim(),
+          timestamp: 'Just now',
+          isMe: true
+        }
+      ] : []
+    };
+
+    setChatThreads(prev => {
+      const updated = [newThread, ...prev];
+      try {
+        localStorage.setItem('copper_mommies_chat_threads', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  };
+
+  const handleOpenDirectChatWithContext = (recipientName: string, contextTitle: string, initialNote?: string) => {
+    let targetMember = chatMembers.find(m => m.name.toLowerCase() === recipientName.toLowerCase());
+    if (!targetMember) {
+      targetMember = {
+        id: `member-${Date.now()}`,
+        name: recipientName,
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+        neighborhood: `${selectedState} Circle`,
+        role: 'Circle Sister'
+      };
+    }
+
+    const newThread: DirectChatThread = {
+      id: `chat-${Date.now()}`,
+      participantId: targetMember.id,
+      participantName: targetMember.name,
+      participantAvatar: targetMember.avatar,
+      participantNeighborhood: targetMember.neighborhood,
+      category: 'housing',
+      originSectionLabel: contextTitle,
+      lastMessage: initialNote?.trim() ? `You: ${initialNote.trim()}` : `Inquiry regarding ${contextTitle}`,
+      lastMessageTime: 'Just now',
+      unreadCount: 0,
+      messages: initialNote?.trim() ? [
+        {
+          id: `m-${Date.now()}`,
+          senderId: 'me',
+          senderName: userName || 'Shantrece Clark',
+          senderAvatar: '/coppermommies-selflove1-cmc.jpg',
+          text: initialNote.trim(),
+          timestamp: 'Just now',
+          isMe: true
+        }
+      ] : []
+    };
+
+    setChatThreads(prev => {
+      const updated = [newThread, ...prev.filter(t => t.participantName !== recipientName)];
+      try {
+        localStorage.setItem('copper_mommies_chat_threads', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  };
   
   // Form States inside App
   const [newMessageText, setNewMessageText] = useState('');
@@ -341,7 +635,7 @@ export default function App() {
       pageId: 'village',
       title: 'NestBright Academy — Elementary Homeschool Sponsorship & Access',
       subtitle: 'Grades 3–5 Curriculum • Sovereign American Heritage • Math & Reading Labs',
-      description: 'We are blessing 5 verified Copper Mommies with 1 year of 100% free full access to NestBright Academy for their elementary child (Grades 3–5). In addition, all community members receive a deep sovereign rate of only $5.99/month (regularly $19.99/mo).',
+      description: 'We are gifting 5 verified Copper Mommies with 1 year of 100% free full access to NestBright Academy for their elementary child (Grades 3–5). In addition, all community members receive a deep sovereign rate of only $5.99/month (regularly $19.99/mo).',
       bannerImage: '/nestbright_banner.jpg',
       externalLink: 'https://nestbrightacademy.com',
       buttonText: 'Visit NestBright Academy',
@@ -357,7 +651,7 @@ export default function App() {
           'Brief 2–3 sentence reflection on your family\'s sovereign homeschool goals for this academic season.',
           'Active mother or guardian membership verification in good standing.'
         ],
-        drawDate: 'Drawn monthly at the New Moon Gathering Hearth Circle.'
+        drawDate: 'Drawn monthly at the New Moon Community Gathering Circle.'
       },
       active: true
     },
@@ -367,7 +661,7 @@ export default function App() {
       categoryBadge: 'Featured Botanical Remedy Spotlight',
       title: 'Gullah Sea Island Botanical Lung & Vitality Elixirs',
       subtitle: 'Wildcrafted Georgia & Lowcountry Mullein, Elderberry & Sweetgum Infusions',
-      description: 'Hand-harvested by our coastal grandmother guild. Certified chemical-free, solar-steeped, and packed with ancestral mineral rich plants for children and postpartum mothers.',
+      description: 'Hand-harvested by our coastal grandmother guild. Certified chemical-free, solar-steeped, and packed with ancestral mineral rich plants for children and mothers across every stage of life.',
       externalLink: 'https://coppermommies.co/apothecary',
       buttonText: 'Order Botanical Remedies',
       promoPrice: '15% Off Guild Orders',
@@ -379,13 +673,13 @@ export default function App() {
       id: 'spotlight-healing-2',
       pageId: 'healing',
       categoryBadge: 'New Guild Herbal Release',
-      title: 'Ancestral Postpartum Bone Broth & Nettle Vitality Pouches',
+      title: 'Ancestral Mineral-Rich Bone Broth & Nettle Vitality Pouches',
       subtitle: 'Organically Foraged Stinging Nettle, Yellow Dock & Iron-Rich Root Tinctures',
-      description: 'Specially crafted for immediate 40-day postpartum replenishment. Formulated by certified melanated midwives and herbal wisdom keepers.',
-      externalLink: 'https://coppermommies.co/postpartum-vitality',
-      buttonText: 'Explore Postpartum Kit',
+      description: 'Formulated for deep energy replenishment, whole-family stamina, and restorative herbal nourishment for busy mothers and growing children.',
+      externalLink: 'https://coppermommies.co/vitality',
+      buttonText: 'Explore Vitality Kit',
       promoPrice: 'Free Shipping for Circles',
-      promoCode: 'POSTPARTUM40',
+      promoCode: 'VITALITY40',
       contactEmail: 'shantrecetogetherwewin@gmail.com',
       active: true
     },
@@ -408,7 +702,7 @@ export default function App() {
       categoryBadge: 'Mutual Skill Sharing Registry',
       title: 'Mother-to-Mother Labor Trade & Childcare Exchange Guild',
       subtitle: 'Deposit Service Hours • Claim Natural Birth Support, Cooking & Homemaking Assistance',
-      description: 'Exchange services peer-to-peer with zero debt or dollar transactions. Built on our sovereign Ledger of Generosity.',
+      description: 'Exchange services peer-to-peer with zero debt or dollar transactions. Built on our trusted Ledger of Generosity.',
       externalLink: 'https://coppermommies.co/time-banking',
       buttonText: 'Log Service Exchange',
       promoPrice: '100% Interest Free',
@@ -419,7 +713,7 @@ export default function App() {
       id: 'spotlight-commerce-1',
       pageId: 'commerce',
       categoryBadge: 'Micro-Enterprise Incubator',
-      title: 'Kitchen Craft to Sovereign LLC: 4-Week Incubator Intensive',
+      title: 'Kitchen Craft to Thriving LLC: 4-Week Incubator Intensive',
       subtitle: 'Legal Formations • Trademarking • Trade Bureau Licensing • Zero Debt Scaling',
       description: 'Transform home remedies, natural birth services, or botanical goods into legally protected community enterprises. Free downloadable templates included.',
       externalLink: 'https://coppermommies.co/incubator',
@@ -446,8 +740,8 @@ export default function App() {
       pageId: 'gathering',
       categoryBadge: 'Live Dialogue Series',
       title: 'The Casual Corner Talk — The Copper Circle Live Dialogues',
-      subtitle: 'An Intimate Circle for Raw Sisterhood, Motherhood Realities & Sovereign Matriarchal Wisdom',
-      description: 'Welcome to The Casual Corner Talk — the signature live dialogue series of The Copper Circle. Pull up a chair as we jumpstart unhurried, soul-nourishing conversations on natural postpartum healing, sovereign home education, ancestral crafts, homesteading realities, and spiritual sisterhood.',
+      subtitle: 'An Intimate Circle for Raw Sisterhood, Motherhood Realities & Keeping It Real',
+      description: 'Welcome to The Casual Corner Talk — the signature live dialogue series of The Copper Circle. Pull up a chair as we jumpstart unhurried, soul-nourishing conversations on real motherhood, raising children of all ages, everyday homesteading realities, holistic family wellness, and growing together in authentic sisterhood.',
       bannerImage: '/The Casual Corner Talk.jpeg',
       externalLink: 'https://coppermommies.co/casual-corner-talk',
       buttonText: 'RSVP to Next Casual Corner Talk',
@@ -462,7 +756,7 @@ export default function App() {
       categoryBadge: 'Regional Circle Gathering',
       title: 'New Moon Sister Gathering & Ancestral Story Circle',
       subtitle: 'Monthly Live Virtual & In-Person Circles across Georgia, Texas, and South Carolina',
-      description: 'Gather with local sisterhood representatives to share postpartum experiences, herbal recipes, and cooperative childcare scheduling.',
+      description: 'Gather with local sisters to share real-life mothering experiences, family wellness recipes, homeschool tips, and collaborative childcare support.',
       externalLink: 'https://coppermommies.co/gatherings',
       buttonText: 'Find Local Circle Meetup',
       promoPrice: 'Open to Verified Mothers',
@@ -675,7 +969,7 @@ export default function App() {
   const handleBroadcastPoll = (poll: VillagePoll) => {
     const newBulletin: BroadcastBulletin = {
       id: `bulletin-poll-${Date.now()}`,
-      headline: `🗳️ Hearth Vote: ${poll.title}`,
+      headline: `🗳️ Community Vote: ${poll.title}`,
       category: 'Live Casual Corner Talk',
       detail: `All sisters are invited to cast their ballot on our upcoming live talk topic or class: "${poll.title}".`,
       actionText: 'Cast Your Ballot',
@@ -971,6 +1265,24 @@ export default function App() {
     return () => clearInterval(timer);
   }, [aiLoading]);
 
+  // Handle Right Slide-Out Profile Drawer keyboard escape and scroll lock
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showSisterProfileMenu) {
+        setShowSisterProfileMenu(false);
+      }
+    };
+    if (showSisterProfileMenu) {
+      document.addEventListener('keydown', handleKeyDown);
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown);
+        document.body.style.overflow = prevOverflow;
+      };
+    }
+  }, [showSisterProfileMenu]);
+
   const fetchCompliance = async () => {
     try {
       const res = await fetch(`/api/compliance/status?state=${selectedState}`);
@@ -1019,17 +1331,27 @@ export default function App() {
     }
   };
 
-  // Submit new application
-  const handleRegisterApplication = (appData: Omit<Applicant, 'id' | 'status' | 'submittedAt'>) => {
-    const newApp: Applicant = {
-      ...appData,
-      id: `app-${Math.floor(1000 + Math.random() * 9000)}`,
-      status: 'pending',
-      submittedAt: 'Today'
-    };
-    setApplicants(prev => [newApp, ...prev]);
-    setCurrentApplication(newApp);
-    alert("Lineage application registered successfully! You may select 'Elder Council' above to view and review applications.");
+  // Submit new application / sifting handler
+  const handleRegisterApplication = (appData: Applicant | null) => {
+    if (!appData) {
+      setCurrentApplication(null);
+      return;
+    }
+
+    setApplicants(prev => [appData, ...prev.filter(a => a.id !== appData.id)]);
+    setCurrentApplication(appData);
+
+    if (appData.status === 'approved') {
+      setSimulatedRole('approved');
+      setUserName(appData.name);
+      if (appData.currentLocation) {
+        const stateParts = appData.currentLocation.split(',');
+        const stateCodeCandidate = stateParts[stateParts.length - 1]?.trim().toUpperCase();
+        if (stateCodeCandidate && stateCodeCandidate.length === 2) {
+          setSelectedState(stateCodeCandidate);
+        }
+      }
+    }
   };
 
   // Elder approves applicant
@@ -1194,118 +1516,76 @@ export default function App() {
       style={{ background: activeHearth.meshStyle }}
     >
       
-      {/* Cinematic Ambient Accent Orbs with Hearth Mood Colors */}
+      {/* Cinematic Ambient Accent Orbs with Sanctuary Lighting */}
       <div className={`absolute top-0 left-1/4 w-[450px] h-[450px] ${activeHearth.orb1Class} rounded-full blur-[120px] pointer-events-none transition-all duration-700`} />
       <div className={`absolute bottom-1/4 right-1/4 w-[550px] h-[550px] ${activeHearth.orb2Class} rounded-full blur-[150px] pointer-events-none transition-all duration-700`} />
 
-      {/* Global Community Broadcast Bulletin Push Bar */}
-      <BroadcastPushBar
-        bulletins={bulletins}
-        isAdmin={simulatedRole === 'admin' || simulatedRole === 'representative'}
-        onOpenAdminManager={() => {
-          setSimulatedRole('admin');
-          setActiveTab('admin');
-        }}
-        onActionClick={(url) => {
-          if (url === '#hearth-polls-section' || url.includes('poll') || url.includes('hearth-polls')) {
-            setActiveTab('gathering');
-            setTimeout(() => {
-              const el = document.getElementById('hearth-polls-section');
+      {/* Global Community Broadcast Bulletin Push Bar — VISIBLE TO LOGGED-IN MEMBERS ONLY */}
+      {simulatedRole !== 'applicant' && (
+        <BroadcastPushBar
+          bulletins={bulletins}
+          isAdmin={simulatedRole === 'admin' || simulatedRole === 'representative'}
+          onOpenAdminManager={() => {
+            setSimulatedRole('admin');
+            setActiveTab('admin');
+          }}
+          onActionClick={(url) => {
+            if (!url) return;
+            const lower = url.toLowerCase();
+            
+            if (lower.includes('hearth-polls') || lower.includes('poll')) {
+              setActiveTab('gathering');
+              setTimeout(() => {
+                const el = document.getElementById('hearth-polls-section');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }, 150);
+            } else if (lower === '#commons' || lower.includes('commons') || lower.includes('exchange') || lower.includes('housing') || lower.includes('free')) {
+              setActiveTab('commons');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else if (lower === '#village' || lower.includes('village') || lower.includes('care-pod') || lower.includes('meal')) {
+              setActiveTab('village');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else if (lower === '#healing' || lower.includes('healing') || lower.includes('apothecary')) {
+              setActiveTab('healing');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else if (lower === '#economy' || lower.includes('economy') || lower.includes('barter')) {
+              setActiveTab('economy');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else if (lower === '#commerce' || lower.includes('commerce') || lower.includes('marketplace')) {
+              setActiveTab('commerce');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else if (lower === '#gathering' || lower.includes('gathering') || lower.includes('casual-corner')) {
+              setActiveTab('gathering');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else if (lower === '#kinship' || lower.includes('kinship') || lower.includes('vault') || lower.includes('nestbright') || lower.includes('seed')) {
+              setActiveTab('kinship');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else if (lower === '#audio' || lower.includes('audio') || lower.includes('radio') || lower.includes('podcast')) {
+              setActiveTab('audio');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else if (lower === '#treasury' || lower.includes('treasury')) {
+              setActiveTab('treasury');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else if (lower === '#vetting' || lower.includes('vetting') || lower.includes('join') || lower.includes('community')) {
+              setActiveTab('vetting');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else if (lower === '#admin' || lower.includes('admin')) {
+              setActiveTab('admin');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else if (url.startsWith('#')) {
+              const el = document.querySelector(url);
               if (el) el.scrollIntoView({ behavior: 'smooth' });
-            }, 100);
-          }
-        }}
-      />
+            } else if (url.startsWith('http://') || url.startsWith('https://')) {
+              window.open(url, '_blank', 'noopener,noreferrer');
+            }
+          }}
+        />
+      )}
 
-      {/* Sanctuary Perspective Switcher & Admin Access Bar */}
-      <div className="bg-[#1F140E] border-b-2 border-[#D4AF37]/50 py-2.5 px-4 z-50 relative shadow-md">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
-          <div className="flex items-center space-x-2.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#D4AF37] animate-pulse" />
-            <span className="font-serif font-bold text-sm tracking-wide text-[#D4AF37]">Viewing Mode:</span>
-            <span className="text-[#FAF5EE]/85 text-xs">Switch your sister role or access your Admin Command Center:</span>
-          </div>
-
-          <div className="flex items-center space-x-2.5 flex-wrap justify-center">
-            {/* The Dropdown Selector that the user was looking for */}
-            <div className="flex items-center space-x-1.5 bg-[#2A1D16] border border-[#D4AF37]/60 rounded-xl px-3 py-1 shadow-inner">
-              <label htmlFor="role-select-dropdown" className="text-xs font-mono text-[#D4AF37] font-bold">Viewing As:</label>
-              <select
-                id="role-select-dropdown"
-                value={simulatedRole}
-                onChange={(e) => {
-                  const role = e.target.value as 'applicant' | 'approved' | 'representative' | 'admin';
-                  if (role === 'admin') {
-                    setSimulatedRole('admin');
-                    setActiveTab('admin');
-                  } else if (role === 'applicant') {
-                    setSimulatedRole('applicant');
-                    setActiveTab('vetting');
-                  } else {
-                    setSimulatedRole(role);
-                  }
-                }}
-                className="bg-transparent text-[#FAF5EE] font-mono font-bold text-xs focus:outline-none cursor-pointer pr-1"
-              >
-                <option value="approved" className="bg-[#1F140E] text-white">🕊️ Verified Mother (Member View)</option>
-                <option value="admin" className="bg-[#1F140E] text-[#D4AF37] font-bold">👵 Circle Lead / Admin (Mama Shantrece)</option>
-                <option value="representative" className="bg-[#1F140E] text-white">👑 Community Host</option>
-                <option value="applicant" className="bg-[#1F140E] text-white">🌱 Seeking Sister (Applicant)</option>
-              </select>
-            </div>
-
-            {/* Quick-Click Role Pills */}
-            <div className="hidden sm:flex bg-black/40 rounded-xl p-0.5 border border-[#D4AF37]/40">
-              <button
-                onClick={() => {
-                  setSimulatedRole('approved');
-                  setActiveTab('landing');
-                }}
-                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                  simulatedRole === 'approved' 
-                    ? 'bg-[#D4AF37] text-[#1F1813]' 
-                    : 'text-gray-300 hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                🕊️ Mother View
-              </button>
-              <button
-                onClick={() => {
-                  setSimulatedRole('admin');
-                  setActiveTab('admin');
-                }}
-                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                  simulatedRole === 'admin' 
-                    ? 'bg-[#D4AF37] text-[#1F1813] font-black' 
-                    : 'text-gray-300 hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                👵 Circle Lead
-              </button>
-            </div>
-
-            {/* Direct Admin Office / Login Button */}
-            <button
-              id="top-admin-portal-access-btn"
-              onClick={() => {
-                if (simulatedRole === 'admin') {
-                  setActiveTab('admin');
-                } else {
-                  setShowAdminLoginModal(true);
-                }
-              }}
-              className="px-3 py-1 bg-[#D4AF37] hover:bg-[#C5A02E] text-[#1F140E] rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all shadow-md cursor-pointer flex items-center space-x-1.5"
-            >
-              <span>{simulatedRole === 'admin' ? '👵 Open Admin Office' : '🔒 Admin Login'}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 1. Header & Minimalist Navigation */}
+      {/* 1. Streamlined Master Header (Consolidated Branding, State Hub & Sister Profile/Admin) */}
       <header id="app-header" className="sticky top-0 z-40 bg-white/95 backdrop-blur-md text-charcoal-ancestral border-b border-copper-penny/15 shadow-sm transition-all duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
+          <div className="flex items-center justify-between h-18 sm:h-20">
             
             {/* Logo and Brand Name */}
             <div 
@@ -1313,8 +1593,7 @@ export default function App() {
               className="flex items-center space-x-3 cursor-pointer group"
               onClick={() => setActiveTab('landing')}
             >
-              {/* Symbolic Copper Tree Logo */}
-              <div className="relative w-12 h-12 bg-transparent flex items-center justify-center text-copper-penny group-hover:scale-105 duration-300 transition-all">
+              <div className="relative w-11 h-11 sm:w-12 sm:h-12 bg-transparent flex items-center justify-center text-copper-penny group-hover:scale-105 duration-300 transition-all shrink-0">
                 <img 
                   src="/Copper_Mommies_w_NoBG4.png" 
                   alt="Copper Mommies Co. Logo" 
@@ -1323,37 +1602,27 @@ export default function App() {
                 />
               </div>
               <div>
-                <h1 className="font-serif font-bold text-xl sm:text-2xl tracking-tight text-[#1F1813] group-hover:text-copper-penny transition-colors">
+                <h1 className="font-serif font-bold text-lg sm:text-2xl tracking-tight text-[#1F1813] group-hover:text-copper-penny transition-colors leading-tight">
                   Copper Mommies <span className="text-[#D4AF37]">Co.</span>
                 </h1>
-                <p className="text-[9px] font-mono text-soft-sage uppercase tracking-widest font-extrabold">American Motherhood Cooperative</p>
+                <p className="text-[8px] sm:text-[9px] font-mono text-soft-sage uppercase tracking-widest font-extrabold leading-tight">American Motherhood Cooperative</p>
               </div>
             </div>
 
-            {/* Profile indicator, Hearth Mood Selector, and State Hub selector */}
-            <div className="flex items-center space-x-2.5 sm:space-x-4">
+            {/* Streamlined Utility Controls */}
+            <div className="flex items-center space-x-2 sm:space-x-3">
               
-              {/* Hearth Mood Atmosphere Switcher */}
+              {/* Sanctuary Atmosphere Toggle */}
               <HearthMoodToggle currentMood={hearthMood} onSelectMood={handleSelectHearthMood} />
 
-              <div className="hidden lg:flex flex-col items-end text-right">
-                <span className="text-xs font-bold text-[#1F1813] flex items-center space-x-1">
-                  <span className="w-2 h-2 rounded-full bg-[#3A4C3A] inline-block" />
-                  <span>{userName}</span>
-                </span>
-                <span className="text-[9px] font-mono text-soft-sage uppercase tracking-wider font-extrabold">
-                  {simulatedRole === 'applicant' ? '🔒 Applicant Status' : 
-                   simulatedRole === 'admin' ? '👵 Circle Lead' : '🕊️ Verified Member'}
-                </span>
-              </div>
-
-              <div className="relative flex items-center space-x-1.5 bg-[#FAF5EE] border border-copper-penny/25 px-2.5 sm:px-3 py-1.5 rounded-xl">
+              {/* State Circle Selector */}
+              <div className="relative hidden xs:flex items-center space-x-1.5 bg-[#FAF5EE] border border-copper-penny/25 px-2.5 sm:px-3 py-1.5 rounded-xl">
                 <MapPin className="w-3.5 h-3.5 text-[#B87333]" />
                 <select
                   value={selectedState}
                   onChange={(e) => setSelectedState(e.target.value)}
                   className="bg-transparent border-none text-xs font-bold text-[#1F1813] font-mono focus:outline-none cursor-pointer"
-                  title="Select regional state board"
+                  title="Select regional state circle"
                 >
                   {POPULAR_STATES.map((st) => (
                     <option key={st.code} value={st.code} className="text-[#1F1813]">
@@ -1363,7 +1632,7 @@ export default function App() {
                 </select>
               </div>
 
-              {/* Audio Sanctuary Quick Player Status / Toggle (Members Only) */}
+              {/* Audio Sanctuary Mini Live Player (Logged-in members) */}
               {simulatedRole !== 'applicant' && (
                 <button
                   onClick={() => setActiveTab('audio')}
@@ -1377,8 +1646,8 @@ export default function App() {
                   title="Open Audio Sanctuary & Podcast Radio"
                 >
                   <span>{isAudioPlaying ? '📻' : '🎙️'}</span>
-                  <span className="hidden md:inline font-mono">
-                    {isAudioPlaying ? 'Radio Playing' : 'Audio Lounge'}
+                  <span className="hidden lg:inline font-mono">
+                    {isAudioPlaying ? 'Radio Live' : 'Audio Lounge'}
                   </span>
                   {isAudioPlaying && (
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
@@ -1386,210 +1655,330 @@ export default function App() {
                 </button>
               )}
 
-              {/* Install PWA Button (Members Only) */}
-              {simulatedRole !== 'applicant' && (
-                <button
-                  id="pwa-header-install-btn"
-                  onClick={() => {
-                    window.dispatchEvent(new CustomEvent('copper_open_pwa_guide'));
-                  }}
-                  className="bg-[#1F140E] hover:bg-[#2A1D16] text-[#D4AF37] border border-[#D4AF37]/50 text-xs font-bold px-2.5 sm:px-3 py-1.5 rounded-xl flex items-center space-x-1 transition-all cursor-pointer shadow-xs active:scale-95"
-                  title="Install Copper Mommies App to your phone home screen"
-                >
-                  <span>📲 Install App</span>
-                </button>
-              )}
-
-              {/* Global "Support the Community" Button accessible on every hub */}
+              {/* Support Co-op Button */}
               <button
                 onClick={() => setShowGlobalSupportModal(true)}
-                className="bg-[#D4AF37]/25 hover:bg-[#D4AF37]/35 text-[#1F1813] border border-[#D4AF37]/60 text-xs font-bold px-2.5 sm:px-3 py-1.5 rounded-xl flex items-center space-x-1 transition-all cursor-pointer shadow-2xs active:scale-95"
+                className="hidden sm:flex bg-[#D4AF37]/20 hover:bg-[#D4AF37]/30 text-[#1F1813] border border-[#D4AF37]/60 text-xs font-bold px-2.5 sm:px-3 py-1.5 rounded-xl items-center space-x-1 transition-all cursor-pointer shadow-2xs active:scale-95"
               >
-                <span>💝 Support Co-op</span>
+                <span>💝 Support</span>
               </button>
 
-              {/* Founder Admin Access Button in Header (Always Visible) */}
-              <button
-                id="header-admin-office-btn"
-                onClick={() => {
-                  if (simulatedRole === 'admin') {
-                    setActiveTab('admin');
-                  } else {
-                    setShowAdminLoginModal(true);
-                  }
-                }}
-                className={`text-xs font-bold px-3 py-1.5 rounded-xl flex items-center space-x-1.5 transition-all cursor-pointer shadow-xs active:scale-95 border ${
-                  simulatedRole === 'admin'
-                    ? 'bg-[#D4AF37] text-[#1F140E] border-[#D4AF37] font-black'
-                    : 'bg-[#1F140E] hover:bg-[#2A1D16] text-[#D4AF37] border-[#D4AF37]/50 hover:border-[#D4AF37]'
-                }`}
-                title="Mama Shantrece's Admin Command Center"
-              >
-                <span>🛡️</span>
-                <span className="font-mono">
-                  {simulatedRole === 'admin' ? 'Admin Office ✓' : 'Admin Login'}
-                </span>
-              </button>
+              {/* CONSOLIDATED SISTER PROFILE / MEMBER LOGIN & PERSPECTIVE MENU */}
+              {simulatedRole === 'applicant' ? (
+                /* When not logged in: Member Login button */
+                <div className="flex items-center space-x-1.5">
+                  <button
+                    id="header-member-login-btn"
+                    onClick={() => setShowMemberLoginModal(true)}
+                    className="flex items-center space-x-1.5 px-3 py-1.5 rounded-2xl bg-[#D4AF37] hover:bg-[#C5A02E] text-[#1F140E] font-bold text-xs font-mono uppercase tracking-wider shadow-xs transition-all cursor-pointer active:scale-95 border border-[#D4AF37]"
+                    title="Member Login & Profile Access"
+                  >
+                    <Key className="w-3.5 h-3.5" />
+                    <span>Member Login</span>
+                  </button>
+                </div>
+              ) : (
+                /* When logged in: Profile Picture in small circle + My Profile */
+                <div className="relative">
+                  <button
+                    id="sister-perspective-toggle-btn"
+                    onClick={() => setShowSisterProfileMenu(prev => !prev)}
+                    className={`flex items-center space-x-2 px-2.5 sm:px-3 py-1.5 rounded-2xl border transition-all cursor-pointer shadow-xs active:scale-95 ${
+                      activeTab === 'profile'
+                        ? 'bg-[#D4AF37] text-[#1F140E] border-[#D4AF37] ring-1 ring-[#D4AF37]/50'
+                        : 'bg-[#FAF5EE] hover:bg-[#F3EADF] text-[#1F1813] border-copper-penny/30'
+                    }`}
+                    title="My Sister Profile & Account Menu"
+                  >
+                    {/* Small circle profile picture */}
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden border-2 border-[#D4AF37] ring-1 ring-[#D4AF37]/30 shrink-0 shadow-xs relative bg-[#FAF5EE]">
+                      <img 
+                        src="/coppermommies-selflove1-cmc.jpg" 
+                        alt={userName} 
+                        className="w-full h-full object-cover" 
+                      />
+                      <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 border border-white" />
+                    </div>
+
+                    <div className="text-left hidden md:block">
+                      <span className="text-xs font-bold text-[#1F1813] block leading-tight">
+                        {simulatedRole === 'admin' ? 'Mama Shantrece' : userName}
+                      </span>
+                      <span className="text-[9px] font-mono uppercase tracking-wider font-extrabold text-soft-sage block leading-tight">
+                        👤 My Profile • {selectedState}
+                      </span>
+                    </div>
+                    <ChevronDown className={`w-3.5 h-3.5 text-copper-penny transition-transform ${showSisterProfileMenu ? 'rotate-180' : ''}`} />
+                  </button>
+                </div>
+              )}
+
             </div>
 
           </div>
         </div>
 
-        {/* Minimalist Tab Navigation Bar */}
-        <div className="border-t border-copper-penny/10 bg-[#140F0B]/90 backdrop-blur-md">
+        {/* 2. Streamlined Primary Navigation Pillars */}
+        <div className="border-t border-copper-penny/10 bg-[#140F0B]/95 backdrop-blur-md">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <nav className="flex space-x-1 py-3 overflow-x-auto scrollbar-none">
+            <nav className="flex items-center space-x-1 py-2.5 overflow-x-auto scrollbar-none">
+              
+              {/* Pillar 1: Home */}
               <button 
                 onClick={() => setActiveTab('landing')}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider shrink-0 ${
                   activeTab === 'landing' 
                     ? 'bg-[#D4AF37]/25 text-[#D4AF37] border border-[#D4AF37]/40 shadow-sm' 
                     : 'text-[#D4AF37]/80 hover:bg-white/10 hover:text-[#D4AF37]'
                 }`}
+                title="Home & Community Announcements"
               >
-                🌍 Home
+                <span>🌍 Home</span>
               </button>
 
+              {/* For Seeking Sisters (Applicants): Join Our Community */}
               {simulatedRole === 'applicant' && (
                 <button 
                   onClick={() => setActiveTab('vetting')}
-                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider ${
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider shrink-0 ${
                     activeTab === 'vetting' 
                       ? 'bg-red-700/30 text-[#D4AF37] border border-red-500/50 shadow-sm' 
                       : 'text-[#D4AF37]/80 bg-red-950/40 hover:bg-red-900/40 hover:text-[#D4AF37]'
                   }`}
+                  title="Begin Sisterhood Vetting Process"
                 >
-                  🔒 Join Our Community
+                  <span>🔒 Join Our Community</span>
                 </button>
               )}
 
+              {/* Pillars for Verified Members */}
               {simulatedRole !== 'applicant' && (
                 <>
+                  {/* Pillar 1: Village Commons (1st Community Hub) */}
                   <button 
-                    onClick={() => setActiveTab('village')}
-                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider ${
-                      activeTab === 'village' 
+                    id="nav-tab-commons"
+                    onClick={() => setActiveTab('commons')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider shrink-0 ${
+                      activeTab === 'commons' 
+                        ? 'bg-[#D4AF37]/25 text-[#D4AF37] border border-[#D4AF37]/40 shadow-sm font-black' 
+                        : 'text-[#D4AF37]/80 hover:bg-white/10 hover:text-[#D4AF37]'
+                    }`}
+                    title="The Village Commons — Free Gifting, Barter Trades, Housing & Sister Businesses"
+                  >
+                    <span>🏡 Commons</span>
+                  </button>
+
+                  {/* Pillar 2: Mothers Academy & Her-Story Sanctuary (Skool Adult Learning Hub) */}
+                  <button 
+                    id="nav-tab-academy"
+                    onClick={() => setActiveTab('academy')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider shrink-0 ${
+                      activeTab === 'academy' 
+                        ? 'bg-[#D4AF37]/25 text-[#D4AF37] border border-[#D4AF37]/40 shadow-sm font-black' 
+                        : 'text-[#D4AF37]/80 hover:bg-white/10 hover:text-[#D4AF37]'
+                    }`}
+                    title="Mothers Academy — Skool Adult Masterclasses, True Lineage & Her-Story Sanctuary"
+                  >
+                    <span>🎓 Mothers Academy</span>
+                  </button>
+
+                  {/* Pillar 3: Cooperative Economy */}
+                  <button 
+                    id="nav-tab-economy-pillar"
+                    onClick={() => {
+                      if (activeTab !== 'economy' && activeTab !== 'commerce') {
+                        setActiveTab('economy');
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider shrink-0 ${
+                      activeTab === 'economy' || activeTab === 'commerce'
                         ? 'bg-[#D4AF37]/25 text-[#D4AF37] border border-[#D4AF37]/40 shadow-sm' 
                         : 'text-[#D4AF37]/80 hover:bg-white/10 hover:text-[#D4AF37]'
                     }`}
+                    title="Cooperative Economy — Time Banking, Barter Trades & Enterprise Classifieds"
                   >
-                    🏡 Village Co-Care
+                    <span>🤝 Economy</span>
                   </button>
 
+                  {/* Pillar 4: Earth & Healing */}
                   <button 
                     onClick={() => setActiveTab('healing')}
-                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider shrink-0 ${
                       activeTab === 'healing' 
                         ? 'bg-[#D4AF37]/25 text-[#D4AF37] border border-[#D4AF37]/40 shadow-sm' 
                         : 'text-[#D4AF37]/80 hover:bg-white/10 hover:text-[#D4AF37]'
                     }`}
+                    title="Earth & Healing Herbal Apothecary & Botanical Dispensary"
                   >
-                    🌱 Earth &amp; Healing
+                    <span>🌿 Apothecary</span>
                   </button>
 
+                  {/* Pillar 5: Circle & Audio Sanctuary */}
                   <button 
-                    id="nav-tab-economy"
-                    onClick={() => setActiveTab('economy')}
-                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider ${
-                      activeTab === 'economy' 
+                    id="nav-tab-circle-pillar"
+                    onClick={() => {
+                      if (activeTab !== 'gathering' && activeTab !== 'audio') {
+                        setActiveTab('gathering');
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider shrink-0 ${
+                      activeTab === 'gathering' || activeTab === 'audio'
                         ? 'bg-[#D4AF37]/25 text-[#D4AF37] border border-[#D4AF37]/40 shadow-sm' 
                         : 'text-[#D4AF37]/80 hover:bg-white/10 hover:text-[#D4AF37]'
                     }`}
+                    title="The Copper Circle & Audio Community Lounge"
                   >
-                    🤝 Barter &amp; Exchange
-                  </button>
-
-                  <button 
-                    id="nav-tab-commerce"
-                    onClick={() => setActiveTab('commerce')}
-                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider ${
-                      activeTab === 'commerce' 
-                        ? 'bg-[#D4AF37]/25 text-[#D4AF37] border border-[#D4AF37]/40 shadow-sm' 
-                        : 'text-[#D4AF37]/80 hover:bg-white/10 hover:text-[#D4AF37]'
-                    }`}
-                  >
-                    🏛️ Enterprise &amp; Commerce
-                  </button>
-
-                  <button 
-                    id="nav-tab-gathering"
-                    onClick={() => setActiveTab('gathering')}
-                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider ${
-                      activeTab === 'gathering' 
-                        ? 'bg-[#D4AF37]/25 text-[#D4AF37] border border-[#D4AF37]/40 shadow-sm' 
-                        : 'text-[#D4AF37]/80 hover:bg-white/10 hover:text-[#D4AF37]'
-                    }`}
-                  >
-                    ✨ The Copper Circle
-                  </button>
-
-                  <button 
-                    id="nav-tab-kinship"
-                    onClick={() => setActiveTab('kinship')}
-                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider ${
-                      activeTab === 'kinship' 
-                        ? 'bg-[#D4AF37]/25 text-[#D4AF37] border border-[#D4AF37]/40 shadow-sm' 
-                        : 'text-[#D4AF37]/80 hover:bg-white/10 hover:text-[#D4AF37]'
-                    }`}
-                  >
-                    🗝️ Kinship &amp; Resources
-                  </button>
-
-                  <button 
-                    id="nav-tab-audio"
-                    onClick={() => setActiveTab('audio')}
-                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider relative ${
-                      activeTab === 'audio' 
-                        ? 'bg-[#D4AF37]/25 text-[#D4AF37] border border-[#D4AF37]/40 shadow-sm' 
-                        : 'text-[#D4AF37]/80 hover:bg-white/10 hover:text-[#D4AF37]'
-                    }`}
-                  >
-                    <span>🎙️ Audio Sanctuary</span>
+                    <span>🎙️ Sanctuary Audio</span>
                     {isAudioPlaying && (
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse ml-1" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping ml-1" />
                     )}
                   </button>
 
+                  {/* Pillar 6: Kinship, Homeschool & Treasury */}
                   <button 
-                    id="nav-tab-treasury"
-                    onClick={() => setActiveTab('treasury')}
-                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider relative ${
-                      activeTab === 'treasury' 
+                    id="nav-tab-kinship-pillar"
+                    onClick={() => {
+                      if (activeTab !== 'kinship' && activeTab !== 'treasury') {
+                        setActiveTab('kinship');
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider shrink-0 ${
+                      activeTab === 'kinship' || activeTab === 'treasury'
                         ? 'bg-[#D4AF37]/25 text-[#D4AF37] border border-[#D4AF37]/40 shadow-sm' 
                         : 'text-[#D4AF37]/80 hover:bg-white/10 hover:text-[#D4AF37]'
                     }`}
+                    title="Kinship Vault, Homeschooling Co-Op & Private Treasury"
                   >
-                    <span>⚖️ Sovereign Treasury</span>
+                    <span>🗝️ Kinship &amp; Homeschool</span>
                   </button>
                 </>
               )}
 
-              {/* Admin Back Office Tab (Always accessible) */}
+              {/* Sponsor / Business Ads Portal */}
+              <button
+                id="nav-tab-advertise"
+                onClick={() => {
+                  setActiveTab('advertise');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider shrink-0 ${
+                  activeTab === 'advertise'
+                    ? 'bg-gradient-to-r from-[#D4AF37] to-[#B87333] text-[#1F140E] shadow-md ring-2 ring-[#D4AF37]/50 font-black'
+                    : 'text-[#D4AF37] hover:bg-white/10 hover:text-white border border-[#D4AF37]/30 bg-black/20'
+                }`}
+                title="Melanated Woman-Owned Business Advertising & Sponsorship Portal"
+              >
+                <span>✨ Sponsor Ads</span>
+              </button>
+
+              {/* Admin Back Office Direct Tab */}
               {simulatedRole === 'admin' ? (
                 <button 
                   id="nav-tab-admin-active"
                   onClick={() => setActiveTab('admin')}
-                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider ${
+                  className={`ml-auto px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider shrink-0 ${
                     activeTab === 'admin' 
                       ? 'bg-[#D4AF37] text-[#1F140E] shadow-md ring-2 ring-[#D4AF37]/50 font-black' 
-                      : 'text-[#D4AF37] bg-emerald-950/60 hover:bg-emerald-900/70 border border-emerald-500/40'
+                      : 'text-[#D4AF37] bg-emerald-950/70 hover:bg-emerald-900/80 border border-emerald-500/40'
                   }`}
                   title="Circle Lead & Founder Admin Office"
                 >
-                  <span>👵 Admin Office (Active)</span>
+                  <span>👵 Admin Office</span>
                 </button>
               ) : (
                 <button 
                   id="nav-tab-admin-login"
                   onClick={() => setShowAdminLoginModal(true)}
-                  className="px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider text-[#D4AF37] bg-black/40 hover:bg-[#D4AF37]/20 border border-[#D4AF37]/40 hover:border-[#D4AF37]"
+                  className="ml-auto px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider text-[#D4AF37] bg-black/40 hover:bg-[#D4AF37]/20 border border-[#D4AF37]/40 hover:border-[#D4AF37] shrink-0"
                   title="Founder & Circle Lead Administration Login"
                 >
                   <span>🔒 Admin Login</span>
                 </button>
               )}
+
             </nav>
           </div>
+
+          {/* 3. Contextual Sub-Navigation Strip */}
+          {(activeTab === 'economy' || activeTab === 'commerce') && (
+            <div className="bg-[#1C140E] border-t border-[#B87333]/30 px-4 py-2 flex items-center justify-center space-x-2 text-xs font-mono animate-fade-in">
+              <span className="text-[#D4AF37]/70 text-[10px] uppercase font-bold mr-2 hidden sm:inline">Economy Hubs:</span>
+              <button 
+                onClick={() => setActiveTab('economy')} 
+                className={`px-3 py-1 rounded-lg transition-all cursor-pointer font-bold ${
+                  activeTab === 'economy' 
+                    ? 'bg-[#D4AF37] text-[#1F140E] shadow-sm' 
+                    : 'text-[#FAF5EE]/80 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                🤝 Time Banking &amp; Barter Trades ({timeBalance}h Balance)
+              </button>
+              <button 
+                onClick={() => setActiveTab('commerce')} 
+                className={`px-3 py-1 rounded-lg transition-all cursor-pointer font-bold ${
+                  activeTab === 'commerce' 
+                    ? 'bg-[#D4AF37] text-[#1F140E] shadow-sm' 
+                    : 'text-[#FAF5EE]/80 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                🏛️ Enterprise Classifieds &amp; Vendor Hub
+              </button>
+            </div>
+          )}
+
+          {(activeTab === 'gathering' || activeTab === 'audio') && (
+            <div className="bg-[#1C140E] border-t border-[#B87333]/30 px-4 py-2 flex items-center justify-center space-x-2 text-xs font-mono animate-fade-in">
+              <span className="text-[#D4AF37]/70 text-[10px] uppercase font-bold mr-2 hidden sm:inline">Circle Hubs:</span>
+              <button 
+                onClick={() => setActiveTab('gathering')} 
+                className={`px-3 py-1 rounded-lg transition-all cursor-pointer font-bold ${
+                  activeTab === 'gathering' 
+                    ? 'bg-[#D4AF37] text-[#1F140E] shadow-sm' 
+                    : 'text-[#FAF5EE]/80 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                ✨ The Copper Circle (Casual Corner &amp; Council Polls)
+              </button>
+              <button 
+                onClick={() => setActiveTab('audio')} 
+                className={`px-3 py-1 rounded-lg transition-all cursor-pointer font-bold flex items-center space-x-1 ${
+                  activeTab === 'audio' 
+                    ? 'bg-[#D4AF37] text-[#1F140E] shadow-sm' 
+                    : 'text-[#FAF5EE]/80 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                <span>🎙️ Audio Lounge &amp; Community Radio</span>
+                {isAudioPlaying && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ml-1" />}
+              </button>
+            </div>
+          )}
+
+          {(activeTab === 'kinship' || activeTab === 'treasury') && (
+            <div className="bg-[#1C140E] border-t border-[#B87333]/30 px-4 py-2 flex items-center justify-center space-x-2 text-xs font-mono animate-fade-in">
+              <span className="text-[#D4AF37]/70 text-[10px] uppercase font-bold mr-2 hidden sm:inline">Wisdom &amp; Trust:</span>
+              <button 
+                onClick={() => setActiveTab('kinship')} 
+                className={`px-3 py-1 rounded-lg transition-all cursor-pointer font-bold ${
+                  activeTab === 'kinship' 
+                    ? 'bg-[#D4AF37] text-[#1F140E] shadow-sm' 
+                    : 'text-[#FAF5EE]/80 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                🗝️ Kinship Vault &amp; NestBright Academy
+              </button>
+              <button 
+                onClick={() => setActiveTab('treasury')} 
+                className={`px-3 py-1 rounded-lg transition-all cursor-pointer font-bold ${
+                  activeTab === 'treasury' 
+                    ? 'bg-[#D4AF37] text-[#1F140E] shadow-sm' 
+                    : 'text-[#FAF5EE]/80 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                ⚖️ Private 508(c)(1)(a) Treasury &amp; Co-op Funds
+              </button>
+            </div>
+          )}
+
         </div>
       </header>
 
@@ -1668,17 +2057,6 @@ export default function App() {
                     <ArrowRight className="w-4 h-4 stroke-[3]" />
                   </button>
                 )}
-
-                <a 
-                  href="#districts" 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    document.getElementById('districts-grid')?.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                  className="w-full sm:w-auto px-8 py-3.5 bg-white/10 hover:bg-white/20 text-[#FAF5EE] border border-white/30 text-xs uppercase tracking-widest font-black rounded-xl transition-all duration-300 flex items-center justify-center cursor-pointer backdrop-blur-xs shadow-sm"
-                >
-                  Explore Districts
-                </a>
               </div>
 
             </div>
@@ -1701,90 +2079,20 @@ export default function App() {
               className="space-y-6"
             >
 
-              {/* Featured Community Spotlights & Partner Initiatives Carousel */}
-              <SpotlightBanner 
-                banners={spotlightBanners.filter(b => b.active)}
-                userName={userName}
-                selectedState={selectedState}
-                onAddScholarshipEntry={handleAddScholarshipEntry}
-                entriesCount={scholarshipEntries.length}
-                isAdmin={simulatedRole === 'admin'}
-                onOpenAdminManager={() => setActiveTab('admin')}
-              />
-
-              {/* The Copper Circle Dashboard Section */}
-              <div className="bg-[#1F1813] border border-[#D4AF37]/35 rounded-3xl p-5 sm:p-6 shadow-xl space-y-5 max-w-4xl mx-auto">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-[#D4AF37]/20 pb-4 gap-4">
-                  <div>
-                    <h3 className="font-serif text-2xl font-extrabold text-[#D4AF37] flex items-center gap-2">
-                      <span>🤝 The Copper Circle</span>
-                      <span className="text-[10px] font-mono font-bold uppercase bg-[#D4AF37]/10 text-[#D4AF37] px-2.5 py-0.5 rounded-full border border-[#D4AF37]/25">Active Circle</span>
-                    </h3>
-                    <p className="text-xs text-[#FAF5EE]/90 mt-1 leading-relaxed">
-                      Your standing in our sisterhood mutual-aid community. Gifting and trading are honored equally.
-                    </p>
-                  </div>
-                  <div className="text-left sm:text-right font-mono text-[10px] text-[#D4AF37]/75 font-extrabold uppercase tracking-widest">
-                    <span>Verified Identity: </span>
-                    <span className="text-white font-bold block">{userName}</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  {/* Generosity Score (Gifts) */}
-                  <div className="bg-[#FBF7F1] border border-[#1F1813]/10 rounded-2xl p-5 space-y-3 flex flex-col justify-between hover:border-copper-penny/25 transition-all">
-                    <div className="space-y-1">
-                      <div className="flex items-center space-x-2 text-[#A85138]">
-                        <Heart className="w-5 h-5 text-[#A85138] fill-[#A85138]/10" />
-                        <span className="font-mono text-[10px] uppercase tracking-wider font-extrabold text-[#1F1813]/60">Generosity Standing</span>
-                      </div>
-                      <h4 className="font-serif font-extrabold text-[#1F1813] text-lg">My Generosity Score</h4>
-                      <p className="text-[11px] text-[#1F1813]/80 leading-relaxed">
-                        Earned by sharing active Copper Gifts, native seeds, and homemade remedies. No return trade required.
-                      </p>
-                    </div>
-                    <div className="pt-4 flex items-baseline justify-between border-t border-copper-penny/5 mt-2">
-                      <span className="text-3xl font-mono font-black text-[#A85138]">{generosityScore}</span>
-                      <span className="text-[9px] font-mono text-[#1F1813]/60 uppercase tracking-wider font-bold">
-                        {generosityScore >= 20 ? "🌟 Dedicated Giver" : "🕊️ Generous Mother"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Trade Balance (Barters) */}
-                  <div className="bg-[#FBF7F1] border border-[#1F1813]/10 rounded-2xl p-5 space-y-3 flex flex-col justify-between hover:border-copper-penny/25 transition-all">
-                    <div className="space-y-1">
-                      <div className="flex items-center space-x-2 text-[#B87333]">
-                        <Coins className="w-5 h-5 text-[#B87333]" />
-                        <span className="font-mono text-[10px] uppercase tracking-wider font-extrabold text-[#1F1813]/60">Trade Balance Standing</span>
-                      </div>
-                      <h4 className="font-serif font-extrabold text-[#1F1813] text-lg">My Trade Balance</h4>
-                      <p className="text-[11px] text-[#1F1813]/80 leading-relaxed">
-                        Updated whenever you complete a confirmed Service Exchange, Item Swap, or direct Copper Trade.
-                      </p>
-                    </div>
-                    <div className="pt-4 flex items-baseline justify-between border-t border-copper-penny/5 mt-2">
-                      <span className="text-3xl font-mono font-black text-[#B87333]">{tradeBalance >= 0 ? `+${tradeBalance}` : tradeBalance} <span className="text-xs font-bold text-[#1F1813]">Credits</span></span>
-                      <span className="text-[9px] font-mono text-[#1F1813]/60 uppercase tracking-wider font-bold">
-                        {tradeBalance >= 15 ? "⚖️ Active Partner" : "🪙 Active Contributor"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-[#FAF5EE]/10 p-4 rounded-2xl border border-dashed border-[#D4AF37]/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-base">🤝</span>
-                    <span className="text-[#FAF5EE]/90">Each complete <strong>Copper Handshake</strong> confirms your sister-to-sister trade easily and transparently.</span>
-                  </div>
-                  <button 
-                    onClick={() => setActiveTab('economy')}
-                    className="sm:shrink-0 bg-[#D4AF37] hover:bg-[#B87333] hover:text-white text-[#1F1813] text-[10px] font-mono font-extrabold uppercase tracking-wider px-4 py-2 rounded-xl border border-[#B87333]/30 shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer"
-                  >
-                    Go to Barter &amp; Exchange
-                  </button>
-                </div>
-              </div>
+              {/* Featured Community Spotlights & Partner Initiatives Carousel - Visible to Logged-in Members Only */}
+              {simulatedRole !== 'applicant' && (
+                <SpotlightBanner 
+                  banners={spotlightBanners.filter(b => b.active)}
+                  userName={userName}
+                  selectedState={selectedState}
+                  onAddScholarshipEntry={handleAddScholarshipEntry}
+                  entriesCount={scholarshipEntries.length}
+                  isAdmin={simulatedRole === 'admin'}
+                  onOpenAdminManager={() => setActiveTab('admin')}
+                  autoScrollIntervalMs={5000}
+                  sectionTitle="Village Grand Spotlight & Announcements"
+                />
+              )}
 
               {/* Cooperative Philosophy Core Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -1813,17 +2121,58 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Districts bento grid block */}
-              <div id="districts-grid" className="bg-[#FAF5EE]/75 border border-copper-penny/20 rounded-3xl p-5 sm:p-6 shadow-md space-y-5 scroll-mt-24">
-                <div className="text-center space-y-1">
+              {/* Explore Our Community Hubs Grid */}
+              <div id="districts-grid" className="bg-[#FAF5EE]/80 border border-copper-penny/20 rounded-3xl p-5 sm:p-7 shadow-md space-y-6 scroll-mt-24">
+                <div className="text-center space-y-1.5 max-w-2xl mx-auto">
                   <h2 className="font-serif text-2xl sm:text-3xl font-extrabold text-[#1F1813]">
                     Explore Our Community Hubs
                   </h2>
-                  <p className="text-xs font-mono text-soft-sage uppercase tracking-wider font-extrabold">Hubs of Connection, Support &amp; Sisterhood</p>
+                  <p className="text-xs font-mono text-[#B87333] uppercase tracking-wider font-extrabold">
+                    Hubs of Connection, Support &amp; Sisterhood
+                  </p>
+                  <p className="text-xs text-[#2A221B]/75">
+                    {simulatedRole === 'applicant'
+                      ? 'Browse our community hubs below. Select any hub card to begin your membership application.'
+                      : 'Select any hub below to enter its live marketplace, discussion boards, or village tools.'}
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                  {/* Dist 1 */}
+                  {/* Card 1: Village Commons Hub (1ST CARD MANDATE) */}
+                  <div 
+                    onClick={() => {
+                      if (simulatedRole === 'applicant') {
+                        setActiveTab('vetting');
+                      } else {
+                        setActiveTab('commons');
+                      }
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className="group bg-gradient-to-br from-white to-[#FAF5EE] border-2 border-[#D4AF37]/50 hover:border-[#D4AF37] rounded-2xl p-5 sm:p-6 cursor-pointer hover:shadow-xl transition-all duration-300 relative overflow-hidden space-y-2.5 sm:col-span-2 lg:col-span-3"
+                  >
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/10 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-500" />
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2.5 text-[#1F1813]">
+                        <Globe className="w-5.5 h-5.5 text-[#D4AF37] group-hover:scale-110 transition-transform" />
+                        <span className="text-[10px] font-mono uppercase tracking-widest font-extrabold text-[#B87333]">District 1 • Premier Village Hub</span>
+                      </div>
+                      <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#D4AF37]/15 text-[#1F1813] border border-[#D4AF37]/35">
+                        Active Sisterhood Commons
+                      </span>
+                    </div>
+                    <h3 className="font-serif font-extrabold text-xl text-[#1F1813] group-hover:text-copper-penny transition-colors">
+                      The Village Commons
+                    </h3>
+                    <p className="text-xs text-[#2A221B]/85 leading-relaxed">
+                      Our main community bulletin and exchange center. Browse direct sisterhood housing listings, free item giveaways, local trade requests, vetted micro-gigs, and open village discussions.
+                    </p>
+                    <div className="flex items-center space-x-2 text-xs font-mono font-bold text-[#B87333] pt-1">
+                      <span>{simulatedRole === 'applicant' ? 'Apply for Membership to Enter' : 'Enter Village Commons'}</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+
+                  {/* Card 2: The Education & Village Hub */}
                   <div 
                     onClick={() => {
                       if (simulatedRole === 'applicant') {
@@ -1831,23 +2180,28 @@ export default function App() {
                       } else {
                         setActiveTab('village');
                       }
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className="group bg-white border border-copper-penny/15 hover:border-copper-penny/40 rounded-2xl p-5 sm:p-6 cursor-pointer hover:shadow-lg transition-all duration-300 relative overflow-hidden space-y-2.5"
+                    className="group bg-white border border-copper-penny/20 hover:border-copper-penny/50 rounded-2xl p-5 sm:p-6 cursor-pointer hover:shadow-lg transition-all duration-300 relative overflow-hidden space-y-2.5"
                   >
                     <div className="absolute top-0 right-0 w-20 h-20 bg-[#B87333]/5 rounded-full blur-xl group-hover:scale-110 transition-transform duration-300" />
                     <div className="flex items-center space-x-2.5 text-[#A85138]">
                       <BookOpen className="w-5.5 h-5.5 text-[#A85138] group-hover:scale-105 transition-transform" />
-                      <span className="text-[10px] font-mono uppercase tracking-widest font-bold">District 1</span>
+                      <span className="text-[10px] font-mono uppercase tracking-widest font-bold">District 2</span>
                     </div>
                     <h3 className="font-serif font-extrabold text-lg text-[#1F1813] group-hover:text-copper-penny transition-colors">
                       The Education &amp; Village Hub
                     </h3>
                     <p className="text-xs text-[#2A221B]/85 leading-relaxed">
-                      Coordinate homeschooling schedules, swap childcare roles, download family learning guides, and share parenting advice in a supportive space.
+                      Coordinate homeschooling schedules, swap childcare roles, download family learning guides, access NestBright Academy, and share parenting advice.
                     </p>
+                    <div className="flex items-center space-x-1.5 text-[11px] font-mono font-bold text-[#A85138] pt-1">
+                      <span>{simulatedRole === 'applicant' ? 'Join to Access' : 'Explore Education Hub'}</span>
+                      <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    </div>
                   </div>
 
-                  {/* Dist 2 */}
+                  {/* Card 3: The Earth & Healing Hub */}
                   <div 
                     onClick={() => {
                       if (simulatedRole === 'applicant') {
@@ -1855,23 +2209,28 @@ export default function App() {
                       } else {
                         setActiveTab('healing');
                       }
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className="group bg-white border border-copper-penny/15 hover:border-copper-penny/40 rounded-2xl p-5 sm:p-6 cursor-pointer hover:shadow-lg transition-all duration-300 relative overflow-hidden space-y-2.5"
+                    className="group bg-white border border-copper-penny/20 hover:border-copper-penny/50 rounded-2xl p-5 sm:p-6 cursor-pointer hover:shadow-lg transition-all duration-300 relative overflow-hidden space-y-2.5"
                   >
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-[#B87333]/5 rounded-full blur-xl group-hover:scale-110 transition-transform duration-300" />
-                    <div className="flex items-center space-x-2.5 text-soft-sage">
-                      <Sprout className="w-5.5 h-5.5 text-soft-sage group-hover:scale-105 transition-transform" />
-                      <span className="text-[10px] font-mono uppercase tracking-widest font-bold">District 2</span>
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-500/10 rounded-full blur-xl group-hover:scale-110 transition-transform duration-300" />
+                    <div className="flex items-center space-x-2.5 text-emerald-800">
+                      <Sprout className="w-5.5 h-5.5 text-emerald-700 group-hover:scale-105 transition-transform" />
+                      <span className="text-[10px] font-mono uppercase tracking-widest font-bold">District 3</span>
                     </div>
                     <h3 className="font-serif font-extrabold text-lg text-[#1F1813] group-hover:text-copper-penny transition-colors">
                       The Earth &amp; Healing Hub
                     </h3>
                     <p className="text-xs text-[#2A221B]/85 leading-relaxed">
-                      Exchange organic seeds, share herbal tea recipes, trade natural skincare tips, and ask questions to our maternal wellness advisors.
+                      Exchange organic seeds, share herbal tea recipes, order custom apothecary remedies, and consult with maternal wellness advisors.
                     </p>
+                    <div className="flex items-center space-x-1.5 text-[11px] font-mono font-bold text-emerald-800 pt-1">
+                      <span>{simulatedRole === 'applicant' ? 'Join to Access' : 'Explore Healing Hub'}</span>
+                      <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    </div>
                   </div>
 
-                  {/* Dist 3 */}
+                  {/* Card 4: Cooperative Economy & Barter Board */}
                   <div 
                     onClick={() => {
                       if (simulatedRole === 'applicant') {
@@ -1879,23 +2238,28 @@ export default function App() {
                       } else {
                         setActiveTab('economy');
                       }
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className="group bg-white border border-copper-penny/15 hover:border-copper-penny/40 rounded-2xl p-5 sm:p-6 cursor-pointer hover:shadow-lg transition-all duration-300 relative overflow-hidden space-y-2.5"
+                    className="group bg-white border border-copper-penny/20 hover:border-copper-penny/50 rounded-2xl p-5 sm:p-6 cursor-pointer hover:shadow-lg transition-all duration-300 relative overflow-hidden space-y-2.5"
                   >
                     <div className="absolute top-0 right-0 w-20 h-20 bg-[#B87333]/5 rounded-full blur-xl group-hover:scale-110 transition-transform duration-300" />
                     <div className="flex items-center space-x-2.5 text-copper-penny">
                       <ArrowLeftRight className="w-5.5 h-5.5 text-copper-penny group-hover:scale-105 transition-transform" />
-                      <span className="text-[10px] font-mono uppercase tracking-widest font-bold">District 3</span>
+                      <span className="text-[10px] font-mono uppercase tracking-widest font-bold">District 4</span>
                     </div>
                     <h3 className="font-serif font-extrabold text-lg text-[#1F1813] group-hover:text-copper-penny transition-colors">
                       Cooperative Economy &amp; Barter Board
                     </h3>
                     <p className="text-xs text-[#2A221B]/85 leading-relaxed">
-                      Post garden produce, trade handmade kids' clothing, and log cooperative hours directly on our community time exchange board.
+                      Post garden produce, trade handmade goods, offer service swaps, and log cooperative hours directly on our community time exchange board.
                     </p>
+                    <div className="flex items-center space-x-1.5 text-[11px] font-mono font-bold text-[#B87333] pt-1">
+                      <span>{simulatedRole === 'applicant' ? 'Join to Access' : 'Explore Barter Board'}</span>
+                      <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    </div>
                   </div>
 
-                  {/* Enterprise & Commerce Hub */}
+                  {/* Card 5: Enterprise & Commerce Hub */}
                   <div 
                     onClick={() => {
                       if (simulatedRole === 'applicant') {
@@ -1903,13 +2267,14 @@ export default function App() {
                       } else {
                         setActiveTab('commerce');
                       }
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                     className="group bg-white border border-[#B87333]/30 hover:border-[#B87333]/60 rounded-2xl p-5 sm:p-6 cursor-pointer hover:shadow-lg transition-all duration-300 relative overflow-hidden space-y-2.5"
                   >
                     <div className="absolute top-0 right-0 w-20 h-20 bg-[#D4AF37]/10 rounded-full blur-xl group-hover:scale-110 transition-transform duration-300" />
                     <div className="flex items-center space-x-2.5 text-[#B87333]">
                       <Coins className="w-5.5 h-5.5 text-[#B87333] group-hover:scale-105 transition-transform" />
-                      <span className="text-[10px] font-mono uppercase tracking-widest font-bold">Business &amp; Services</span>
+                      <span className="text-[10px] font-mono uppercase tracking-widest font-bold">District 5</span>
                     </div>
                     <h3 className="font-serif font-extrabold text-lg text-[#1F1813] group-hover:text-copper-penny transition-colors">
                       Enterprise &amp; Commerce Hub
@@ -1917,9 +2282,13 @@ export default function App() {
                     <p className="text-xs text-[#2A221B]/85 leading-relaxed">
                       Browse sister-owned businesses, post and apply for vetted gigs, attend business workshops, and access step-by-step startup templates.
                     </p>
+                    <div className="flex items-center space-x-1.5 text-[11px] font-mono font-bold text-[#B87333] pt-1">
+                      <span>{simulatedRole === 'applicant' ? 'Join to Access' : 'Explore Commerce Hub'}</span>
+                      <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    </div>
                   </div>
 
-                  {/* Dist 4 */}
+                  {/* Card 6: Sisterhood Circles & Gatherings */}
                   <div 
                     onClick={() => {
                       if (simulatedRole === 'applicant') {
@@ -1927,46 +2296,53 @@ export default function App() {
                       } else {
                         setActiveTab('gathering');
                       }
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className="group bg-white border border-copper-penny/15 hover:border-copper-penny/40 rounded-2xl p-5 sm:p-6 cursor-pointer hover:shadow-lg transition-all duration-300 relative overflow-hidden space-y-2.5"
+                    className="group bg-white border border-copper-penny/20 hover:border-copper-penny/50 rounded-2xl p-5 sm:p-6 cursor-pointer hover:shadow-lg transition-all duration-300 relative overflow-hidden space-y-2.5"
                   >
                     <div className="absolute top-0 right-0 w-20 h-20 bg-[#B87333]/5 rounded-full blur-xl group-hover:scale-110 transition-transform duration-300" />
                     <div className="flex items-center space-x-2.5 text-[#D4AF37]">
                       <MessageSquare className="w-5.5 h-5.5 text-[#D4AF37] group-hover:scale-105 transition-transform" />
-                      <span className="text-[10px] font-mono uppercase tracking-widest font-bold">Sisterhood Circles</span>
+                      <span className="text-[10px] font-mono uppercase tracking-widest font-bold">District 6</span>
                     </div>
                     <h3 className="font-serif font-extrabold text-lg text-[#1F1813] group-hover:text-copper-penny transition-colors">
-                      The Copper Circle
+                      Sisterhood Circles &amp; Gatherings
                     </h3>
                     <p className="text-xs text-[#2A221B]/85 leading-relaxed">
-                      Talk with verified mothers in relaxed group discussions, organize local meetups, and find helpful state guides for families.
+                      Talk with verified mothers in relaxed group discussions, organize local meetups, attend live circle sessions, and view regional state guides.
                     </p>
+                    <div className="flex items-center space-x-1.5 text-[11px] font-mono font-bold text-[#D4AF37] pt-1">
+                      <span>{simulatedRole === 'applicant' ? 'Join to Access' : 'Explore Gatherings'}</span>
+                      <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    </div>
                   </div>
 
-                  {/* Dist 5: Sovereign Treasury & Skill Pots */}
+                  {/* Card 7: Kinship Vault & Archives */}
                   <div 
-                    onClick={() => setActiveTab('treasury')}
-                    className="group bg-gradient-to-br from-[#1F140E] to-[#2A1D16] text-white border-2 border-[#D4AF37]/60 hover:border-[#D4AF37] rounded-2xl p-5 sm:p-6 cursor-pointer hover:shadow-xl transition-all duration-300 relative overflow-hidden space-y-2.5 sm:col-span-2 lg:col-span-2"
+                    onClick={() => {
+                      if (simulatedRole === 'applicant') {
+                        setActiveTab('vetting');
+                      } else {
+                        setActiveTab('kinship');
+                      }
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className="group bg-white border border-copper-penny/20 hover:border-copper-penny/50 rounded-2xl p-5 sm:p-6 cursor-pointer hover:shadow-lg transition-all duration-300 relative overflow-hidden space-y-2.5"
                   >
-                    <div className="absolute top-0 right-0 w-28 h-28 bg-[#D4AF37]/15 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-500" />
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2.5 text-[#D4AF37]">
-                        <Coins className="w-5.5 h-5.5 text-[#D4AF37] group-hover:scale-105 transition-transform" />
-                        <span className="text-[10px] font-mono uppercase tracking-widest font-bold">Sovereign Financial Rails</span>
-                      </div>
-                      <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40">
-                        Dual-Chamber Sovereign Model
-                      </span>
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-amber-500/10 rounded-full blur-xl group-hover:scale-110 transition-transform duration-300" />
+                    <div className="flex items-center space-x-2.5 text-amber-800">
+                      <Bookmark className="w-5.5 h-5.5 text-amber-700 group-hover:scale-105 transition-transform" />
+                      <span className="text-[10px] font-mono uppercase tracking-widest font-bold">District 7</span>
                     </div>
-                    <h3 className="font-serif font-extrabold text-lg text-white group-hover:text-[#D4AF37] transition-colors">
-                      Sovereign Treasury, Paid Spotlights &amp; Skill Pots
+                    <h3 className="font-serif font-extrabold text-lg text-[#1F1813] group-hover:text-copper-penny transition-colors">
+                      Kinship Vault &amp; Heritage
                     </h3>
-                    <p className="text-xs text-[#FAF5EE]/85 leading-relaxed">
-                      Explore our Title 26 U.S.C. § 508(c)(1)(a) Sanctuary &amp; Operating LLC, chip into crowdfunded Village Skill Pots, browse external vendor spotlights ($25/mo or $60/qtr), and send tax-exempt tea love gifts.
+                    <p className="text-xs text-[#2A221B]/85 leading-relaxed">
+                      Preserve grandmother recipes, lineage family stories, heirloom seed vaults, and ancestral American heritage records.
                     </p>
-                    <div className="flex items-center space-x-2 text-xs font-mono font-bold text-[#D4AF37] pt-1">
-                      <span>Open Sovereign Treasury</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                    <div className="flex items-center space-x-1.5 text-[11px] font-mono font-bold text-amber-800 pt-1">
+                      <span>{simulatedRole === 'applicant' ? 'Join to Access' : 'Explore Kinship Vault'}</span>
+                      <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                     </div>
                   </div>
                 </div>
@@ -1986,13 +2362,17 @@ export default function App() {
               <VettingGateway 
                 onSubmitApplication={handleRegisterApplication}
                 currentApplication={currentApplication}
-                onNavigateToPortal={() => setActiveTab('village')}
+                existingApplicants={applicants}
+                onNavigateToPortal={() => {
+                  setActiveTab('village');
+                  setSimulatedRole('approved');
+                }}
               />
             </motion.div>
           )}
 
           {/* PRIVATE SANCTUARY GATE: Shown when applicant tries to access protected hubs */}
-          {simulatedRole === 'applicant' && activeTab !== 'landing' && activeTab !== 'vetting' && activeTab !== 'treasury' && (
+          {simulatedRole === 'applicant' && activeTab !== 'landing' && activeTab !== 'vetting' && activeTab !== 'treasury' && activeTab !== 'advertise' && (
             <motion.div
               key="sanctuary-gate"
               initial={{ opacity: 0, y: 15 }}
@@ -2005,7 +2385,7 @@ export default function App() {
               </div>
               <div className="space-y-2">
                 <span className="text-[10px] font-mono uppercase tracking-widest text-[#B87333] font-bold">
-                  Sovereign Private Sanctuary (Title 26 USC § 508(c)(1)(a))
+                  Private Community Sanctuary (Title 26 USC § 508(c)(1)(a))
                 </span>
                 <h3 className="font-serif text-2xl sm:text-3xl font-bold text-[#1F1813]">
                   Protected Village Ground
@@ -2042,6 +2422,93 @@ export default function App() {
                   Return to Home
                 </button>
               </div>
+            </motion.div>
+          )}
+
+          {/* VILLAGE COMMONS HUB: FREE GIFTING, BARTERS, HOUSING, BUSINESSES & EVENTS */}
+          {simulatedRole !== 'applicant' && activeTab === 'commons' && (
+            <motion.div
+              key="commons"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <VillageCommonsHub 
+                selectedState={selectedState}
+                userName={userName}
+                simulatedRole={simulatedRole}
+                initialSubTab={commonsSubTab}
+                initialTopic={commonsSelectedTopic}
+                onSubTabChange={(sub) => setCommonsSubTab(sub)}
+                createPostTriggerType={createPostTriggerType}
+                onClearPostTrigger={() => setCreatePostTriggerType(null)}
+                onNavigateToTab={(tab) => {
+                  setActiveTab(tab as any);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                onOpenAdminOffice={() => {
+                  setSimulatedRole('admin');
+                  setActiveTab('admin');
+                }}
+                allSpotlightBanners={spotlightBanners.filter(b => b.active)}
+                onOpenDirectChat={(recipientName, contextTitle, initialNote) => {
+                  setLastVisitedTab('village');
+                  setProfileInitialTab('chats');
+                  handleOpenDirectChatWithContext(recipientName, contextTitle, initialNote);
+                  setActiveTab('profile');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              />
+            </motion.div>
+          )}
+
+          {/* MEMBER PROFILE HUB: PERSONAL DATA, COPPER CIRCLE METRICS, BOOKMARKS, CHATS & FORUMS */}
+          {simulatedRole !== 'applicant' && activeTab === 'profile' && (
+            <motion.div
+              key="profile"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <MemberProfileHub 
+                userName={userName}
+                userEmail="shantrecetogetherwewin@gmail.com"
+                selectedState={selectedState}
+                generosityScore={generosityScore}
+                tradeBalance={tradeBalance}
+                timeBalance={timeBalance}
+                timeLogs={timeLogs}
+                savedItems={savedItems}
+                chatThreads={chatThreads}
+                chatMembers={chatMembers}
+                initialProfileTab={profileInitialTab}
+                lastVisitedTab={lastVisitedTab}
+                onReturnToLastVisitedTab={() => {
+                  if (lastVisitedTab) {
+                    setActiveTab(lastVisitedTab as any);
+                  } else {
+                    setActiveTab('village');
+                  }
+                  setLastVisitedTab(null);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                onSendMessage={handleSendDirectMessage}
+                onCreateNewChat={handleCreateNewChat}
+                onRemoveSavedItem={handleRemoveSavedItem}
+                onSelectSavedItem={(item) => {
+                  if (item.type === 'exchange' || item.type === 'housing' || item.type === 'business') {
+                    setActiveTab('commons');
+                  } else {
+                    setActiveTab('village');
+                  }
+                }}
+                onNavigateToTab={(tab) => {
+                  setActiveTab(tab as any);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                onUpdateProfileName={(name) => setUserName(name)}
+                onAddLedgerLog={handleAddLedgerLog}
+              />
             </motion.div>
           )}
 
@@ -2172,6 +2639,30 @@ export default function App() {
             </motion.div>
           )}
 
+          {/* MOTHERS ACADEMY (SKOOL ADULT LEARNING & HER-STORY SANCTUARY) */}
+          {simulatedRole !== 'applicant' && activeTab === 'academy' && (
+            <motion.div
+              key="academy"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <MothersAcademyHub
+                userName={userName}
+                selectedState={selectedState}
+                simulatedRole={simulatedRole}
+                onNavigateToTab={(tab: any) => setActiveTab(tab)}
+                onOpenDirectChat={(recipientName, contextTitle, initialNote) => {
+                  setLastVisitedTab('academy');
+                  setProfileInitialTab('chats');
+                  handleOpenDirectChatWithContext(recipientName, contextTitle, initialNote);
+                  setActiveTab('profile');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              />
+            </motion.div>
+          )}
+
           {/* G. KINSHIP VAULT */}
           {simulatedRole !== 'applicant' && activeTab === 'kinship' && (
             <motion.div
@@ -2288,6 +2779,29 @@ export default function App() {
                 selectedState={selectedState}
                 onShowToast={(msg) => alert(msg)}
                 onNavigateToHub={(hub) => setActiveTab(hub as any)}
+              />
+            </motion.div>
+          )}
+
+          {/* K. DEDICATED BUSINESS ADVERTISING PORTAL FOR SINGLE MELANATED WOMEN-OWNED BUSINESSES */}
+          {activeTab === 'advertise' && (
+            <motion.div
+              key="advertise"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <BusinessAdvertisingPortal
+                onBackToVillage={() => {
+                  setActiveTab(simulatedRole === 'applicant' ? 'landing' : 'commons');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                onSubmittedAd={(newAd) => {
+                  // If approved or submitted, sync
+                  if (newAd.placementType === 'header_banner' || newAd.placementType === 'both_bundle') {
+                    // Pre-stage in spotlight banners
+                  }
+                }}
               />
             </motion.div>
           )}
@@ -2575,6 +3089,154 @@ export default function App() {
           </motion.div>
         )}
 
+        {/* MEMBER LOGIN MODAL WITH STAY LOGGED IN OPTION */}
+        {showMemberLoginModal && (
+          <motion.div
+            key="member-login-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-gradient-to-b from-[#FAF5EE] to-[#F5ECE0] border-2 border-[#D4AF37] rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col text-[#1F1813] relative"
+            >
+              {/* Modal Header */}
+              <div className="bg-[#1F140E] border-b border-[#D4AF37]/30 p-5 flex items-center justify-between text-white">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-2xl bg-[#D4AF37]/20 border border-[#D4AF37]/40 flex items-center justify-center text-xl text-[#D4AF37]">
+                    🔑
+                  </div>
+                  <div>
+                    <h3 className="font-serif font-bold text-lg text-[#FAF5EE]">
+                      Sister Member Login
+                    </h3>
+                    <p className="text-[10px] font-mono text-[#D4AF37] uppercase tracking-wider font-semibold">
+                      Copper Mommies Co. Cooperative Access
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowMemberLoginModal(false)}
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white flex items-center justify-center text-xs font-bold transition-all cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 space-y-4">
+                {/* 1-Click Fast Sister Sign In */}
+                <div className="p-4 bg-white border border-copper-penny/25 rounded-2xl space-y-3 shadow-2xs">
+                  <div className="flex items-center space-x-3">
+                    <img 
+                      src="/coppermommies-selflove1-cmc.jpg" 
+                      alt="Mama Shantrece" 
+                      className="w-12 h-12 rounded-full object-cover border-2 border-[#D4AF37]" 
+                    />
+                    <div>
+                      <h4 className="font-serif font-bold text-sm text-[#1F1813]">Mama Shantrece</h4>
+                      <p className="text-[10px] font-mono text-soft-sage">Verified Mother • Georgia Circle</p>
+                      <p className="text-[10px] text-gray-500 font-mono">shantrecetogetherwewin@gmail.com</p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSimulatedRole('approved');
+                      setActiveTab('profile');
+                      setShowMemberLoginModal(false);
+                    }}
+                    className="w-full py-3 bg-gradient-to-r from-[#B87333] via-[#D4AF37] to-[#B87333] hover:opacity-95 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all active:scale-98 cursor-pointer flex items-center justify-center space-x-2 font-mono"
+                  >
+                    <span>🕊️</span>
+                    <span>Sign In as Mama Shantrece</span>
+                  </button>
+                </div>
+
+                <div className="relative flex items-center justify-center">
+                  <div className="border-t border-copper-penny/20 w-full" />
+                  <span className="bg-[#F5ECE0] px-3 text-[10px] font-mono text-gray-500 uppercase tracking-widest absolute">
+                    Or Enter Member Email
+                  </span>
+                </div>
+
+                {/* Email Form */}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (memberEmailInput.trim()) {
+                      setUserName(memberEmailInput.split('@')[0] || 'Sister Member');
+                    }
+                    setSimulatedRole('approved');
+                    setActiveTab('profile');
+                    setShowMemberLoginModal(false);
+                  }}
+                  className="space-y-3"
+                >
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-mono text-[#1F1813] font-bold tracking-wider">
+                      Account Email
+                    </label>
+                    <input
+                      type="email"
+                      value={memberEmailInput}
+                      onChange={(e) => setMemberEmailInput(e.target.value)}
+                      placeholder="e.g. sisterhood@coppermommies.co"
+                      className="w-full bg-white border border-copper-penny/30 focus:border-[#D4AF37] focus:outline-none rounded-xl px-3.5 py-2.5 text-xs text-[#1F1813] font-mono"
+                    />
+                  </div>
+
+                  {/* Stay Logged In Checkbox */}
+                  <div className="flex items-center space-x-2 pt-1">
+                    <input
+                      type="checkbox"
+                      id="stay-logged-in-checkbox"
+                      checked={stayLoggedIn}
+                      onChange={() => {
+                        const next = !stayLoggedIn;
+                        setStayLoggedIn(next);
+                        try {
+                          localStorage.setItem('copper_mommies_stay_logged_in', next ? 'true' : 'false');
+                        } catch (e) {}
+                      }}
+                      className="rounded text-[#B87333] focus:ring-[#D4AF37] cursor-pointer"
+                    />
+                    <label htmlFor="stay-logged-in-checkbox" className="text-xs text-[#1F1813] font-medium cursor-pointer">
+                      Stay logged in on this device across visits
+                    </label>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 bg-[#1F1813] hover:bg-[#2A221B] text-[#FAF5EE] font-mono text-xs font-bold uppercase rounded-xl transition-all cursor-pointer shadow-sm"
+                  >
+                    Enter Sister Circle
+                  </button>
+                </form>
+
+                {/* Admin login option */}
+                <div className="pt-2 border-t border-copper-penny/15 text-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMemberLoginModal(false);
+                      setShowAdminLoginModal(true);
+                    }}
+                    className="text-[11px] font-mono text-copper-penny hover:underline cursor-pointer"
+                  >
+                    🔒 Are you the Founder / Circle Lead? Admin Login →
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
         {/* FOUNDER & CIRCLE LEAD ADMIN LOGIN MODAL */}
         {showAdminLoginModal && (
           <motion.div
@@ -2750,6 +3412,804 @@ export default function App() {
       {/* PWA Direct Installation Prompt & Mobile iOS/Android Guide (Verified Members Only) */}
       {simulatedRole !== 'applicant' && (
         <PWAInstallPrompt />
+      )}
+
+      {/* Floating Collapsible Direct Chat Window (Dock) */}
+      {simulatedRole !== 'applicant' && (
+        <BottomFloatingChatDock 
+          threads={chatThreads}
+          members={chatMembers}
+          currentUserName={userName}
+          onSendMessage={handleSendDirectMessage}
+          onCreateNewChat={handleCreateNewChat}
+          onNavigateToProfileChats={() => {
+            setActiveTab('profile');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onEditMessage={handleEditDirectMessage}
+          onDeleteMessage={handleDeleteDirectMessage}
+          onPinMessage={handlePinDirectMessage}
+          onReactMessage={handleReactDirectMessage}
+        />
+      )}
+
+      {/* MOBILE BOTTOM NAVIGATION DOCK (STREAMLINED 5-ACTION BAR) */}
+      {simulatedRole !== 'applicant' && (
+        <div className="md:hidden fixed bottom-3 left-3 right-3 z-40 bg-[#140F0B]/95 backdrop-blur-md border border-[#D4AF37]/40 rounded-3xl px-2 py-1.5 shadow-2xl flex items-center justify-around text-[10px] font-mono text-[#FAF5EE]">
+          {/* 1. Home */}
+          <button
+            onClick={() => {
+              setActiveTab('landing');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            className={`flex flex-col items-center space-y-0.5 py-1 px-2 rounded-2xl transition-all cursor-pointer ${
+              activeTab === 'landing' ? 'text-[#D4AF37] font-bold' : 'text-[#FAF5EE]/70 hover:text-white'
+            }`}
+          >
+            <span className="text-base">🌍</span>
+            <span>Home</span>
+          </button>
+
+          {/* 2. The Hearth */}
+          <button
+            onClick={() => {
+              setActiveTab('commons');
+              setCommonsSubTab('feed');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            className={`flex flex-col items-center space-y-0.5 py-1 px-2 rounded-2xl transition-all cursor-pointer ${
+              activeTab === 'commons' && commonsSubTab === 'feed' ? 'text-[#D4AF37] font-bold' : 'text-[#FAF5EE]/70 hover:text-white'
+            }`}
+          >
+            <span className="text-base">🏡</span>
+            <span>The Hearth</span>
+          </button>
+
+          {/* 3. The Exchange */}
+          <button
+            onClick={() => {
+              setActiveTab('commons');
+              setCommonsSubTab('exchange');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            className={`flex flex-col items-center space-y-0.5 py-1 px-2 rounded-2xl transition-all cursor-pointer ${
+              activeTab === 'commons' && commonsSubTab === 'exchange' ? 'text-[#D4AF37] font-bold' : 'text-[#FAF5EE]/70 hover:text-white'
+            }`}
+          >
+            <span className="text-base">🤝</span>
+            <span>The Exchange</span>
+          </button>
+
+          {/* 4. Post Action (Central Gold Button) */}
+          <button
+            onClick={() => {
+              setShowMobilePostSheet(true);
+            }}
+            className="w-10 h-10 -my-1 rounded-full bg-gradient-to-tr from-[#B87333] via-[#D4AF37] to-[#F3DE8A] text-[#1F140E] flex items-center justify-center font-bold text-lg shadow-[0_4px_16px_rgba(212,175,55,0.45)] cursor-pointer hover:scale-105 active:scale-95 transition-all shrink-0 border-2 border-white/50"
+            title="Create Post or Listing"
+          >
+            <Plus className="w-5 h-5 stroke-[2.5]" />
+          </button>
+
+          {/* 5. Sanctuary Drawer (Hubs, Forums, Settings & Metrics) */}
+          <button
+            onClick={() => {
+              setShowSisterProfileMenu(true);
+            }}
+            className="flex flex-col items-center space-y-0.5 py-1 px-2 rounded-2xl text-[#FAF5EE]/70 hover:text-white transition-all cursor-pointer"
+            title="Open Sister Sanctuary Drawer (Hubs, Forums, Settings & Metrics)"
+          >
+            <div className="w-5 h-5 rounded-full overflow-hidden border border-[#D4AF37] shrink-0">
+              <img src="/coppermommies-selflove1-cmc.jpg" alt="Profile" className="w-full h-full object-cover" />
+            </div>
+            <span>Sanctuary</span>
+          </button>
+        </div>
+      )}
+
+      {/* MOBILE CREATE POST ACTION SHEET */}
+      {showMobilePostSheet && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[9999999] pointer-events-auto">
+          <div 
+            className="fixed inset-0 bg-black/65 backdrop-blur-xs transition-opacity animate-fade-in-backdrop cursor-pointer"
+            onClick={() => setShowMobilePostSheet(false)}
+          />
+          <div className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-[#FAF5EE] rounded-t-3xl border-t-2 border-[#D4AF37] p-6 shadow-2xl space-y-4 animate-slide-in-up text-[#1F140E]">
+            <div className="flex items-center justify-between border-b border-copper-penny/20 pb-3">
+              <div className="flex items-center space-x-2">
+                <span className="text-lg">✍️</span>
+                <h3 className="font-serif font-black text-base text-[#1F140E]">
+                  Create Sanctuary Post or Listing
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMobilePostSheet(false)}
+                className="p-1.5 rounded-xl hover:bg-copper-penny/10 text-neutral-500 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs font-sans text-gray-600">
+              Choose where you would like to share your offering with your verified sisters:
+            </p>
+
+            <div className="space-y-2 font-mono text-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMobilePostSheet(false);
+                  setActiveTab('commons');
+                  setCommonsSubTab('feed');
+                  setCreatePostTriggerType('feed');
+                }}
+                className="w-full p-3 bg-white hover:bg-[#FAF5EE] rounded-2xl border border-copper-penny/25 text-left flex items-center justify-between group cursor-pointer transition-all shadow-xs"
+              >
+                <div className="flex items-center space-x-3">
+                  <span className="text-xl">🌿</span>
+                  <div>
+                    <div className="font-serif font-bold text-xs text-[#1F140E]">Share to The Hearth Stream</div>
+                    <div className="text-[10px] text-gray-500 font-sans">Encouragement, questions, recipes &amp; remedy wisdom</div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-copper-penny group-hover:translate-x-0.5 transition-transform" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMobilePostSheet(false);
+                  setActiveTab('commons');
+                  setCommonsSubTab('exchange');
+                  setCreatePostTriggerType('exchange');
+                }}
+                className="w-full p-3 bg-white hover:bg-[#FAF5EE] rounded-2xl border border-copper-penny/25 text-left flex items-center justify-between group cursor-pointer transition-all shadow-xs"
+              >
+                <div className="flex items-center space-x-3">
+                  <span className="text-xl">🤝</span>
+                  <div>
+                    <div className="font-serif font-bold text-xs text-[#1F140E]">List on The Exchange</div>
+                    <div className="text-[10px] text-gray-500 font-sans">Free giveaway, barter trade, or time credit item</div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-copper-penny group-hover:translate-x-0.5 transition-transform" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMobilePostSheet(false);
+                  setActiveTab('commons');
+                  setCommonsSubTab('housing');
+                  setCreatePostTriggerType('housing');
+                }}
+                className="w-full p-3 bg-white hover:bg-[#FAF5EE] rounded-2xl border border-copper-penny/25 text-left flex items-center justify-between group cursor-pointer transition-all shadow-xs"
+              >
+                <div className="flex items-center space-x-3">
+                  <span className="text-xl">🏡</span>
+                  <div>
+                    <div className="font-serif font-bold text-xs text-[#1F140E]">Post Housing or Land Space</div>
+                    <div className="text-[10px] text-gray-500 font-sans">Maternity rest suite, room rental, or homestead acreage</div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-copper-penny group-hover:translate-x-0.5 transition-transform" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMobilePostSheet(false);
+                  setActiveTab('advertise');
+                }}
+                className="w-full p-3 bg-white hover:bg-[#FAF5EE] rounded-2xl border border-copper-penny/25 text-left flex items-center justify-between group cursor-pointer transition-all shadow-xs"
+              >
+                <div className="flex items-center space-x-3">
+                  <span className="text-xl">✨</span>
+                  <div>
+                    <div className="font-serif font-bold text-xs text-[#1F140E]">Register Sister Business / Ad</div>
+                    <div className="text-[10px] text-gray-500 font-sans">Feature your maternal enterprise in the Grand Spotlight</div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-copper-penny group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ROOT PORTAL: RIGHT SLIDE-OUT SISTER PROFILE & ACCOUNT DRAWER */}
+      {showSisterProfileMenu && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[999999] pointer-events-auto">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/65 backdrop-blur-xs transition-opacity animate-fade-in-backdrop cursor-pointer" 
+            onClick={() => setShowSisterProfileMenu(false)} 
+            aria-label="Close Profile Menu"
+          />
+
+          {/* Right Slide-Out Panel */}
+          <aside 
+            aria-label="My Sister Profile & Account Menu"
+            className="fixed top-0 right-0 bottom-0 w-[335px] sm:w-[410px] max-w-[92vw] bg-[#FAF5EE] border-l-2 border-[#D4AF37]/80 shadow-[0_0_60px_rgba(0,0,0,0.6)] z-[1000000] p-5 sm:p-6 overflow-y-auto space-y-5 animate-slide-in-right text-xs font-sans flex flex-col justify-between"
+          >
+            <div className="space-y-5">
+              {/* Drawer Top Header & Close Button */}
+              <div className="flex items-center justify-between border-b border-copper-penny/20 pb-4">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm">👑</span>
+                  <span className="font-mono text-[10px] uppercase tracking-wider font-extrabold text-[#B87333]">
+                    Sister Sanctuary Drawer
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowSisterProfileMenu(false)}
+                  className="p-1.5 sm:p-2 rounded-xl bg-copper-penny/10 hover:bg-copper-penny/20 text-[#1F1813] cursor-pointer transition-colors border border-copper-penny/20"
+                  title="Close Profile Menu (Esc)"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Member Profile Identity Card */}
+              <div className="flex items-center space-x-3.5 p-3.5 bg-white rounded-2xl border border-copper-penny/20 shadow-xs">
+                <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-[#D4AF37] ring-2 ring-[#D4AF37]/30 shadow-md shrink-0 bg-[#FAF5EE]">
+                  <img 
+                    src="/coppermommies-selflove1-cmc.jpg" 
+                    alt={userName} 
+                    className="w-full h-full object-cover" 
+                  />
+                  <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white ring-1 ring-emerald-600" title="Active Sister" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center space-x-1.5">
+                    <p className="font-serif font-bold text-base text-[#1F1813] truncate">
+                      {simulatedRole === 'admin' ? 'Mama Shantrece' : userName}
+                    </p>
+                    <span className="text-xs" title="Verified Sovereign Matriarch">✨</span>
+                  </div>
+                  <p className="text-[10px] font-mono text-soft-sage truncate">
+                    @{simulatedRole === 'admin' ? 'mamashantrece' : 'coppermommie'} &bull; {selectedState} Circle
+                  </p>
+                  <div className="mt-1">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-[#D4AF37]/20 text-amber-950 border border-[#D4AF37]/40">
+                      {simulatedRole === 'admin' 
+                        ? '👑 FOUNDER / ELDER COUNCIL' 
+                        : simulatedRole === 'approved' 
+                        ? '🕊️ TIER 3 SOVEREIGN MATRIARCH'
+                        : simulatedRole === 'representative'
+                        ? '👑 CIRCLE HOST & LIAISON'
+                        : '🌱 SEEKING SISTER'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Wisdom Progression Level */}
+              <div className="px-3 py-1.5 bg-amber-500/10 border border-[#D4AF37]/35 rounded-xl flex items-center justify-between font-mono text-[10px]">
+                <span className="text-amber-950 font-bold flex items-center space-x-1.5">
+                  <span>🌱</span>
+                  <span>Wisdom Progression:</span>
+                </span>
+                <span className="font-bold text-[#B87333]">
+                  {simulatedRole === 'admin' ? 'Elder Council (Tier 3)' : 'Homestead Pillar (Tier 2)'}
+                </span>
+              </div>
+
+              {/* Direct Primary Action: Go to My Profile Hub */}
+              <button
+                onClick={() => {
+                  setActiveTab('profile');
+                  setShowSisterProfileMenu(false);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="w-full py-3 bg-[#1F1813] hover:bg-[#2A221B] text-[#FAF5EE] rounded-2xl font-bold font-sans text-xs flex items-center justify-center space-x-2 shadow-md cursor-pointer transition-all active:scale-95 border border-[#D4AF37]/30"
+              >
+                <User className="w-4 h-4 text-[#D4AF37]" />
+                <span>Go to My Profile Hub</span>
+              </button>
+
+              {/* Real-Time Cooperative Metrics: Generosity, Trade Balance, Time Bank */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[10px] font-mono px-1">
+                  <span className="uppercase font-bold text-gray-500">Cooperative Standing</span>
+                  <span className="text-emerald-700 font-bold">100% Sovereign Trust</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 p-3 bg-white rounded-2xl border border-copper-penny/20 text-center font-mono text-[10px] shadow-2xs">
+                  <div>
+                    <span className="text-gray-400 block text-[9px] uppercase font-bold flex items-center justify-center space-x-0.5">
+                      <span>💖</span>
+                      <span>Generosity</span>
+                    </span>
+                    <strong className="text-copper-penny text-xs block mt-0.5">{generosityScore} pts</strong>
+                    <span className="text-[8px] text-gray-400 block">Acts of Care</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block text-[9px] uppercase font-bold flex items-center justify-center space-x-0.5">
+                      <span>🪙</span>
+                      <span>Trade Bal</span>
+                    </span>
+                    <strong className="text-[#B87333] text-xs block mt-0.5">+{tradeBalance}</strong>
+                    <span className="text-[8px] text-gray-400 block">Barter Ledger</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block text-[9px] uppercase font-bold flex items-center justify-center space-x-0.5">
+                      <span>⏳</span>
+                      <span>Time Bank</span>
+                    </span>
+                    <strong className="text-[#1F1813] text-xs block mt-0.5">{timeBalance}h</strong>
+                    <span className="text-[8px] text-gray-400 block">Shared Hours</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 1. ALL SANCTUARY HUBS & COMMUNITY SPACES */}
+              <div className="space-y-1.5 text-xs">
+                <div className="flex items-center justify-between px-1 pt-1">
+                  <span className="text-[10px] font-mono uppercase font-bold text-gray-500">
+                    Sanctuary Hubs &amp; Spaces
+                  </span>
+                  <span className="text-[9px] font-mono text-soft-sage">All Portals</span>
+                </div>
+
+                {/* Village Commons & The Hearth */}
+                <button
+                  onClick={() => {
+                    setActiveTab('commons');
+                    setCommonsSubTab('feed');
+                    setShowSisterProfileMenu(false);
+                  }}
+                  className="w-full p-2.5 bg-white hover:bg-neutral-50 rounded-2xl border border-copper-penny/20 flex items-center justify-between font-bold cursor-pointer shadow-2xs transition-all active:scale-[0.99]"
+                >
+                  <span className="flex items-center space-x-2.5">
+                    <span className="text-base">🏡</span>
+                    <span>Village Commons &amp; The Hearth</span>
+                  </span>
+                  <span className="text-[9px] font-mono font-bold bg-[#FAF5EE] text-[#B87333] px-2 py-0.5 rounded-md border border-copper-penny/20">
+                    Commons
+                  </span>
+                </button>
+
+                {/* The Exchange: Barter & Trade Marketplace */}
+                <button
+                  onClick={() => {
+                    setActiveTab('commons');
+                    setCommonsSubTab('exchange');
+                    setShowSisterProfileMenu(false);
+                  }}
+                  className="w-full p-2.5 bg-white hover:bg-neutral-50 rounded-2xl border border-copper-penny/20 flex items-center justify-between font-bold cursor-pointer shadow-2xs transition-all active:scale-[0.99]"
+                >
+                  <span className="flex items-center space-x-2.5">
+                    <span className="text-base">🤝</span>
+                    <span>The Exchange (Barter &amp; Free Swaps)</span>
+                  </span>
+                  <span className="text-[9px] font-mono font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md border border-emerald-300/60">
+                    Marketplace
+                  </span>
+                </button>
+
+                {/* Mothers Academy & Her-Story Skool Hub */}
+                <button
+                  onClick={() => {
+                    setActiveTab('academy');
+                    setShowSisterProfileMenu(false);
+                  }}
+                  className="w-full p-2.5 bg-white hover:bg-neutral-50 rounded-2xl border border-copper-penny/20 flex items-center justify-between font-bold cursor-pointer shadow-2xs transition-all active:scale-[0.99]"
+                >
+                  <span className="flex items-center space-x-2.5">
+                    <span className="text-base">🎓</span>
+                    <span>Mothers Academy &amp; Her-Story</span>
+                  </span>
+                  <span className="text-[9px] font-mono font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md border border-amber-300/60">
+                    Skool Hub
+                  </span>
+                </button>
+
+                {/* NestBright Homeschool & Co-op Coordination Hub */}
+                <button
+                  onClick={() => {
+                    setActiveTab('kinship');
+                    setShowSisterProfileMenu(false);
+                  }}
+                  className="w-full p-2.5 bg-white hover:bg-neutral-50 rounded-2xl border border-copper-penny/20 flex items-center justify-between font-bold cursor-pointer shadow-2xs transition-all active:scale-[0.99]"
+                >
+                  <span className="flex items-center space-x-2.5">
+                    <BookOpen className="w-4 h-4 text-copper-penny" />
+                    <span>NestBright Homeschool &amp; Co-Op</span>
+                  </span>
+                  <span className="text-[9px] font-mono font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md border border-amber-300/60">
+                    Co-op Hub
+                  </span>
+                </button>
+
+                {/* Business Ad Portal & Register Biz */}
+                <button
+                  onClick={() => {
+                    setActiveTab('advertise');
+                    setShowSisterProfileMenu(false);
+                  }}
+                  className="w-full p-2.5 bg-white hover:bg-neutral-50 rounded-2xl border border-copper-penny/20 flex items-center justify-between font-bold cursor-pointer shadow-2xs transition-all active:scale-[0.99]"
+                >
+                  <span className="flex items-center space-x-2.5">
+                    <Sparkles className="w-4 h-4 text-[#D4AF37]" />
+                    <span>Business Ad Portal &amp; Register Biz</span>
+                  </span>
+                  <ChevronRight className="w-3.5 h-3.5 text-soft-sage" />
+                </button>
+
+                {/* Earth & Herbal Apothecary */}
+                <button
+                  onClick={() => {
+                    setActiveTab('healing');
+                    setShowSisterProfileMenu(false);
+                  }}
+                  className="w-full p-2.5 bg-white hover:bg-neutral-50 rounded-2xl border border-copper-penny/20 flex items-center justify-between font-bold cursor-pointer shadow-2xs transition-all active:scale-[0.99]"
+                >
+                  <span className="flex items-center space-x-2.5">
+                    <span className="text-base">🌿</span>
+                    <span>Earth &amp; Herbal Apothecary</span>
+                  </span>
+                  <span className="text-[9px] font-mono font-bold bg-[#FAF5EE] text-[#B87333] px-2 py-0.5 rounded-md border border-copper-penny/20">
+                    Remedies
+                  </span>
+                </button>
+
+                {/* Sister Direct Chats */}
+                <button
+                  onClick={() => {
+                    setProfileInitialTab('chats');
+                    setActiveTab('profile');
+                    setShowSisterProfileMenu(false);
+                  }}
+                  className="w-full p-2.5 bg-white hover:bg-neutral-50 rounded-2xl border border-copper-penny/20 flex items-center justify-between font-bold cursor-pointer shadow-2xs transition-all active:scale-[0.99]"
+                >
+                  <span className="flex items-center space-x-2.5">
+                    <MessageSquare className="w-4 h-4 text-copper-penny" />
+                    <span>Sister Direct Chats</span>
+                  </span>
+                  <span className="text-[9px] font-mono font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md border border-emerald-300/60">
+                    Active (3)
+                  </span>
+                </button>
+
+                {/* Saved Bookmarks */}
+                <button
+                  onClick={() => {
+                    setActiveTab('profile');
+                    setShowSisterProfileMenu(false);
+                  }}
+                  className="w-full p-2.5 bg-white hover:bg-neutral-50 rounded-2xl border border-copper-penny/20 flex items-center justify-between font-bold cursor-pointer shadow-2xs transition-all active:scale-[0.99]"
+                >
+                  <span className="flex items-center space-x-2.5">
+                    <Bookmark className="w-4 h-4 text-copper-penny" />
+                    <span>Saved Bookmarks</span>
+                  </span>
+                  <span className="text-[10px] font-mono font-bold bg-[#FAF5EE] text-[#B87333] px-2 py-0.5 rounded-lg border border-copper-penny/20">
+                    {savedItems.length}
+                  </span>
+                </button>
+              </div>
+
+              {/* 2. FORUMS & TOPIC SANCTUMS DYNAMIC ACCESS */}
+              <div className="space-y-2 pt-2 border-t border-copper-penny/20">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-[10px] font-mono uppercase font-bold text-gray-500">
+                    🌿 Forums &amp; Sacred Sanctums
+                  </span>
+                  <span className="text-[9px] font-mono text-soft-sage">Direct Filters</span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-1.5 font-mono text-[10px]">
+                  <button
+                    onClick={() => {
+                      setActiveTab('commons');
+                      setCommonsSubTab('feed');
+                      setCommonsSelectedTopic('daily-uplift');
+                      setShowSisterProfileMenu(false);
+                      window.scrollTo({ top: 350, behavior: 'smooth' });
+                    }}
+                    className="p-2 rounded-xl bg-white hover:bg-neutral-50 border border-copper-penny/20 text-left cursor-pointer transition-all flex items-center space-x-1.5"
+                  >
+                    <span>🕊️</span>
+                    <span className="truncate">Daily Uplift</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setActiveTab('commons');
+                      setCommonsSubTab('feed');
+                      setCommonsSelectedTopic('herbal-remedies');
+                      setShowSisterProfileMenu(false);
+                      window.scrollTo({ top: 350, behavior: 'smooth' });
+                    }}
+                    className="p-2 rounded-xl bg-white hover:bg-neutral-50 border border-copper-penny/20 text-left cursor-pointer transition-all flex items-center space-x-1.5"
+                  >
+                    <span>🌱</span>
+                    <span className="truncate">Herbal Remedies</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setActiveTab('commons');
+                      setCommonsSubTab('feed');
+                      setCommonsSelectedTopic('birth-postpartum');
+                      setShowSisterProfileMenu(false);
+                      window.scrollTo({ top: 350, behavior: 'smooth' });
+                    }}
+                    className="p-2 rounded-xl bg-white hover:bg-neutral-50 border border-copper-penny/20 text-left cursor-pointer transition-all flex items-center space-x-1.5"
+                  >
+                    <span>👶</span>
+                    <span className="truncate">Birth &amp; Family</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setActiveTab('commons');
+                      setCommonsSubTab('feed');
+                      setCommonsSelectedTopic('homeschool-nestbright');
+                      setShowSisterProfileMenu(false);
+                      window.scrollTo({ top: 350, behavior: 'smooth' });
+                    }}
+                    className="p-2 rounded-xl bg-white hover:bg-neutral-50 border border-copper-penny/20 text-left cursor-pointer transition-all flex items-center space-x-1.5"
+                  >
+                    <span>📚</span>
+                    <span className="truncate">Homeschool Pod</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setActiveTab('commons');
+                      setCommonsSubTab('feed');
+                      setCommonsSelectedTopic('homestead-seeds');
+                      setShowSisterProfileMenu(false);
+                      window.scrollTo({ top: 350, behavior: 'smooth' });
+                    }}
+                    className="p-2 rounded-xl bg-white hover:bg-neutral-50 border border-copper-penny/20 text-left cursor-pointer transition-all flex items-center space-x-1.5"
+                  >
+                    <span>🌾</span>
+                    <span className="truncate">Homestead Seeds</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setActiveTab('commons');
+                      setCommonsSubTab('feed');
+                      setCommonsSelectedTopic('wealth-strategies');
+                      setShowSisterProfileMenu(false);
+                      window.scrollTo({ top: 350, behavior: 'smooth' });
+                    }}
+                    className="p-2 rounded-xl bg-white hover:bg-neutral-50 border border-copper-penny/20 text-left cursor-pointer transition-all flex items-center space-x-1.5"
+                  >
+                    <span>💰</span>
+                    <span className="truncate">Co-op Wealth</span>
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setActiveTab('commons');
+                    setCommonsSubTab('feed');
+                    setCommonsSelectedTopic('all');
+                    setShowSisterProfileMenu(false);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="w-full py-1 text-center text-[10px] font-mono text-[#B87333] hover:underline font-bold block"
+                >
+                  🌿 View All Topics in The Hearth Stream →
+                </button>
+              </div>
+
+              {/* 3. SANCTUARY SETTINGS & COMMUNITY ENERGY SECTION */}
+              <div className="p-3.5 bg-white rounded-2xl border border-copper-penny/20 shadow-2xs space-y-3">
+                <div className="flex items-center space-x-2 border-b border-copper-penny/10 pb-2">
+                  <Settings className="w-4 h-4 text-copper-penny" />
+                  <span className="font-serif font-black text-xs text-[#1F1813]">
+                    Sanctuary Settings &amp; Atmosphere
+                  </span>
+                </div>
+
+                {/* Community Energy Selector (Hearth Moods) */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between font-mono text-[10px]">
+                    <span className="font-bold text-gray-500 uppercase flex items-center space-x-1">
+                      <span>☀️</span>
+                      <span>Community Energy:</span>
+                    </span>
+                    <span className="text-[#B87333] font-bold">{activeHearth.name}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5 font-mono text-[10px]">
+                    {Object.values(HEARTH_MOODS).map((mood) => {
+                      const isCurrent = hearthMood === mood.id;
+                      return (
+                        <button
+                          key={mood.id}
+                          type="button"
+                          onClick={() => handleSelectHearthMood(mood.id as HearthMoodId)}
+                          className={`p-2 rounded-xl border text-left transition-all cursor-pointer flex items-center space-x-1.5 ${
+                            isCurrent
+                              ? 'bg-[#1F1813] text-[#D4AF37] border-[#D4AF37] shadow-xs font-bold'
+                              : 'bg-[#FAF5EE] hover:bg-[#F3EADF] text-[#1F1813] border-copper-penny/20'
+                          }`}
+                        >
+                          <span>{mood.emoji}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate font-sans font-bold text-[10px]">{mood.name}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[9px] font-sans text-gray-500 italic leading-snug">
+                    {activeHearth.tagline}
+                  </p>
+                </div>
+
+                {/* Regional State Circle */}
+                <div className="flex items-center justify-between pt-2 border-t border-copper-penny/10 font-mono text-[10px]">
+                  <span className="text-gray-500 uppercase font-bold">State Circle:</span>
+                  <select
+                    value={selectedState}
+                    onChange={(e) => setSelectedState(e.target.value)}
+                    className="bg-[#FAF5EE] border border-copper-penny/20 rounded-lg px-2 py-1 text-[10px] font-bold text-[#1F1813] cursor-pointer"
+                  >
+                    <option value="GA">Georgia (GA)</option>
+                    <option value="NC">North Carolina (NC)</option>
+                    <option value="SC">South Carolina (SC)</option>
+                    <option value="TX">Texas (TX)</option>
+                    <option value="FL">Florida (FL)</option>
+                    <option value="VA">Virginia (VA)</option>
+                    <option value="AL">Alabama (AL)</option>
+                    <option value="MD">Maryland (MD)</option>
+                    <option value="CA">California (CA)</option>
+                  </select>
+                </div>
+
+                {/* Stay Logged In Toggle Option */}
+                <div className="flex items-center justify-between pt-2 border-t border-copper-penny/10">
+                  <div>
+                    <span className="text-[11px] font-bold text-[#1F1813] block">Stay Logged In</span>
+                    <span className="text-[9px] font-mono text-gray-500">Persist session across restarts</span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox"
+                      checked={stayLoggedIn}
+                      onChange={() => {
+                        const next = !stayLoggedIn;
+                        setStayLoggedIn(next);
+                        try {
+                          localStorage.setItem('copper_mommies_stay_logged_in', next ? 'true' : 'false');
+                        } catch (e) {}
+                      }}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#B87333]"></div>
+                  </label>
+                </div>
+              </div>
+
+              {/* ADMIN-ONLY VIEWING MODE SWITCHER - ONLY VISIBLE TO ADMIN */}
+              {simulatedRole === 'admin' ? (
+                <div className="space-y-2 pt-3 border-t border-copper-penny/20">
+                  <span className="text-[10px] font-mono uppercase font-bold text-amber-900 block flex items-center space-x-1">
+                    <span>👑</span>
+                    <span>Admin Viewing Mode Switcher:</span>
+                  </span>
+                  <div className="grid grid-cols-2 gap-2 font-mono text-[10px]">
+                    <button
+                      onClick={() => {
+                        setSimulatedRole('approved');
+                        setShowSisterProfileMenu(false);
+                      }}
+                      className={`p-2.5 rounded-xl border text-left font-bold transition-all cursor-pointer ${
+                        simulatedRole === 'approved' ? 'bg-[#D4AF37] text-[#1F1813] border-[#D4AF37]' : 'bg-white hover:bg-neutral-50 border-copper-penny/20 text-[#1F1813]'
+                      }`}
+                    >
+                      🕊️ Verified Mother
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSimulatedRole('admin');
+                        setActiveTab('admin');
+                        setShowSisterProfileMenu(false);
+                      }}
+                      className={`p-2.5 rounded-xl border text-left font-bold transition-all cursor-pointer ${
+                        simulatedRole === 'admin' ? 'bg-[#D4AF37] text-[#1F1813] border-[#D4AF37]' : 'bg-white hover:bg-neutral-50 border-copper-penny/20 text-[#1F1813]'
+                      }`}
+                    >
+                      👵 Circle Lead
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSimulatedRole('applicant');
+                        setActiveTab('landing');
+                        setShowSisterProfileMenu(false);
+                      }}
+                      className={`p-2.5 rounded-xl border text-left font-bold transition-all cursor-pointer ${
+                        simulatedRole === 'applicant' ? 'bg-[#D4AF37] text-[#1F1813] border-[#D4AF37]' : 'bg-white hover:bg-neutral-50 border-copper-penny/20 text-[#1F1813]'
+                      }`}
+                    >
+                      🌱 Seeking Sister
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSimulatedRole('representative');
+                        setShowSisterProfileMenu(false);
+                      }}
+                      className={`p-2.5 rounded-xl border text-left font-bold transition-all cursor-pointer ${
+                        simulatedRole === 'representative' ? 'bg-[#D4AF37] text-[#1F1813] border-[#D4AF37]' : 'bg-white hover:bg-neutral-50 border-copper-penny/20 text-[#1F1813]'
+                      }`}
+                    >
+                      👑 Circle Host
+                    </button>
+                  </div>
+                  
+                  <button
+                    onClick={() => {
+                      setActiveTab('admin');
+                      setShowSisterProfileMenu(false);
+                    }}
+                    className="w-full mt-2 py-2.5 bg-[#1F140E] hover:bg-[#2A1D16] text-[#D4AF37] font-mono text-xs font-bold rounded-xl flex items-center justify-center space-x-2 border border-[#D4AF37]/50 shadow-md cursor-pointer transition-all"
+                  >
+                    <span>👵 Open Admin Office</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="pt-2 border-t border-copper-penny/20">
+                  <button
+                    onClick={() => {
+                      setShowSisterProfileMenu(false);
+                      setShowAdminLoginModal(true);
+                    }}
+                    className="w-full py-2.5 bg-white hover:bg-neutral-50 text-gray-700 hover:text-[#1F1813] font-mono text-[11px] rounded-xl flex items-center justify-center space-x-1.5 cursor-pointer border border-copper-penny/20"
+                  >
+                    <Lock className="w-3.5 h-3.5 text-copper-penny" />
+                    <span>Admin Office Access</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Footer / Session Actions */}
+            <div className="pt-4 mt-6 border-t border-copper-penny/20 flex items-center justify-between text-xs font-sans">
+              <button
+                onClick={() => {
+                  setSimulatedRole('applicant');
+                  setActiveTab('landing');
+                  setShowSisterProfileMenu(false);
+                }}
+                className="text-rose-700 hover:text-rose-900 font-bold cursor-pointer flex items-center space-x-1 px-2 py-1 rounded-lg hover:bg-rose-50 transition-colors"
+              >
+                <span>🚪</span>
+                <span>Sign Out</span>
+              </button>
+              
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('copper_open_pwa_guide'));
+                    setShowSisterProfileMenu(false);
+                  }}
+                  className="text-soft-sage hover:text-copper-penny cursor-pointer font-mono text-[11px] hover:underline"
+                >
+                  📲 Install App
+                </button>
+                <button
+                  onClick={() => {
+                    setShowGlobalSupportModal(true);
+                    setShowSisterProfileMenu(false);
+                  }}
+                  className="text-amber-900 hover:text-amber-950 font-bold font-mono text-[11px] bg-amber-100/80 px-2 py-1 rounded-lg border border-amber-300/60"
+                >
+                  💝 Support
+                </button>
+              </div>
+            </div>
+
+          </aside>
+        </div>,
+        document.body
       )}
 
       {/* Floating Dark Bronze Back to Top Button */}
