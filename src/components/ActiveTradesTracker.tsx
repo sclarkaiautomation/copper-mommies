@@ -22,6 +22,7 @@ interface ActiveTradesTrackerProps {
   onConfirmTradeHandshake: (tradeId: string, role: 'giver' | 'recipient') => void;
   onCancelTrade: (tradeId: string) => void;
   onScheduleMeetup: (tradeId: string, spotName: string, dateStr: string) => void;
+  onOpenTradeHandshake?: (trade: ActiveTradeRecord) => void;
 }
 
 export default function ActiveTradesTracker({
@@ -29,7 +30,8 @@ export default function ActiveTradesTracker({
   userName,
   onConfirmTradeHandshake,
   onCancelTrade,
-  onScheduleMeetup
+  onScheduleMeetup,
+  onOpenTradeHandshake
 }: ActiveTradesTrackerProps) {
   const [filterStatus, setFilterStatus] = useState<'All' | 'Pending' | 'Awaiting Handshake' | 'Completed'>('All');
   const [copiedHashId, setCopiedHashId] = useState<string | null>(null);
@@ -135,13 +137,13 @@ export default function ActiveTradesTracker({
                       {trade.role === 'giver' ? '🌱 You Are Providing:' : '🎁 You Are Receiving:'}
                     </span>
                     <p className="font-bold text-[#1F1813] text-[12px]">{trade.offeredItemOrService}</p>
-                    <span className="text-[9px] font-mono text-[#B87333] block">Valued at {trade.pointsValue} co-op credits</span>
+                    <span className="text-[9px] font-mono text-[#B87333] block">Valued at {trade.pointsValue} CMC Credits</span>
                   </div>
 
-                  {/* Sister Counterpart */}
+                  {/* Partner Counterpart */}
                   <div className="bg-[#FAF5EE] p-3 rounded-xl border border-copper-penny/10 space-y-1">
                     <span className="text-[9px] font-mono text-soft-sage uppercase font-bold block">
-                      Partner Sister: <strong>{trade.partnerName}</strong> ({trade.partnerContact})
+                      Exchange Partner: <strong>{trade.partnerName}</strong> ({trade.partnerContact})
                     </span>
                     <p className="font-bold text-[#A85138] text-[12px]">{trade.requestedItemOrService}</p>
                     <span className="text-[9px] font-mono text-soft-sage block">Initiated: {trade.initiatedAt}</span>
@@ -164,10 +166,80 @@ export default function ActiveTradesTracker({
                     </div>
                   </div>
 
-                  <span className="text-[9px] font-mono bg-white px-2 py-0.5 rounded border border-amber-300 text-amber-800 font-bold flex items-center space-x-1">
-                    <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                    <span>Public Daylight Safe Zone</span>
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[9px] font-mono bg-amber-100/80 px-2 py-0.5 rounded border border-amber-300 text-amber-900 font-bold flex items-center space-x-1">
+                      <span>⏳ Time Bank Escrow Reserved</span>
+                    </span>
+                    <span className="text-[9px] font-mono bg-white px-2 py-0.5 rounded border border-amber-300 text-amber-800 font-bold flex items-center space-x-1">
+                      <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                      <span>Daylight Safe Zone</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* 4-Stage Visual Progress Bar */}
+                <div className="p-2 rounded-xl bg-[#FAF5EE] border border-copper-penny/10 space-y-1.5">
+                  <div className="flex items-center justify-between text-[9px] font-mono text-soft-sage font-bold">
+                    <span>Handshake Progression</span>
+                    <span className="text-[#B87333]">
+                      {isCompleted ? 'Stage 4: Fulfilled' : trade.status === 'Awaiting Safe Handshake' ? 'Stage 3: Escrow Locked' : 'Stage 1: Proposal Active'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1 text-center font-mono text-[8.5px]">
+                    <div className={`py-1 px-1 rounded ${
+                      trade.status === 'Pending Negotiation' || trade.status === 'Awaiting Safe Handshake' || isCompleted
+                        ? 'bg-amber-600 text-white font-bold'
+                        : 'bg-gray-200 text-gray-500'
+                    }`}>
+                      1. Proposal
+                    </div>
+                    <div className={`py-1 px-1 rounded ${
+                      trade.status === 'Awaiting Safe Handshake' || isCompleted
+                        ? 'bg-amber-600 text-white font-bold'
+                        : 'bg-amber-100 text-amber-800'
+                    }`}>
+                      2. Counter/Review
+                    </div>
+                    <div className={`py-1 px-1 rounded ${
+                      trade.status === 'Awaiting Safe Handshake' || isCompleted
+                        ? 'bg-[#B87333] text-white font-bold'
+                        : 'bg-gray-200 text-gray-500'
+                    }`}>
+                      3. Terms Locked
+                    </div>
+                    <div className={`py-1 px-1 rounded ${
+                      isCompleted
+                        ? 'bg-emerald-600 text-white font-bold'
+                        : 'bg-gray-200 text-gray-500'
+                    }`}>
+                      4. Fulfilled
+                    </div>
+                  </div>
+                </div>
+
+                {/* Next Steps Prompt */}
+                <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-[10.5px] font-mono text-[#1F1813] flex items-center justify-between gap-2">
+                  <div className="flex items-center space-x-1.5 min-w-0">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span className="truncate">
+                      {isCompleted 
+                        ? '✓ Exchange confirmed! Digital co-op receipt generated and +5 Generosity Points awarded.'
+                        : trade.status === 'Awaiting Safe Handshake'
+                        ? 'Next: Meet at daylight spot or deliver goods, then sign your safe handshake below.'
+                        : `Next: Awaiting ${trade.partnerName}'s acceptance or counter-proposal.`}
+                    </span>
+                  </div>
+
+                  {onOpenTradeHandshake && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenTradeHandshake(trade)}
+                      className="px-2.5 py-1 bg-[#1F140E] hover:bg-black text-[#D4AF37] border border-[#D4AF37]/50 rounded-lg text-[9px] font-bold font-mono transition-all shrink-0 cursor-pointer flex items-center space-x-1 shadow-xs"
+                    >
+                      <ArrowLeftRight className="w-3 h-3" />
+                      <span>Manage Handshake</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Handshake Signatures & Receipt */}
@@ -201,7 +273,7 @@ export default function ActiveTradesTracker({
                     {isCompleted && trade.digitalReceiptHash && (
                       <button
                         onClick={() => handleCopyReceipt(trade.digitalReceiptHash!, trade.id)}
-                        className="px-3 py-1.5 bg-[#1F1813] hover:bg-black text-[#D4AF37] font-mono text-[10px] font-bold rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer shadow-xs"
+                        className="px-3 py-1.5 bg-[#1F140E] hover:bg-black text-[#D4AF37] font-mono text-[10px] font-bold rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer shadow-xs"
                       >
                         {copiedHashId === trade.id ? <Check className="w-3 h-3 text-emerald-400" /> : <FileText className="w-3 h-3" />}
                         <span>{copiedHashId === trade.id ? 'Receipt Copied!' : 'Digital Co-op Receipt'}</span>
@@ -211,7 +283,7 @@ export default function ActiveTradesTracker({
                     {!isCompleted && (
                       <button
                         onClick={() => onCancelTrade(trade.id)}
-                        className="text-[10px] font-mono text-soft-sage hover:text-rose-600 transition-colors"
+                        className="text-[10px] font-mono text-soft-sage hover:text-rose-600 transition-colors cursor-pointer"
                       >
                         Cancel
                       </button>

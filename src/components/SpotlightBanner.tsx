@@ -253,97 +253,53 @@ export default function SpotlightBanner({
         <div className="absolute -top-16 -right-16 w-60 h-60 bg-[#D4AF37]/15 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-16 -left-16 w-60 h-60 bg-[#B87333]/10 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Top Badges & Manual Controls Header Bar */}
+        {/* Top Asset Accent Bar */}
         <div className="bg-gradient-to-r from-[#1F1813] via-[#2A221B] to-[#1F1813] px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2 border-b border-[#D4AF37]/30 text-white">
           
-          {/* Left: Category Badge & Feature Pill */}
+          {/* Left: Indicator */}
           <div className="flex items-center space-x-2.5">
             <span className="inline-flex rounded-full h-2 w-2 bg-[#D4AF37] animate-pulse"></span>
-            <span className="text-[10px] sm:text-xs font-mono font-extrabold uppercase tracking-widest text-[#D4AF37] glow-gold-text flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#D4AF37]" />
-              <span>{currentBanner.categoryBadge || 'Featured Community Spotlight'}</span>
+            <span className="text-[10px] sm:text-xs font-mono font-extrabold uppercase tracking-widest text-[#D4AF37] flex items-center gap-1.5">
+              <span>PAID FEATURED PARTNER • COMMUNITY MARKETPLACE</span>
             </span>
-
-            {/* If multiple features: display carousel indicator badge */}
-            {totalFeatures > 1 && (
-              <span className="hidden sm:inline-flex items-center space-x-1 px-2 py-0.5 rounded-full bg-white/10 text-[10px] font-mono font-bold text-[#FAF5EE] border border-white/15">
-                <Layers className="w-3 h-3 text-[#D4AF37]" />
-                <span>Feature {currentIndex + 1} of {totalFeatures}</span>
-              </span>
-            )}
           </div>
 
-          {/* Right: Manual Carousel Controls & Hover Indicators & Admin Button */}
-          <div className="flex items-center space-x-2 sm:space-x-3 text-[11px] font-mono text-[#D4AF37]/90">
-            
-            {/* Status indicator when hovered or auto-scroll paused */}
-            {totalFeatures > 1 && (
-              <div className="flex items-center space-x-1.5">
-                {isHovered && !isManuallyPaused && (
-                  <span className="bg-[#D4AF37]/20 border border-[#D4AF37]/40 px-2 py-0.5 rounded-md text-[9px] font-bold text-[#D4AF37] flex items-center gap-1 animate-pulse">
-                    <span>⏸️ Paused (Hover)</span>
-                  </span>
-                )}
-                {isManuallyPaused && (
-                  <span className="bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded-md text-[9px] font-bold text-amber-300 flex items-center gap-1">
-                    <span>⏸️ Auto-Scroll Paused</span>
-                  </span>
-                )}
-                {!isHovered && !isManuallyPaused && (
-                  <span className="hidden md:inline-flex text-[9px] text-[#FAF5EE]/60 font-mono">
-                    Auto-scrolling (Hover to stop)
-                  </span>
-                )}
-              </div>
-            )}
+          {/* Right: Verified Partner Badge & Controls */}
+          <div className="flex items-center space-x-2.5 text-[11px] font-mono text-[#D4AF37]">
+            <span className="bg-[#D4AF37]/20 border border-[#D4AF37]/40 px-2.5 py-0.5 rounded-full text-[10px] font-bold text-[#D4AF37] flex items-center gap-1">
+              <CheckCircle className="w-3 h-3 text-[#D4AF37]" />
+              <span>Verified Partner</span>
+            </span>
 
-            {/* Special Highlights on banner */}
-            {currentBanner.hasContest && (
-              <span className="hidden md:inline-flex bg-[#D4AF37]/20 border border-[#D4AF37]/40 px-2 py-0.5 rounded-full text-[10px] font-bold text-[#D4AF37] items-center gap-1">
-                <Gift className="w-3 h-3 text-[#D4AF37]" />
-                <span>{currentBanner.contestPrizeCount ? `${currentBanner.contestPrizeCount} Passes Giveaway` : 'Giveaway Active'}</span>
-              </span>
-            )}
-
-            {/* Manual Navigation Controls for Multiple Features */}
+            {/* Carousel Navigation / Pause if multiple */}
             {totalFeatures > 1 && (
               <div className="flex items-center space-x-1 bg-white/10 p-0.5 rounded-xl border border-white/15 backdrop-blur-xs">
-                {/* Previous Button */}
                 <button
                   type="button"
                   onClick={handlePrev}
-                  className="p-1 text-[#FAF5EE] hover:text-[#D4AF37] hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
-                  title="Previous Feature (Manual Scroll)"
+                  className="p-1 text-[#FAF5EE] hover:text-[#D4AF37] rounded-lg transition-colors cursor-pointer"
                   aria-label="Previous Feature"
                 >
-                  <ChevronLeft className="w-4 h-4" />
+                  <ChevronLeft className="w-3.5 h-3.5" />
                 </button>
-
-                {/* Play/Pause Toggle */}
                 <button
                   type="button"
                   onClick={toggleManualPlayPause}
-                  className="p-1 text-[#FAF5EE] hover:text-[#D4AF37] hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
-                  title={isManuallyPaused ? "Resume Auto-Scroll" : "Pause Auto-Scroll"}
-                  aria-label={isManuallyPaused ? "Resume Auto-Scroll" : "Pause Auto-Scroll"}
+                  className="p-1 text-[#FAF5EE] hover:text-[#D4AF37] rounded-lg transition-colors cursor-pointer"
+                  aria-label={isManuallyPaused ? "Resume" : "Pause"}
                 >
-                  {isManuallyPaused ? <Play className="w-3.5 h-3.5 text-emerald-400" /> : <Pause className="w-3.5 h-3.5 text-amber-300" />}
+                  {isManuallyPaused ? <Play className="w-3 h-3 text-emerald-400" /> : <Pause className="w-3 h-3 text-amber-300" />}
                 </button>
-
-                {/* Next Button */}
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="p-1 text-[#FAF5EE] hover:text-[#D4AF37] hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
-                  title="Next Feature (Manual Scroll)"
+                  className="p-1 text-[#FAF5EE] hover:text-[#D4AF37] rounded-lg transition-colors cursor-pointer"
                   aria-label="Next Feature"
                 >
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             )}
-
-            {/* Admin Trigger */}
             {isAdmin && onOpenAdminManager && (
               <button 
                 onClick={onOpenAdminManager}
@@ -355,9 +311,9 @@ export default function SpotlightBanner({
           </div>
         </div>
 
-        {/* Auto-scroll Progress Bar (Only visible when > 1 feature and auto-scroll active) */}
+        {/* Auto-scroll Progress Bar */}
         {totalFeatures > 1 && (
-          <div className="w-full h-1.5 bg-[#2A221B]/30 relative overflow-hidden shrink-0" title="Auto-scrolling progress indicator">
+          <div className="w-full h-1.5 bg-[#2A221B]/30 relative overflow-hidden shrink-0">
             <div 
               className={`h-full bg-gradient-to-r from-[#B87333] via-[#D4AF37] to-[#E5A65E] transition-all duration-30 ease-linear ${
                 isAutoScrollActive ? 'opacity-100' : 'opacity-40'
@@ -367,242 +323,161 @@ export default function SpotlightBanner({
           </div>
         )}
 
-        {/* Animated Banner Content Body - Expanded Uniform Frame so All Content Fits Cleanly Without Scrollbars */}
-        <div className="p-4 sm:p-6 min-h-[580px] lg:min-h-[540px] flex flex-col justify-between relative overflow-hidden shrink-0" style={{ contain: 'layout style' }}>
+        {/* Animated Banner Content Body - Streamlined Asymmetrical 3-Column Layout */}
+        <div className="p-3.5 sm:p-4 lg:p-5 min-h-[290px] md:h-[260px] lg:h-[250px] flex flex-col justify-between relative overflow-hidden shrink-0" style={{ contain: 'layout style' }}>
           <AnimatePresence mode="wait">
             <motion.div
               key={currentBanner.id || currentIndex}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.25, ease: 'easeInOut' }}
-              className="space-y-4 w-full h-full flex flex-col justify-between"
+              transition={{ duration: 0.22, ease: 'easeInOut' }}
+              className="w-full h-full flex flex-col justify-between overflow-hidden"
             >
-              
-              {/* Proportioned Clickable Banner Image */}
-              {currentBanner.bannerImage && (
-                <div className="relative group rounded-2xl overflow-hidden border border-[#B87333]/30 shadow-sm hover:shadow-md transition-all bg-[#0d99ff]">
-                  <a 
-                    href={currentBanner.externalLink || 'https://nestbrightacademy.com'} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="block relative overflow-hidden"
-                    title={`Click to visit ${currentBanner.title}`}
-                  >
-                    <img 
-                      src={currentBanner.bannerImage} 
-                      alt={currentBanner.title} 
-                      className="w-full h-32 sm:h-40 md:h-44 object-cover object-center transform group-hover:scale-[1.015] transition-transform duration-500"
-                      referrerPolicy="no-referrer"
-                    />
-                    
-                    {/* Visual Hover Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#1F1813]/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-                      <div className="bg-[#1F1813]/90 text-[#D4AF37] px-3.5 py-1.5 rounded-xl border border-[#D4AF37]/50 text-xs font-mono font-bold flex items-center space-x-2 backdrop-blur-xs shadow-lg">
-                        <span>{currentBanner.linkText || 'Explore Partner Portal'}</span>
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </div>
-                    </div>
-
-                    {/* Direct Link Floating Pill in Corner */}
-                    {currentBanner.externalLink && (
-                      <div className="absolute top-2.5 right-2.5 bg-[#1F1813]/85 text-[#FAF5EE] text-[10px] font-mono font-bold px-2.5 py-1 rounded-lg border border-[#D4AF37]/40 flex items-center space-x-1.5 backdrop-blur-xs shadow-md">
-                        <span>{currentBanner.linkText || 'Visit Portal'}</span>
-                        <ExternalLink className="w-3 h-3 text-[#D4AF37]" />
-                      </div>
-                    )}
-                  </a>
-                </div>
-              )}
-
-              {/* Under-Banner Callout & Text Details */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+              <div className="grid grid-cols-1 md:grid-cols-[27%_1fr_27%] lg:grid-cols-[26%_1fr_26%] gap-3 sm:gap-4 lg:gap-5 h-full items-stretch overflow-hidden">
                 
-                {/* Left 7 Columns: Initiative Vision & Giveaway Details */}
-                <div className="lg:col-span-7 space-y-3.5">
-                  <div className="space-y-1">
-                    <div className="flex items-center space-x-2">
-                      <GraduationCap className="w-5 h-5 text-[#B87333]" />
-                      <h3 className="font-serif font-extrabold text-xl sm:text-2xl text-[#1F1813] leading-tight">
-                        {currentBanner.title}
-                      </h3>
-                    </div>
-                    {currentBanner.subtitle && (
-                      <p className="text-xs font-mono text-[#B87333] font-bold uppercase tracking-wider">
-                        {currentBanner.subtitle}
-                      </p>
-                    )}
-                  </div>
-
-                  <p className="text-xs sm:text-sm text-[#2A221B]/90 leading-relaxed">
-                    {currentBanner.description}
-                  </p>
-
-                  {/* Free Access Giveaway / Contest Box if active on banner */}
-                  {currentBanner.hasContest && (
-                    <div className="bg-white border-2 border-[#D4AF37]/40 rounded-2xl p-4 shadow-sm space-y-3 relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-[#D4AF37]/10 rounded-full blur-xl pointer-events-none" />
-                      
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#D4AF37]/20 pb-2.5">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-8 h-8 rounded-xl bg-[#D4AF37]/20 text-[#B87333] flex items-center justify-center font-bold">
-                            🎁
-                          </div>
-                          <div>
-                            <h4 className="font-serif font-extrabold text-sm sm:text-base text-[#1F1813]">
-                              {currentBanner.contestTitle || '5 Full 1-Year Free Access Scholarships'}
-                            </h4>
-                            <p className="text-[10px] font-mono text-[#B87333] font-bold uppercase">
-                              {currentBanner.contestEligibility || 'Eligible: Elementary Children in Grades 3, 4, or 5'}
-                            </p>
-                          </div>
-                        </div>
-
-                        <span className="text-[10px] font-mono font-bold bg-[#FAF5EE] text-[#1F1813] border border-[#B87333]/30 px-2.5 py-1 rounded-lg self-start sm:self-auto">
-                          🎟️ {entriesCount} Mothers Entered
+                {/* 1. Left Container (Visual Anchor): 25%-30% width */}
+                <div className="relative rounded-xl overflow-hidden border-2 border-[#B87333]/40 shadow-xs bg-[#1F140E] flex flex-col h-full min-h-[140px] group">
+                  {currentBanner.bannerImage ? (
+                    <a 
+                      href={currentBanner.externalLink || '#'} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="block w-full h-full relative overflow-hidden"
+                      title={`Visit ${currentBanner.title}`}
+                    >
+                      <img 
+                        src={currentBanner.bannerImage} 
+                        alt={currentBanner.title} 
+                        className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                        referrerPolicy="no-referrer"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                        <span className="text-[10px] font-mono font-bold text-[#D4AF37] bg-black/80 px-2 py-0.5 rounded flex items-center gap-1">
+                          <span>Visit Partner</span>
+                          <ExternalLink className="w-3 h-3" />
                         </span>
                       </div>
-
-                      <div className="text-xs text-[#2A221B]/85 space-y-1.5 leading-relaxed">
-                        <p className="font-medium text-[#1F1813]">
-                          <strong>How to Enter for Free Access:</strong>
-                        </p>
-                        <ul className="list-disc list-inside space-y-1 text-xs text-[#2A221B]/85 pl-1">
-                          {currentBanner.contestRequirements && currentBanner.contestRequirements.length > 0 ? (
-                            currentBanner.contestRequirements.map((req, i) => (
-                              <li key={i}>{req}</li>
-                            ))
-                          ) : (
-                            <>
-                              <li>Must be an active or applicant Copper Mommies member.</li>
-                              <li>Child must be entering or currently in <strong>Grade 3, Grade 4, or Grade 5</strong>.</li>
-                              <li>Submit your child&apos;s name, current grade, and a brief 1–2 sentence note on your homeschool &amp; learning flight path.</li>
-                            </>
-                          )}
-                        </ul>
-                      </div>
-
-                      <div className="pt-1 flex flex-wrap items-center gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setShowEntryModal(true)}
-                          className="px-4 py-2.5 bg-[#B87333] hover:bg-[#A85138] text-white text-xs font-bold rounded-xl shadow-md hover:shadow-lg active:scale-95 transition-all flex items-center space-x-2 cursor-pointer border border-[#96551d]/40"
-                        >
-                          <Gift className="w-4 h-4 text-[#D4AF37]" />
-                          <span>Submit Scholarship Entry (Free)</span>
-                        </button>
-
-                        {currentBanner.externalLink && (
-                          <a 
-                            href={currentBanner.externalLink} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="px-3.5 py-2 bg-white hover:bg-[#FAF5EE] text-[#1F1813] text-xs font-bold rounded-xl border border-[#B87333]/30 hover:border-[#B87333] transition-all flex items-center space-x-1.5"
-                          >
-                            <span>Preview Curriculum</span>
-                            <ExternalLink className="w-3.5 h-3.5 text-[#B87333]" />
-                          </a>
-                        )}
-                      </div>
+                    </a>
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-[#FAF5EE] text-[#1F1813]/60">
+                      <span className="text-xs font-mono font-bold">[Your Image Here]</span>
                     </div>
                   )}
                 </div>
 
-                {/* Right 5 Columns: Exclusive Member Offer / Action Box */}
-                <div className="lg:col-span-5 space-y-4">
-                  
-                  {/* Exclusive Member Rate / Community Benefit Card */}
-                  <div className="bg-[#1F1813] text-white border-2 border-[#D4AF37]/50 rounded-2xl p-4 sm:p-5 shadow-xl relative overflow-hidden space-y-3.5">
-                    <div className="absolute top-0 right-0 w-28 h-28 bg-[#D4AF37]/10 rounded-full blur-2xl pointer-events-none" />
-                    
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-mono font-extrabold uppercase tracking-widest text-[#D4AF37] bg-[#D4AF37]/15 px-2.5 py-0.5 rounded-full border border-[#D4AF37]/30">
-                        {currentBanner.promoHeadline || 'Exclusive Village Benefit'}
-                      </span>
-                      {currentBanner.regularPrice && (
-                        <span className="text-xs line-through text-gray-400 font-mono">
-                          Regular: {currentBanner.regularPrice}
-                        </span>
-                      )}
+                {/* 2. Center Container (Streamlined Information): 45%-50% width with generous padding */}
+                <div className="flex flex-col justify-between py-0.5 px-1 sm:px-2 min-w-0 space-y-1.5 overflow-hidden">
+                  <div className="space-y-0.5">
+                    {/* Row 1: Advertiser Brand Name */}
+                    <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#B87333]">
+                      {currentBanner.subtitle || currentBanner.categoryBadge || 'Your Brand Name Co.'}
                     </div>
-
-                    <div>
-                      {currentBanner.promoPrice ? (
-                        <div className="flex items-baseline space-x-2">
-                          <span className="text-2xl sm:text-3xl font-extrabold text-[#D4AF37] font-mono glow-gold-text">
-                            {currentBanner.promoPrice}
-                          </span>
-                          <span className="text-xs text-gray-300 font-mono">/ member rate</span>
-                        </div>
-                      ) : (
-                        <div className="text-lg font-bold text-[#D4AF37] font-serif">
-                          Community Partner Initiative
-                        </div>
-                      )}
-                      <p className="text-xs text-gray-200 mt-1 leading-relaxed">
-                        {currentBanner.promoDetails || 'Copper Mommies enjoy sovereign community rates and prioritized access to support our families in building generational independence.'}
-                      </p>
-                    </div>
-
-                    {/* Promo Code Box */}
-                    {currentBanner.promoCode && (
-                      <div className="bg-white/10 border border-[#D4AF37]/40 rounded-xl p-3 flex items-center justify-between gap-2">
-                        <div>
-                          <span className="text-[9px] uppercase font-mono text-gray-400 block">Use Discount Code at Checkout:</span>
-                          <span className="font-mono font-black text-sm text-[#D4AF37] tracking-wider">
-                            {currentBanner.promoCode}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleCopyCode(currentBanner.promoCode)}
-                          className="px-3 py-1.5 bg-[#D4AF37] hover:bg-[#b59226] text-[#1F1813] text-xs font-bold rounded-lg shadow-sm active:scale-95 transition-all flex items-center space-x-1 cursor-pointer"
-                        >
-                          {copiedCode ? (
-                            <>
-                              <Check className="w-3.5 h-3.5 text-emerald-800" />
-                              <span className="text-emerald-900">Copied!</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-3.5 h-3.5 text-[#1F1813]" />
-                              <span>Copy</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Call to Action Buttons */}
-                    <div className="space-y-2 pt-1">
-                      {currentBanner.externalLink && (
-                        <a
-                          href={currentBanner.promoLink || currentBanner.externalLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-full py-2.5 bg-gradient-to-r from-[#D4AF37] to-[#B87333] hover:from-[#e0bc46] hover:to-[#c47f3e] text-[#1F1813] font-extrabold text-xs rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center space-x-2 text-center"
-                        >
-                          <span>{currentBanner.buttonText || currentBanner.linkText || 'Claim Community Benefit'}</span>
-                          <ExternalLink className="w-3.5 h-3.5 text-[#1F1813]" />
-                        </a>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => setShowContactModal(true)}
-                        className="w-full py-2 bg-white/10 hover:bg-white/20 text-[#FAF5EE] text-xs font-mono rounded-xl border border-white/15 transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
-                      >
-                        <HelpCircle className="w-3.5 h-3.5 text-[#D4AF37]" />
-                        <span>{currentBanner.contactActionLabel || 'Contact for Code Assistance / Questions'}</span>
-                      </button>
-                    </div>
-
+                    {/* Row 2: Primary Feature Headline */}
+                    <h3 className="font-serif font-extrabold text-base sm:text-lg text-[#1F1813] leading-snug line-clamp-1">
+                      {currentBanner.title}
+                    </h3>
                   </div>
 
+                  {/* Row 3: Sub-header / Sub-title text block */}
+                  <p className="text-xs sm:text-[13px] text-[#2A221B]/90 leading-relaxed line-clamp-2">
+                    {currentBanner.description}
+                  </p>
+
+                  {/* Row 4: Streamlined compact bulleted list [Key Features] */}
+                  <div className="space-y-1 pt-1 border-t border-[#B87333]/15 shrink-0">
+                    <span className="text-[10px] font-mono font-bold text-[#B87333] uppercase block">Key Features:</span>
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-[#1F1813]/85 font-mono">
+                      <li className="flex items-center space-x-1 truncate">
+                        <span className="text-[#B87333] font-bold">•</span>
+                        <span className="truncate">{currentBanner.promoHeadline || 'Verified Quality'}</span>
+                      </li>
+                      <li className="flex items-center space-x-1 truncate">
+                        <span className="text-[#B87333] font-bold">•</span>
+                        <span className="truncate">Sovereignty &amp; Ethics</span>
+                      </li>
+                      <li className="flex items-center space-x-1 truncate">
+                        <span className="text-[#B87333] font-bold">•</span>
+                        <span className="truncate">Exclusive Community Benefit</span>
+                      </li>
+                      <li className="flex items-center space-x-1 truncate">
+                        <span className="text-[#B87333] font-bold">•</span>
+                        <span className="truncate">Direct Sisterhood Access</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* 3. Right Container (Offer & Conversion Box): 20%-25% width */}
+                <div className="w-full bg-[#1F1813] text-white border-2 border-[#D4AF37]/50 rounded-2xl p-3.5 flex flex-col justify-between shadow-xl space-y-1.5 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-[#D4AF37]/10 rounded-full blur-xl pointer-events-none" />
+
+                  {/* Top badge */}
+                  <div className="flex items-center justify-between border-b border-[#D4AF37]/20 pb-1">
+                    <span className="text-[8.5px] font-mono font-extrabold uppercase tracking-wider text-[#D4AF37] bg-[#D4AF37]/15 px-2 py-0.5 rounded-full border border-[#D4AF37]/30">
+                      EXCLUSIVE COMMUNITY OFFER | Verified
+                    </span>
+                    {currentBanner.regularPrice && (
+                      <span className="text-[10px] line-through text-gray-400 font-mono">
+                        {currentBanner.regularPrice}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Top half: Large discount typography & label */}
+                  <div>
+                    <div className="text-xl sm:text-2xl font-black text-[#D4AF37] font-mono glow-gold-text">
+                      {currentBanner.promoPrice || '15% off'}
+                    </div>
+                    <div className="text-[10px] text-gray-300 font-mono">
+                      Your discount here (Copper Mommies community)
+                    </div>
+                  </div>
+
+                  {/* Middle half: Compact coupon code field & Copy button */}
+                  {currentBanner.promoCode && (
+                    <div className="bg-white/10 border border-[#D4AF37]/40 rounded-xl px-2.5 py-1.5 flex items-center justify-between gap-1.5">
+                      <div className="min-w-0">
+                        <span className="text-[8px] uppercase font-mono text-gray-400 block leading-tight">Coupon Code:</span>
+                        <span className="font-mono font-black text-xs text-[#D4AF37] tracking-wider truncate block">
+                          {currentBanner.promoCode}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyCode(currentBanner.promoCode)}
+                        className="px-2.5 py-1 bg-[#D4AF37] hover:bg-[#b59226] text-[#1F1813] text-[10px] font-bold rounded-lg shadow-xs active:scale-95 transition-all flex items-center space-x-1 cursor-pointer shrink-0"
+                      >
+                        {copiedCode ? (
+                          <>
+                            <Check className="w-3 h-3 text-emerald-800" />
+                            <span className="text-emerald-900 text-[10px]">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3 text-[#1F1813]" />
+                            <span className="text-[10px]">Copy</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Bottom half: Distinct high-contrast Call-to-Action button */}
+                  <div className="pt-0.5">
+                    <a
+                      href={currentBanner.promoLink || currentBanner.externalLink || '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-2 bg-gradient-to-r from-[#D4AF37] to-[#B87333] hover:from-[#e0bc46] hover:to-[#c47f3e] text-[#1F1813] font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center space-x-1.5 text-center cursor-pointer"
+                    >
+                      <span>{currentBanner.buttonText || currentBanner.linkText || 'Claim Community Offer'}</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-[#1F1813] shrink-0" />
+                    </a>
+                  </div>
                 </div>
 
               </div>
-
             </motion.div>
           </AnimatePresence>
 

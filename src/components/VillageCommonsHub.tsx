@@ -27,7 +27,14 @@ import {
   Radio,
   Leaf,
   Layers,
-  ChevronRight
+  ChevronRight,
+  ShieldAlert,
+  RotateCcw,
+  CheckCircle2,
+  Briefcase,
+  Handshake,
+  Eye,
+  Check
 } from 'lucide-react';
 import { 
   CommonsPost, 
@@ -50,6 +57,17 @@ import {
 import SpotlightBanner from './SpotlightBanner';
 import VillageCommonsSidebar, { SavedCommonsItem } from './VillageCommonsSidebar';
 import CircleMapInteractive from './CircleMapInteractive';
+import CreateUnifiedListingModal from './CreateUnifiedListingModal';
+import TradeHandshakeModal from './TradeHandshakeModal';
+import { 
+  getStoredUnifiedListings, 
+  UnifiedListing, 
+  MarketplaceCategoryType, 
+  MultiStageTrade,
+  getStoredTrades
+} from '../data/unifiedMarketplaceStore';
+import { scanContentForTriggers } from '../data/moderationFilter';
+import InteractiveReplyBox, { FormattedContentWithHashtags } from './InteractiveReplyBox';
 
 interface VillageCommonsHubProps {
   selectedState: string;
@@ -60,11 +78,12 @@ interface VillageCommonsHubProps {
   allSpotlightBanners?: PageSpotlightBanner[];
   onAddScholarshipEntry?: (entry: Omit<ScholarshipEntry, 'id' | 'submittedAt' | 'verifiedStatus' | 'ticketCode'>) => void;
   onOpenDirectChat?: (recipientName: string, contextTitle: string, initialNote?: string) => void;
-  initialSubTab?: 'feed' | 'exchange' | 'housing' | 'businesses' | 'events' | 'map';
+  initialSubTab?: 'feed' | 'gigs' | 'exchange' | 'housing' | 'businesses' | 'events' | 'map';
   initialTopic?: string;
-  onSubTabChange?: (tab: 'feed' | 'exchange' | 'housing' | 'businesses' | 'events' | 'map') => void;
+  onSubTabChange?: (tab: 'feed' | 'gigs' | 'exchange' | 'housing' | 'businesses' | 'events' | 'map') => void;
   createPostTriggerType?: 'feed' | 'exchange' | 'housing' | null;
   onClearPostTrigger?: () => void;
+  onExecuteGlobalSearch?: (query: string) => void;
 }
 
 export default function VillageCommonsHub({
@@ -80,14 +99,15 @@ export default function VillageCommonsHub({
   initialTopic = 'all',
   onSubTabChange,
   createPostTriggerType = null,
-  onClearPostTrigger
+  onClearPostTrigger,
+  onExecuteGlobalSearch
 }: VillageCommonsHubProps) {
   // ----------------------------------------------------
   // SUB-NAV SECTION STATE (LEFT COLUMN)
   // ----------------------------------------------------
-  const [activeSubTab, setActiveSubTabState] = useState<'feed' | 'exchange' | 'housing' | 'businesses' | 'events' | 'map'>(initialSubTab);
+  const [activeSubTab, setActiveSubTabState] = useState<'feed' | 'gigs' | 'exchange' | 'housing' | 'businesses' | 'events' | 'map'>(initialSubTab as any);
 
-  const setActiveSubTab = (tab: 'feed' | 'exchange' | 'housing' | 'businesses' | 'events' | 'map') => {
+  const setActiveSubTab = (tab: 'feed' | 'gigs' | 'exchange' | 'housing' | 'businesses' | 'events' | 'map') => {
     setActiveSubTabState(tab);
     onSubTabChange?.(tab);
   };
@@ -109,7 +129,38 @@ export default function VillageCommonsHub({
   // ----------------------------------------------------
   // DATA STATES
   // ----------------------------------------------------
-  const [posts, setPosts] = useState<CommonsPost[]>(INITIAL_COMMONS_POSTS);
+  const [posts, setPosts] = useState<CommonsPost[]>(() => {
+    return INITIAL_COMMONS_POSTS.map(p => {
+      if (p.id === 'post-4') {
+        return {
+          ...p,
+          imageUrl: '/src/assets/images/sister_corinne_botany_teacher_1792314695063.jpg'
+        };
+      }
+      return p;
+    });
+  });
+
+  // Keep posts in sync with localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('copper_mommies_commons_posts', JSON.stringify(posts));
+    } catch {}
+  }, [posts]);
+
+  // Listen to external updates from AdminModerationQueue
+  useEffect(() => {
+    const handleSync = () => {
+      try {
+        const saved = localStorage.getItem('copper_mommies_commons_posts');
+        if (saved) {
+          setPosts(JSON.parse(saved));
+        }
+      } catch {}
+    };
+    window.addEventListener('copper_commons_posts_changed', handleSync);
+    return () => window.removeEventListener('copper_commons_posts_changed', handleSync);
+  }, []);
   const [exchangeItems, setExchangeItems] = useState<CommonsExchangeItem[]>(INITIAL_EXCHANGE_ITEMS);
   const [housingListings, setHousingListings] = useState<HousingListing[]>(INITIAL_HOUSING_LISTINGS);
   const [businesses, setBusinesses] = useState<VouchedBusiness[]>(INITIAL_VOUCHED_BUSINESSES);
@@ -132,6 +183,38 @@ export default function VillageCommonsHub({
         console.warn('Could not load business ads for commons sidebar:', err);
       });
   }, []);
+
+  // ----------------------------------------------------
+  // UNIFIED MARKETPLACE & CROSS-HUB DUAL-SYNC STATE
+  // ----------------------------------------------------
+  const [unifiedListings, setUnifiedListings] = useState<UnifiedListing[]>(() => getStoredUnifiedListings());
+  const [isUnifiedCreateModalOpen, setIsUnifiedCreateModalOpen] = useState(false);
+  const [unifiedModalCategory, setUnifiedModalCategory] = useState<MarketplaceCategoryType>('barter');
+  const [activeTradeListing, setActiveTradeListing] = useState<UnifiedListing | null>(null);
+  const [activeTradeRecord, setActiveTradeRecord] = useState<MultiStageTrade | null>(null);
+  const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
+  const [selectedPhotoIndexMap, setSelectedPhotoIndexMap] = useState<Record<string, number>>({});
+  const [photoLightboxUrl, setPhotoLightboxUrl] = useState<string | null>(null);
+  const [gigSearch, setGigSearch] = useState('');
+  const [gigTypeFilter, setGigTypeFilter] = useState<string>('all');
+  const [exchangeStateFilter, setExchangeStateFilter] = useState<string>('all');
+  const [exchangeSearch, setExchangeSearch] = useState('');
+
+  useEffect(() => {
+    const handleSync = () => {
+      setUnifiedListings(getStoredUnifiedListings());
+    };
+    window.addEventListener('copper_marketplace_sync', handleSync);
+    return () => window.removeEventListener('copper_marketplace_sync', handleSync);
+  }, []);
+
+  const handleOpenTradeForListing = (listing: UnifiedListing) => {
+    const currentTrades = getStoredTrades();
+    const existing = currentTrades.find(t => t.listingId === listing.id);
+    setActiveTradeListing(listing);
+    setActiveTradeRecord(existing || null);
+    setIsTradeModalOpen(true);
+  };
 
   // ----------------------------------------------------
   // SAVED ITEMS & BOOKMARKS (COLUMN 3 ROW 1)
@@ -181,11 +264,16 @@ export default function VillageCommonsHub({
   const [messageSubject, setMessageSubject] = useState('');
   const [messageContent, setMessageContent] = useState('');
 
-  const handleOpenMessageModal = (recipientName: string, defaultSubject: string) => {
-    setMessageRecipient(recipientName);
-    setMessageSubject(defaultSubject);
-    setMessageContent('');
-    setShowMessageModal(true);
+  const handleOpenMessageModal = (recipientName: string, defaultSubject: string, defaultContent?: string) => {
+    if (onOpenDirectChat) {
+      onOpenDirectChat(recipientName, defaultSubject || 'Village Commons Inquiry', defaultContent || '');
+      showToast(`💬 Opening floating chat with ${recipientName}...`);
+    } else {
+      setMessageRecipient(recipientName);
+      setMessageSubject(defaultSubject);
+      setMessageContent(defaultContent || '');
+      setShowMessageModal(true);
+    }
   };
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -211,7 +299,7 @@ export default function VillageCommonsHub({
   const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(null);
   const [commentInput, setCommentInput] = useState('');
   const [selectedAuthorProfile, setSelectedAuthorProfile] = useState<CommonsPost | null>(null);
-  const [isSpotlightExpanded, setIsSpotlightExpanded] = useState(false);
+  const [isSpotlightExpanded, setIsSpotlightExpanded] = useState(true);
 
   // Sync initialTopic when changed from drawer or props
   useEffect(() => {
@@ -246,17 +334,71 @@ export default function VillageCommonsHub({
   const [newPostTopic, setNewPostTopic] = useState<CommonsForumTopic>('daily-uplift');
   const [newPostImageUrl, setNewPostImageUrl] = useState('');
 
+  // Report Post Pop-out Modal State (Ensures no accidental deletion!)
+  const [postToReport, setPostToReport] = useState<CommonsPost | null>(null);
+  const [reportReason, setReportReason] = useState<string>('Commercial / Wholesale Spam or Reselling');
+  const [reportNotes, setReportNotes] = useState<string>('');
+  const [confirmReportChecked, setConfirmReportChecked] = useState<boolean>(false);
+
+  // Village Commons Feed Filter state ('all', 'giveaways', 'barter', 'announcements')
+  const [feedFilterType, setFeedFilterType] = useState<'all' | 'giveaways' | 'barter' | 'announcements'>('all');
+
   const filteredPosts = useMemo(() => {
     return posts.filter(post => {
-      if (post.isFlagged && (post.reportCount || 0) >= 2) return false;
-      const matchesTopic = selectedTopic === 'all' || post.topic === selectedTopic;
-      const matchesSearch = 
-        post.content.toLowerCase().includes(forumSearch.toLowerCase()) ||
-        (post.title && post.title.toLowerCase().includes(forumSearch.toLowerCase())) ||
-        post.authorName.toLowerCase().includes(forumSearch.toLowerCase());
-      return matchesTopic && matchesSearch;
+      // CRITICAL: A reported post is NEVER deleted or hidden automatically on click!
+      // Only hide if Mama Shantrece / Admin explicitly confirmed removal in the Admin Back Office:
+      if (post.isRemovedByAdmin) return false;
+
+      const textToSearch = `${post.title || ''} ${post.content} ${post.authorName} ${post.topic || ''}`.toLowerCase();
+      const matchesSearch = textToSearch.includes(forumSearch.toLowerCase());
+      if (!matchesSearch) return false;
+
+      if (feedFilterType === 'all') return true;
+
+      if (feedFilterType === 'giveaways') {
+        return (
+          post.postType === 'giveaway' ||
+          post.topic === ('exchange' as any) ||
+          post.topic === ('free-giveaway' as any) ||
+          textToSearch.includes('free') ||
+          textToSearch.includes('giveaway') ||
+          textToSearch.includes('gift') ||
+          textToSearch.includes('blessing') ||
+          textToSearch.includes('complimentary')
+        );
+      }
+
+      if (feedFilterType === 'barter') {
+        return (
+          post.postType === 'barter' ||
+          post.topic === ('barter' as any) ||
+          post.topic === ('homestead-seeds' as any) ||
+          textToSearch.includes('barter') ||
+          textToSearch.includes('trade') ||
+          textToSearch.includes('swap') ||
+          textToSearch.includes('exchange')
+        );
+      }
+
+      if (feedFilterType === 'announcements') {
+        return (
+          post.postType === 'announcement' ||
+          post.topic === 'daily-uplift' ||
+          post.topic === ('announcement' as any) ||
+          post.authorRole === 'Circle Host' ||
+          post.authorRole === 'Circle Lead (Admin)' ||
+          post.authorRole === 'Council Grandmother' ||
+          textToSearch.includes('announcement') ||
+          textToSearch.includes('gathering') ||
+          textToSearch.includes('update') ||
+          textToSearch.includes('reminder') ||
+          textToSearch.includes('affirmation')
+        );
+      }
+
+      return true;
     });
-  }, [posts, selectedTopic, forumSearch]);
+  }, [posts, forumSearch, feedFilterType]);
 
   const handleLikePost = (postId: string) => {
     setPosts(prev => prev.map(p => {
@@ -274,6 +416,14 @@ export default function VillageCommonsHub({
 
   const handleAddComment = (postId: string) => {
     if (!commentInput.trim()) return;
+
+    // Internal safety trigger check on comment
+    const scanResult = scanContentForTriggers(commentInput.trim());
+    if (scanResult.recommendedAction === 'block') {
+      showToast(scanResult.warningMessage || '⚠️ Inappropriate words or scam triggers detected. Please adjust your reply.');
+      return;
+    }
+
     const newComment = {
       id: `c-${Date.now()}`,
       authorName: userName,
@@ -291,22 +441,139 @@ export default function VillageCommonsHub({
       return p;
     }));
     setCommentInput('');
-    showToast('💬 Sister reply posted to the community feed!');
+
+    if (!scanResult.isClean) {
+      showToast('💬 Sister reply posted and logged to guardian queue for review.');
+    } else {
+      showToast('💬 Sister reply posted to the community feed!');
+    }
   };
 
-  const handleReportPost = (postId: string) => {
-    setPosts(prev => prev.map(p => {
-      if (p.id === postId) {
-        const newCount = (p.reportCount || 0) + 1;
-        return {
-          ...p,
-          isFlagged: newCount >= 2,
-          reportCount: newCount
-        };
+  // Open the report pop-out with warning and common reasons dropdown (does NOT delete post)
+  const handleOpenReportModal = (post: CommonsPost) => {
+    setPostToReport(post);
+    setReportReason('Commercial / Wholesale Spam or Reselling');
+    setReportNotes('');
+    setConfirmReportChecked(false);
+  };
+
+  // Confirm official report to Grandmother Council after reviewing warning and selecting reason
+  const handleConfirmReport = () => {
+    if (!postToReport) return;
+    const postId = postToReport.id;
+    const reportedAtStr = new Date().toLocaleString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+
+    setPosts(prev => {
+      const next = prev.map(p => {
+        if (p.id === postId) {
+          const newCount = (p.reportCount || 0) + 1;
+          const reportedByList = p.reportedBy ? [...p.reportedBy, userName] : [userName];
+          return {
+            ...p,
+            isFlagged: true,
+            reportCount: newCount,
+            reportedBy: reportedByList,
+            reportReason: reportReason,
+            reportNotes: reportNotes.trim() || undefined,
+            reportedAt: reportedAtStr,
+            isRemovedByAdmin: false // POST REMAINS VISIBLE!
+          };
+        }
+        return p;
+      });
+      try {
+        localStorage.setItem('copper_mommies_commons_posts', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    // Sync into persistent admin queue for Grandmother Council Back Office review
+    try {
+      const existingReportsStr = localStorage.getItem('copper_mommies_reported_posts');
+      const existingReports = existingReportsStr ? JSON.parse(existingReportsStr) : [];
+      const newReportEntry = {
+        id: `rep-${Date.now()}`,
+        postId: postId,
+        itemType: 'forum_post',
+        itemTitle: postToReport.title || postToReport.content.slice(0, 50) + '...',
+        posterName: postToReport.authorName,
+        posterState: postToReport.authorState,
+        reportedBy: `${userName} (${selectedState})`,
+        reason: reportReason + (reportNotes.trim() ? ` — Notes: ${reportNotes.trim()}` : ''),
+        dateReported: reportedAtStr,
+        itemSnippet: postToReport.content.slice(0, 160) + (postToReport.content.length > 160 ? '...' : ''),
+        status: 'pending_review'
+      };
+      const updatedReports = [newReportEntry, ...existingReports.filter((r: any) => r.postId !== postId)];
+      localStorage.setItem('copper_mommies_reported_posts', JSON.stringify(updatedReports));
+      window.dispatchEvent(new CustomEvent('copper_reported_posts_updated'));
+    } catch {}
+
+    setPostToReport(null);
+    showToast('🛡️ Post reported for review against community guidelines. The post remains visible in the feed.');
+  };
+
+  // Allows members or elders to undo an accidental report with a single click
+  const handleUndoReport = (postId: string) => {
+    setPosts(prev => {
+      const next = prev.map(p => {
+        if (p.id === postId) {
+          return {
+            ...p,
+            isFlagged: false,
+            reportCount: 0,
+            reportedBy: (p.reportedBy || []).filter(u => u !== userName),
+            reportReason: undefined,
+            reportNotes: undefined,
+            isRemovedByAdmin: false
+          };
+        }
+        return p;
+      });
+      try {
+        localStorage.setItem('copper_mommies_commons_posts', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    try {
+      const existingReportsStr = localStorage.getItem('copper_mommies_reported_posts');
+      if (existingReportsStr) {
+        const existing = JSON.parse(existingReportsStr);
+        const updated = existing.filter((r: any) => r.postId !== postId);
+        localStorage.setItem('copper_mommies_reported_posts', JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent('copper_reported_posts_updated'));
       }
-      return p;
-    }));
-    showToast('🛡️ Post reported to Grandmother Council for moderation review.');
+    } catch {}
+
+    showToast('↩️ Report withdrawn! Post restored to completely clean status.');
+  };
+
+  // Restore all original reflections in case any were hidden
+  const handleRestoreAllPosts = () => {
+    setPosts(prev => {
+      const existingMap = new Map<string, CommonsPost>();
+      prev.forEach(p => existingMap.set(p.id, p));
+      INITIAL_COMMONS_POSTS.forEach(ip => {
+        const current = existingMap.get(ip.id);
+        if (!current) {
+          existingMap.set(ip.id, { ...ip, isRemovedByAdmin: false, isFlagged: false, reportCount: 0 });
+        } else {
+          existingMap.set(ip.id, { ...current, isRemovedByAdmin: false, isFlagged: false, reportCount: 0 });
+        }
+      });
+      const restored = Array.from(existingMap.values());
+      try {
+        localStorage.setItem('copper_mommies_commons_posts', JSON.stringify(restored));
+      } catch {}
+      return restored;
+    });
+    showToast('✨ All village reflections restored and active in the feed!');
   };
 
   const handleCreatePost = (e: React.FormEvent) => {
@@ -316,12 +583,16 @@ export default function VillageCommonsHub({
       return;
     }
 
-    // Automated Anti-Scam / External Phishing Protection
-    const spamRegex = /(cash\.app|paypal\.me|t\.me|telegram|bitcoin|crypto|whatsapp|http:\/\/bit\.ly|wa\.me)/i;
-    if (spamRegex.test(newPostContent)) {
-      showToast('⚠️ External payment/crypto links are prohibited. Use in-app barter or time-credits.');
+    // Run internal backend moderation filter check
+    const scanResult = scanContentForTriggers(newPostContent, newPostTitle);
+    if (scanResult.recommendedAction === 'block') {
+      showToast(scanResult.warningMessage || '⚠️ Prohibited words or severe scam triggers detected. Please adjust your wording.');
       return;
     }
+
+    const isAutoFlagged = !scanResult.isClean;
+    const triggerWords = scanResult.matchedTriggers.map(t => t.word);
+    const triggerCategory = scanResult.matchedTriggers.map(t => t.categoryLabel).join(', ');
 
     const createdPost: CommonsPost = {
       id: `post-${Date.now()}`,
@@ -330,14 +601,18 @@ export default function VillageCommonsHub({
       authorState: selectedState,
       authorCity: 'Local Circle',
       authorAvatar: simulatedRole === 'admin' ? '👵' : '🕊️',
-      topic: newPostTopic,
+      topic: newPostTopic || 'open-stream',
       title: newPostTitle.trim() || undefined,
       content: newPostContent.trim(),
       imageUrl: newPostImageUrl.trim() || undefined,
       likesCount: 1,
       likedBy: [userName],
       comments: [],
-      createdAt: 'Just now'
+      createdAt: 'Just now',
+      isAutoFlaggedByFilter: isAutoFlagged,
+      filterTriggerWords: triggerWords.length > 0 ? triggerWords : undefined,
+      filterTriggerCategory: triggerCategory || undefined,
+      filterSeverity: scanResult.highestSeverity !== 'none' ? scanResult.highestSeverity : undefined
     };
 
     setPosts([createdPost, ...posts]);
@@ -345,7 +620,392 @@ export default function VillageCommonsHub({
     setNewPostTitle('');
     setNewPostContent('');
     setNewPostImageUrl('');
-    showToast('✨ Your post is now live in the Village Community Feed!');
+
+    // If auto-flagged by internal filter, log into backend & admin moderation queue
+    if (isAutoFlagged) {
+      try {
+        fetch('/api/moderation/flagged-queue', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            postId: createdPost.id,
+            itemType: 'forum_post',
+            itemTitle: createdPost.title || createdPost.content.slice(0, 45),
+            posterName: createdPost.authorName,
+            posterState: createdPost.authorState,
+            reportedBy: 'Internal Backend Trigger Filter (Auto)',
+            reason: `Auto-flagged words: ${triggerWords.join(', ')} (${triggerCategory})`,
+            matchedTriggers: triggerWords,
+            triggerCategory,
+            severity: scanResult.highestSeverity,
+            itemSnippet: createdPost.content.slice(0, 160),
+            autoFlagged: true
+          })
+        }).catch(() => {});
+
+        const existingReportsStr = localStorage.getItem('copper_mommies_reported_posts');
+        const existingReports = existingReportsStr ? JSON.parse(existingReportsStr) : [];
+        const newReportEntry = {
+          id: `flag-${Date.now()}`,
+          postId: createdPost.id,
+          itemType: 'forum_post',
+          itemTitle: createdPost.title || createdPost.content.slice(0, 45),
+          posterName: createdPost.authorName,
+          posterState: createdPost.authorState,
+          reportedBy: 'Internal Backend Trigger Filter (Auto)',
+          reason: `Auto-flagged words: ${triggerWords.join(', ')} (${triggerCategory})`,
+          matchedTriggers: triggerWords,
+          dateReported: new Date().toLocaleDateString('en-US'),
+          itemSnippet: createdPost.content.slice(0, 160),
+          status: 'pending_review',
+          autoFlagged: true,
+          severity: scanResult.highestSeverity
+        };
+        localStorage.setItem('copper_mommies_reported_posts', JSON.stringify([newReportEntry, ...existingReports]));
+        window.dispatchEvent(new CustomEvent('copper_reported_posts_updated'));
+      } catch {}
+
+      showToast('🛡️ Post shared to Village Stream and flagged for Grandmother Council review due to sensitive wording.');
+    } else {
+      showToast('✨ Your post is now live in the Village Stream!');
+    }
+  };
+
+  // ----------------------------------------------------
+  // UNIFIED MARKETPLACE FILTERED LISTINGS & CARD RENDERER
+  // ----------------------------------------------------
+  const filteredUnifiedGigs = useMemo(() => {
+    return unifiedListings.filter(item => {
+      if (item.categoryType !== 'gig') return false;
+      const matchesSearch = !gigSearch.trim() ||
+        item.title.toLowerCase().includes(gigSearch.toLowerCase()) ||
+        item.description.toLowerCase().includes(gigSearch.toLowerCase()) ||
+        (item.details.compensation && item.details.compensation.toLowerCase().includes(gigSearch.toLowerCase()));
+      const matchesType = gigTypeFilter === 'all' || item.details.employmentType === gigTypeFilter;
+      return matchesSearch && matchesType;
+    });
+  }, [unifiedListings, gigSearch, gigTypeFilter]);
+
+  const filteredUnifiedBarters = useMemo(() => {
+    return unifiedListings.filter(item => {
+      if (item.categoryType !== 'barter') return false;
+      const matchesSearch = !exchangeSearch.trim() || 
+        item.title.toLowerCase().includes(exchangeSearch.toLowerCase()) ||
+        item.description.toLowerCase().includes(exchangeSearch.toLowerCase()) ||
+        (item.details.tradeForWishlist && item.details.tradeForWishlist.toLowerCase().includes(exchangeSearch.toLowerCase()));
+      const matchesState = exchangeStateFilter === 'all' || item.authorState === exchangeStateFilter;
+      return matchesSearch && matchesState;
+    });
+  }, [unifiedListings, exchangeSearch, exchangeStateFilter]);
+
+  const filteredUnifiedHousing = useMemo(() => {
+    return unifiedListings.filter(item => item.categoryType === 'housing');
+  }, [unifiedListings]);
+
+  const filteredUnifiedBusinesses = useMemo(() => {
+    return unifiedListings.filter(item => item.categoryType === 'business');
+  }, [unifiedListings]);
+
+  const filteredUnifiedEvents = useMemo(() => {
+    return unifiedListings.filter(item => item.categoryType === 'event');
+  }, [unifiedListings]);
+
+  const renderUnifiedListingCard = (
+    listing: UnifiedListing, 
+    hubTab: string, 
+    hubLabel: string
+  ) => {
+    const activePhotoIdx = selectedPhotoIndexMap[listing.id] ?? 0;
+    const currentPhoto = listing.photos[activePhotoIdx] || listing.primaryCoverImage;
+    const isSaved = isItemSaved(listing.id);
+
+    return (
+      <div 
+        key={listing.id}
+        className="bg-white rounded-3xl overflow-hidden border border-copper-penny/25 hover:border-[#D4AF37] hover:shadow-xl transition-all p-5 space-y-4 text-left group"
+      >
+        {/* Main Cover Photo with Multi-Photo Switcher */}
+        <div className="relative aspect-16/10 w-full rounded-2xl overflow-hidden bg-stone-100 group">
+          <img 
+            src={currentPhoto} 
+            alt={listing.title} 
+            className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-500 cursor-pointer"
+            onClick={() => setPhotoLightboxUrl(currentPhoto)}
+            referrerPolicy="no-referrer"
+          />
+
+          {/* Top Left Category Indicator */}
+          <div className="absolute top-3 left-3 flex items-center space-x-1.5">
+            <span className="px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold bg-[#1F140E]/90 text-[#D4AF37] border border-[#D4AF37]/50 shadow-md uppercase tracking-wider">
+              {listing.categoryType === 'gig' ? '💼 Gig / Work' :
+               listing.categoryType === 'housing' ? '🏡 Housing Suite' :
+               listing.categoryType === 'barter' ? '🤝 Trade & Barter' :
+               listing.categoryType === 'event' ? '📅 Circle Gathering' : '⭐ Sister Business'}
+            </span>
+            {listing.photos.length > 1 && (
+              <span className="px-2 py-1 rounded-xl text-[10px] font-mono font-bold bg-black/75 text-white backdrop-blur-xs flex items-center space-x-1">
+                <span>📸</span>
+                <span>{listing.photos.length} photos</span>
+              </span>
+            )}
+          </div>
+
+          {/* Bookmark & Enlarge Actions */}
+          <div className="absolute top-3 right-3 flex items-center space-x-1.5">
+            <button
+              type="button"
+              onClick={() => setPhotoLightboxUrl(currentPhoto)}
+              className="p-2 rounded-xl bg-black/60 hover:bg-black/80 text-white backdrop-blur-xs transition-colors cursor-pointer"
+              title="Enlarge photo in full view"
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => toggleSaveItem({
+                id: listing.id,
+                type: listing.categoryType === 'gig' ? 'forum' : (listing.categoryType as any),
+                title: listing.title,
+                subtitle: listing.description.slice(0, 60) + '...',
+                imageUrl: listing.primaryCoverImage,
+                categoryBadge: listing.categoryType.toUpperCase(),
+                location: `${listing.authorCity || ''}, ${listing.authorState}`,
+                terms: listing.details.compensation || listing.details.monthlyTerms || listing.details.estimatedValue
+              })}
+              className={`p-2 rounded-xl bg-black/60 backdrop-blur-xs transition-colors cursor-pointer ${
+                isSaved ? 'text-[#D4AF37]' : 'text-white/80 hover:text-[#D4AF37]'
+              }`}
+              title={isSaved ? "Saved" : "Save item"}
+            >
+              <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-[#D4AF37]' : ''}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Thumbnail Gallery Row if Multi-Photo */}
+        {listing.photos.length > 1 && (
+          <div className="flex items-center space-x-2 overflow-x-auto py-1 scrollbar-none">
+            {listing.photos.map((photo, pIdx) => {
+              const isActive = pIdx === activePhotoIdx;
+              return (
+                <button
+                  key={pIdx}
+                  type="button"
+                  onClick={() => setSelectedPhotoIndexMap(prev => ({ ...prev, [listing.id]: pIdx }))}
+                  className={`relative shrink-0 w-14 h-14 rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
+                    isActive ? 'border-[#D4AF37] ring-2 ring-[#D4AF37]/50 scale-105 shadow-sm' : 'border-stone-200 hover:border-stone-400 opacity-70 hover:opacity-100'
+                  }`}
+                  title={`View photo ${pIdx + 1}`}
+                >
+                  <img src={photo} alt={`Thumbnail ${pIdx + 1}`} className="w-full h-full object-cover" />
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Metadata & Title */}
+        <div className="space-y-1.5">
+          <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-soft-sage font-mono">
+            <span>{listing.authorCity ? `${listing.authorCity}, ${listing.authorState}` : listing.authorState}</span>
+            <span>·</span>
+            <span>Posted {listing.createdAt}</span>
+            <span>·</span>
+            <span className="text-[#1F1813] font-bold">{listing.authorName}</span>
+          </div>
+
+          <h3 className="font-serif font-black text-lg sm:text-xl text-[#1F1813] leading-snug">
+            {listing.title}
+          </h3>
+
+          <p className="text-xs text-[#2A221B]/85 leading-relaxed">
+            {listing.description}
+          </p>
+        </div>
+
+        {/* Category Specific Structured Details Box */}
+        {listing.categoryType === 'gig' && listing.details && (
+          <div className="p-3.5 rounded-2xl bg-[#FAF5EE] border border-copper-penny/20 space-y-2 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-copper-penny/10 pb-2">
+              <span className="font-mono text-[11px] font-extrabold text-[#B87333]">
+                💰 {listing.details.compensation}
+              </span>
+              <span className="font-mono text-[11px] text-[#1F1813]/70 font-bold">
+                {listing.details.employmentType} · {listing.details.remoteOrInPerson}
+              </span>
+            </div>
+
+            {listing.details.requirements && listing.details.requirements.length > 0 && (
+              <div className="space-y-1 pt-1">
+                <span className="text-[10px] font-mono font-bold text-soft-sage uppercase tracking-wider block">
+                  Requirements &amp; Equipment Needed:
+                </span>
+                <ul className="space-y-1">
+                  {listing.details.requirements.map((req, rIdx) => (
+                    <li key={rIdx} className="flex items-start space-x-1.5 text-xs text-[#1F1813]/85">
+                      <span className="text-emerald-700 font-bold">✓</span>
+                      <span>{req}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {listing.details.duties && listing.details.duties.length > 0 && (
+              <div className="space-y-1 pt-1">
+                <span className="text-[10px] font-mono font-bold text-soft-sage uppercase tracking-wider block">
+                  Key Duties &amp; Tasks:
+                </span>
+                <ul className="space-y-1">
+                  {listing.details.duties.map((duty, dIdx) => (
+                    <li key={dIdx} className="flex items-start space-x-1.5 text-xs text-[#1F1813]/85">
+                      <span className="text-[#B87333] font-bold">•</span>
+                      <span>{duty}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        {listing.categoryType === 'barter' && listing.details && (
+          <div className="p-3.5 rounded-2xl bg-[#FAF5EE] border border-copper-penny/20 space-y-2 text-xs">
+            {listing.details.tradeForWishlist && (
+              <div className="p-2.5 rounded-xl bg-white border border-[#D4AF37]/40 space-y-0.5">
+                <span className="text-[10px] font-mono font-extrabold text-[#B87333] uppercase block">
+                  Looking to Trade For (Sister Wishlist):
+                </span>
+                <p className="font-medium text-[#1F1813] text-xs">
+                  {listing.details.tradeForWishlist}
+                </p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-[#1F1813]/80 pt-1">
+              <div>
+                <span className="text-soft-sage block text-[9px] uppercase">Condition:</span>
+                <span className="font-bold">{listing.details.itemCondition || 'Artisanal / Handmade'}</span>
+              </div>
+              <div>
+                <span className="text-soft-sage block text-[9px] uppercase">Est. Value:</span>
+                <span className="font-bold text-[#B87333]">{listing.details.estimatedValue || 'Open Value'}</span>
+              </div>
+              <div className="col-span-2">
+                <span className="text-soft-sage block text-[9px] uppercase">Pickup &amp; Delivery:</span>
+                <span className="font-bold">{listing.details.deliveryOrPickup || 'Sister Drop-off / Pick-up'}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {listing.categoryType === 'housing' && listing.details && (
+          <div className="p-3.5 rounded-2xl bg-[#FAF5EE] border border-copper-penny/20 space-y-2 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-copper-penny/10 pb-2">
+              <span className="font-mono text-[11px] font-extrabold text-[#1F140E]">
+                {listing.details.bedrooms || 1}BR · {listing.details.bathrooms || 1}BA {listing.details.squareFootage ? `· ${listing.details.squareFootage} sq ft` : ''}
+              </span>
+              <span className="font-mono text-[11px] font-bold text-[#B87333]">
+                {listing.details.monthlyTerms}
+              </span>
+            </div>
+
+            <div className="text-[11px] font-mono text-soft-sage">
+              <span>Pet Policy: <strong className="text-[#1F140E]">{listing.details.petPolicy || 'Pets welcome'}</strong></span>
+              {listing.details.availableDate && <span> · Available: <strong className="text-[#1F140E]">{listing.details.availableDate}</strong></span>}
+            </div>
+
+            {listing.details.amenities && listing.details.amenities.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {listing.details.amenities.map((am, aIdx) => (
+                  <span key={aIdx} className="px-2 py-0.5 rounded-lg bg-white border border-stone-200 text-[10px] font-mono text-[#1F140E]">
+                    ✓ {am}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {listing.categoryType === 'business' && listing.details && (
+          <div className="p-3.5 rounded-2xl bg-[#FAF5EE] border border-copper-penny/20 space-y-2 text-xs">
+            {listing.details.communityOffer && (
+              <div className="p-2.5 rounded-xl bg-white border border-[#D4AF37]/50 text-amber-900 font-mono text-xs font-bold">
+                {listing.details.communityOffer}
+              </div>
+            )}
+            {listing.details.servicesList && (
+              <div className="text-xs space-y-1">
+                <span className="text-[10px] font-mono text-soft-sage uppercase block">Services Offered:</span>
+                <p className="text-xs text-[#1F1813]/85">{listing.details.servicesList.join(' • ')}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {listing.categoryType === 'event' && listing.details && (
+          <div className="p-3.5 rounded-2xl bg-[#FAF5EE] border border-copper-penny/20 space-y-2 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-copper-penny/10 pb-2">
+              <span className="font-mono text-xs font-bold text-copper-penny">
+                📅 {listing.details.eventDate} · {listing.details.eventTime}
+              </span>
+              <span className="font-mono text-[11px] text-soft-sage">
+                👥 Cap: {listing.details.participantCap || 20} sisters
+              </span>
+            </div>
+            {listing.details.suppliesNeeded && listing.details.suppliesNeeded.length > 0 && (
+              <div className="space-y-1">
+                <span className="text-[10px] font-mono font-bold text-soft-sage uppercase block">Supplies to Bring:</span>
+                <ul className="text-xs space-y-0.5 text-[#1F1813]/80">
+                  {listing.details.suppliesNeeded.map((s, sIdx) => (
+                    <li key={sIdx} className="flex items-center space-x-1.5">
+                      <span className="text-[#B87333]">•</span>
+                      <span>{s}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Action Buttons Row */}
+        <div className="pt-2 border-t border-copper-penny/10 flex flex-wrap items-center justify-between gap-2">
+          {/* Deep link button to corresponding dedicated hub */}
+          <button
+            type="button"
+            onClick={() => {
+              if (onNavigateToTab) onNavigateToTab(hubTab);
+            }}
+            className="px-3 py-1.5 rounded-xl bg-[#FAF5EE] hover:bg-stone-200 text-[#1F140E] text-[11px] font-mono font-bold border border-copper-penny/25 transition-colors cursor-pointer flex items-center space-x-1"
+          >
+            <span>{hubLabel}</span>
+            <ArrowRight className="w-3.5 h-3.5 inline ml-1 text-[#B87333]" />
+          </button>
+
+          <div className="flex items-center space-x-2">
+            <button
+              type="button"
+              onClick={() => onOpenDirectChat?.(listing.authorName, `Listing: ${listing.title}`, `Hi ${listing.authorName}, I saw your listing for "${listing.title}" in the Village Commons and wanted to connect!`)}
+              className="px-3 py-1.5 bg-white hover:bg-neutral-50 rounded-xl text-[11px] font-mono font-bold border border-copper-penny/25 text-[#1F140E] cursor-pointer"
+            >
+              💌 Message Sister
+            </button>
+
+            {(listing.categoryType === 'barter' || listing.categoryType === 'gig') && (
+              <button
+                type="button"
+                onClick={() => handleOpenTradeForListing(listing)}
+                className="px-4 py-1.5 bg-[#B87333] hover:bg-[#1F140E] text-white rounded-xl text-[11px] font-mono font-extrabold uppercase tracking-wider transition-all shadow-sm cursor-pointer flex items-center space-x-1.5"
+              >
+                <Handshake className="w-3.5 h-3.5" />
+                <span>{listing.categoryType === 'gig' ? 'Apply / Handshake' : 'Initiate Trade'}</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // ----------------------------------------------------
@@ -353,8 +1013,6 @@ export default function VillageCommonsHub({
   // ----------------------------------------------------
   const [exchangeTypeFilter, setExchangeTypeFilter] = useState<'all' | 'free' | 'barter' | 'time-credit'>('all');
   const [exchangeCategoryFilter, setExchangeCategoryFilter] = useState<string>('all');
-  const [exchangeStateFilter, setExchangeStateFilter] = useState<string>('all');
-  const [exchangeSearch, setExchangeSearch] = useState('');
   const [selectedExchangeItem, setSelectedExchangeItem] = useState<CommonsExchangeItem | null>(null);
   const [isPostExchangeModalOpen, setIsPostExchangeModalOpen] = useState(false);
 
@@ -702,33 +1360,58 @@ export default function VillageCommonsHub({
           </div>
         </div>
 
-        {allSpotlightBanners.length > 0 && (
-          <button
-            onClick={() => setIsSpotlightExpanded(prev => !prev)}
-            className="self-start sm:self-auto px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-[#D4AF37]/30 text-[#D4AF37] font-mono text-[11px] font-bold flex items-center space-x-1.5 transition-all cursor-pointer shrink-0"
-            title="Toggle featured spotlight announcements banner"
-          >
-            <span>✨</span>
-            <span>{isSpotlightExpanded ? 'Hide Spotlight Ribbon' : 'Featured Spotlight & Ads'}</span>
-            <span className="text-[9px] bg-[#D4AF37]/30 text-[#FAF5EE] px-1.5 py-0.2 rounded-full font-sans ml-1">
-              {allSpotlightBanners.length}
-            </span>
-          </button>
-        )}
+        <button
+          onClick={() => setIsSpotlightExpanded(prev => !prev)}
+          className="self-start sm:self-auto px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#B87333] text-[#1F140E] font-mono text-[11px] font-black flex items-center space-x-1.5 transition-all cursor-pointer shadow-md shrink-0"
+          title="Toggle featured spotlight announcements banner"
+        >
+          <span>✨</span>
+          <span>{isSpotlightExpanded ? 'Hide Featured Sister Enterprises' : 'Show Featured Sister Enterprises'}</span>
+          <span className="text-[9px] bg-white text-[#1F140E] px-1.5 py-0.2 rounded-full font-sans font-extrabold ml-1">
+            {allSpotlightBanners.length > 0 ? allSpotlightBanners.length : 2}
+          </span>
+        </button>
       </div>
 
       {/* CONDENSED COLLAPSIBLE SPOTLIGHT BANNER */}
-      {allSpotlightBanners.length > 0 && isSpotlightExpanded && (
+      {isSpotlightExpanded && (
         <div className="w-full animate-fade-in">
           <SpotlightBanner
-            banners={allSpotlightBanners}
+            banners={allSpotlightBanners.length > 0 ? allSpotlightBanners : [
+              {
+                id: 'feat-biz-1',
+                title: 'Highland Heritage Botanical Co.',
+                subtitle: 'Ancestral Cold-Pressed Oxymels & Nettle Remedies',
+                description: 'Hand-harvested elderberry, mullein & lowcountry nettle remedies formulated by traditional southern rootworkers.',
+                bannerImage: '/apothecary_sister_herbal.jpg',
+                thumbnailImage: '/apothecary_sister_herbal.jpg',
+                badge: 'Featured Sister Enterprise',
+                externalLink: 'https://highlandheritagebotanicals.com',
+                exclusiveOffer: '15% Off with code COPPERMOMMIE',
+                promoCode: 'COPPER15',
+                active: true
+              },
+              {
+                id: 'feat-biz-2',
+                title: 'NestBright Coop & Homeschool Academy',
+                subtitle: 'Grades 3–5 Living Books & Math Manipulative Curricula',
+                description: 'Empowering melanated homeschooling families with holistic, self-directed learning paths and community co-ops.',
+                bannerImage: '/nestbright_banner.jpg',
+                thumbnailImage: '/nestbright_banner.jpg',
+                badge: 'Featured Sister Enterprise',
+                externalLink: 'https://nestbrightcoop.example',
+                exclusiveOffer: '$20 off curriculum bundle',
+                promoCode: 'NESTBRIGHT20',
+                active: true
+              }
+            ]}
             userName={userName}
             selectedState={selectedState}
             onAddScholarshipEntry={onAddScholarshipEntry}
             isAdmin={simulatedRole === 'admin'}
             onOpenAdminManager={onOpenAdminOffice}
             autoScrollIntervalMs={5000}
-            sectionTitle="Village Commons Grand Spotlight & Announcements"
+            sectionTitle="Featured Sister Enterprises & Community Spotlights"
           />
         </div>
       )}
@@ -745,28 +1428,205 @@ export default function VillageCommonsHub({
           className="lg:col-span-3 xl:col-span-2.5 space-y-4 font-mono text-xs border-none"
           aria-label="Village Commons Navigation"
         >
-          {/* Main Sub-Tab Nav List - Clean & Borderless (Horizontal scroll on mobile, vertical column on desktop) */}
-          <div className="bg-transparent flex flex-row overflow-x-auto lg:flex-col gap-1.5 p-1 border-none scrollbar-none">
+          {/* ========================================================== */}
+          {/* MOBILE & TABLET (< lg): ZERO CUT-OFF RESPONSIVE 5-TAB BAR  */}
+          {/* ========================================================== */}
+          <div className="lg:hidden space-y-2">
+            {/* 6 Core Tabs in a fluid, 100% visible zero-cutoff container */}
+            <div className="w-full grid grid-cols-6 [grid-template-columns:repeat(6,minmax(0,1fr))] gap-1 sm:gap-1.5 p-1 sm:p-1.5 bg-white/95 backdrop-blur-xs rounded-2xl border border-copper-penny/25 shadow-xs overflow-hidden">
+              
+              {/* 1. The Village Stream */}
+              <button
+                type="button"
+                onClick={() => setActiveSubTab('feed')}
+                className={`min-w-0 w-full py-2 px-0.5 sm:px-1.5 rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center text-center relative group active:scale-95 ${
+                  activeSubTab === 'feed'
+                    ? 'bg-[#1F140E] text-[#D4AF37] shadow-sm ring-1 ring-[#D4AF37]/50 font-bold'
+                    : 'text-[#1F140E]/80 hover:bg-[#FAF5EE]'
+                }`}
+                title="The Village Stream: daily mother reflections, encouragement, remedies & wisdom"
+              >
+                <span className="text-sm xs:text-base sm:text-lg mb-0.5 shrink-0">🌿</span>
+                <span className="font-serif font-bold text-[9px] xs:text-[10px] sm:text-xs leading-tight truncate w-full block">
+                  Stream
+                </span>
+                <span className="hidden sm:inline text-[9px] font-mono text-soft-sage leading-none">Feed</span>
+              </button>
+
+              {/* 2. Opportunities & Gigs */}
+              <button
+                type="button"
+                onClick={() => setActiveSubTab('gigs')}
+                className={`min-w-0 w-full py-2 px-0.5 sm:px-1.5 rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center text-center relative group active:scale-95 ${
+                  activeSubTab === 'gigs'
+                    ? 'bg-[#1F140E] text-[#D4AF37] shadow-sm ring-1 ring-[#D4AF37]/50 font-bold'
+                    : 'text-[#1F140E]/80 hover:bg-[#FAF5EE]'
+                }`}
+                title="Opportunities & Gigs: contracts, doula roles, homestead tasks & micro-gigs"
+              >
+                <span className="text-sm xs:text-base sm:text-lg mb-0.5 shrink-0">💼</span>
+                <span className="font-serif font-bold text-[9px] xs:text-[10px] sm:text-xs leading-tight truncate w-full block">
+                  Gigs
+                </span>
+                <span className="hidden sm:inline text-[9px] font-mono text-soft-sage leading-none">Desk</span>
+              </button>
+
+              {/* 3. The Exchange */}
+              <button
+                type="button"
+                onClick={() => setActiveSubTab('exchange')}
+                className={`min-w-0 w-full py-2 px-0.5 sm:px-1.5 rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center text-center relative group active:scale-95 ${
+                  activeSubTab === 'exchange'
+                    ? 'bg-[#1F140E] text-[#D4AF37] shadow-sm ring-1 ring-[#D4AF37]/50 font-bold'
+                    : 'text-[#1F140E]/80 hover:bg-[#FAF5EE]'
+                }`}
+                title="The Exchange: free giveaways, barter items & time credits"
+              >
+                <span className="relative inline-flex items-center justify-center text-sm xs:text-base sm:text-lg mb-0.5 shrink-0">
+                  🤝
+                  {exchangeItems.filter(i => i.type === 'free').length > 0 && (
+                    <span className="absolute -top-0.5 -right-1 w-2 h-2 rounded-full bg-emerald-500 ring-1 ring-white" />
+                  )}
+                </span>
+                <span className="font-serif font-bold text-[9px] xs:text-[10px] sm:text-xs leading-tight truncate w-full block">
+                  Exchange
+                </span>
+                <span className="hidden sm:inline text-[9px] font-mono text-emerald-700 font-bold leading-none">
+                  {exchangeItems.filter(i => i.type === 'free').length} Free
+                </span>
+              </button>
+
+              {/* 4. Housing & Land */}
+              <button
+                type="button"
+                onClick={() => setActiveSubTab('housing')}
+                className={`min-w-0 w-full py-2 px-0.5 sm:px-1.5 rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center text-center relative group active:scale-95 ${
+                  activeSubTab === 'housing'
+                    ? 'bg-[#1F140E] text-[#D4AF37] shadow-sm ring-1 ring-[#D4AF37]/50 font-bold'
+                    : 'text-[#1F140E]/80 hover:bg-[#FAF5EE]'
+                }`}
+                title="Sanctuary Housing & Land: rooms, maternity suites & homestead acreage"
+              >
+                <span className="text-sm xs:text-base sm:text-lg mb-0.5 shrink-0">🏡</span>
+                <span className="font-serif font-bold text-[9px] xs:text-[10px] sm:text-xs leading-tight truncate w-full block">
+                  Housing
+                </span>
+                <span className="hidden sm:inline text-[9px] font-mono text-soft-sage leading-none">&amp; Land</span>
+              </button>
+
+              {/* 5. Sister Businesses */}
+              <button
+                type="button"
+                onClick={() => setActiveSubTab('businesses')}
+                className={`min-w-0 w-full py-2 px-0.5 sm:px-1.5 rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center text-center relative group active:scale-95 ${
+                  activeSubTab === 'businesses'
+                    ? 'bg-[#1F140E] text-[#D4AF37] shadow-sm ring-1 ring-[#D4AF37]/50 font-bold'
+                    : 'text-[#1F140E]/80 hover:bg-[#FAF5EE]'
+                }`}
+                title="Sister Businesses: directory & vouched sister services"
+              >
+                <span className="text-sm xs:text-base sm:text-lg mb-0.5 shrink-0">⭐</span>
+                <span className="font-serif font-bold text-[9px] xs:text-[10px] sm:text-xs leading-tight truncate w-full block">
+                  Business
+                </span>
+                <span className="hidden sm:inline text-[9px] font-mono text-soft-sage leading-none">Directory</span>
+              </button>
+
+              {/* 6. Gatherings */}
+              <button
+                type="button"
+                onClick={() => setActiveSubTab('events')}
+                className={`min-w-0 w-full py-2 px-0.5 sm:px-1.5 rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center text-center relative group active:scale-95 ${
+                  activeSubTab === 'events'
+                    ? 'bg-[#1F140E] text-[#D4AF37] shadow-sm ring-1 ring-[#D4AF37]/50 font-bold'
+                    : 'text-[#1F140E]/80 hover:bg-[#FAF5EE]'
+                }`}
+                title="Gatherings & Events: state circle meetups & national live dialogues"
+              >
+                <span className="text-sm xs:text-base sm:text-lg mb-0.5 shrink-0">📅</span>
+                <span className="font-serif font-bold text-[9px] xs:text-[10px] sm:text-xs leading-tight truncate w-full block">
+                  <span className="xs:hidden">Circles</span>
+                  <span className="hidden xs:inline">Gatherings</span>
+                </span>
+                <span className="hidden sm:inline text-[9px] font-mono text-soft-sage leading-none">Events</span>
+              </button>
+
+            </div>
+
+            {/* Mobile Utility & Map Switch Strip */}
+            <div className="flex items-center justify-between gap-2 px-0.5">
+              <button
+                type="button"
+                onClick={() => setActiveSubTab('map')}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-xl font-mono text-[10px] sm:text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 border shrink-0 ${
+                  activeSubTab === 'map'
+                    ? 'bg-[#1F140E] text-[#D4AF37] border-[#D4AF37] shadow-xs'
+                    : 'bg-white hover:bg-[#FAF5EE] text-[#1F140E] border-copper-penny/25'
+                }`}
+                title="Interactive US Circle Map"
+              >
+                <span>🗺️</span>
+                <span className="hidden xs:inline">Interactive</span>
+                <span>Circle Map</span>
+                <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-[#D4AF37]/20 text-[#1F140E] font-bold">
+                  US Pins
+                </span>
+              </button>
+
+              <div className="flex-1 min-w-0 text-right">
+                <span className="inline-block max-w-full truncate px-2.5 py-1 rounded-xl bg-[#FAF5EE] border border-copper-penny/20 text-[10px] sm:text-[11px] font-mono text-soft-sage font-bold">
+                  {activeSubTab === 'feed' && '🌿 Village Stream'}
+                  {activeSubTab === 'gigs' && '💼 Opportunities & Gigs'}
+                  {activeSubTab === 'exchange' && '🤝 The Exchange'}
+                  {activeSubTab === 'housing' && '🏡 Housing & Land'}
+                  {activeSubTab === 'businesses' && '⭐ Sister Directory'}
+                  {activeSubTab === 'events' && '📅 Circle Gatherings'}
+                  {activeSubTab === 'map' && '🗺️ Circle Map'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* ========================================================== */}
+          {/* DESKTOP (lg:): FULL VERTICAL SIDEBAR (ORIGINAL EXPERIENCE) */}
+          {/* ========================================================== */}
+          <div className="hidden lg:flex lg:flex-col gap-1.5 p-1 border-none">
             
             <button
               onClick={() => setActiveSubTab('feed')}
-              className={`shrink-0 min-w-[160px] lg:min-w-0 lg:w-full text-left px-3.5 py-3 rounded-2xl font-bold transition-all cursor-pointer flex items-center justify-between group ${
+              className={`w-full text-left px-3.5 py-3 rounded-2xl font-bold transition-all cursor-pointer flex items-center justify-between group ${
                 activeSubTab === 'feed'
                   ? 'bg-[#1F140E] text-[#D4AF37] shadow-md border border-[#D4AF37]/40'
                   : 'text-[#1F140E]/80 hover:bg-[#FAF5EE] hover:text-[#1F140E]'
               }`}
-              title="The Hearth Stream: daily mother reflections, encouragement, remedies, and sisterhood wisdom"
+              title="The Village Stream: daily mother reflections, encouragement, remedies, and sisterhood wisdom"
             >
               <div className="flex items-center space-x-2.5">
                 <span className="text-base">🌿</span>
-                <span className="font-serif font-bold text-xs sm:text-sm">The Hearth Stream</span>
+                <span className="font-serif font-bold text-xs sm:text-sm">The Village Stream</span>
               </div>
-              <ChevronRight className={`w-4 h-4 transition-transform hidden sm:block ${activeSubTab === 'feed' ? 'text-[#D4AF37] translate-x-0.5' : 'opacity-30 group-hover:opacity-80'}`} />
+              <ChevronRight className={`w-4 h-4 transition-transform ${activeSubTab === 'feed' ? 'text-[#D4AF37] translate-x-0.5' : 'opacity-30 group-hover:opacity-80'}`} />
+            </button>
+
+            <button
+              onClick={() => setActiveSubTab('gigs')}
+              className={`w-full text-left px-3.5 py-3 rounded-2xl font-bold transition-all cursor-pointer flex items-center justify-between group ${
+                activeSubTab === 'gigs'
+                  ? 'bg-[#1F140E] text-[#D4AF37] shadow-md border border-[#D4AF37]/40'
+                  : 'text-[#1F140E]/80 hover:bg-[#FAF5EE] hover:text-[#1F140E]'
+              }`}
+              title="Opportunities & Gigs: micro-gigs, doula support, homestead contracts, and work trade"
+            >
+              <div className="flex items-center space-x-2.5">
+                <span className="text-base">💼</span>
+                <span className="font-serif font-bold text-xs sm:text-sm">Opportunities &amp; Gigs</span>
+              </div>
+              <ChevronRight className={`w-4 h-4 transition-transform ${activeSubTab === 'gigs' ? 'text-[#D4AF37] translate-x-0.5' : 'opacity-30 group-hover:opacity-80'}`} />
             </button>
 
             <button
               onClick={() => setActiveSubTab('exchange')}
-              className={`shrink-0 min-w-[150px] lg:min-w-0 lg:w-full text-left px-3.5 py-3 rounded-2xl font-bold transition-all cursor-pointer flex items-center justify-between group ${
+              className={`w-full text-left px-3.5 py-3 rounded-2xl font-bold transition-all cursor-pointer flex items-center justify-between group ${
                 activeSubTab === 'exchange'
                   ? 'bg-[#1F140E] text-[#D4AF37] shadow-md border border-[#D4AF37]/40'
                   : 'text-[#1F140E]/80 hover:bg-[#FAF5EE] hover:text-[#1F140E]'
@@ -784,7 +1644,7 @@ export default function VillageCommonsHub({
 
             <button
               onClick={() => setActiveSubTab('housing')}
-              className={`shrink-0 min-w-[160px] lg:min-w-0 lg:w-full text-left px-3.5 py-3 rounded-2xl font-bold transition-all cursor-pointer flex items-center justify-between group ${
+              className={`w-full text-left px-3.5 py-3 rounded-2xl font-bold transition-all cursor-pointer flex items-center justify-between group ${
                 activeSubTab === 'housing'
                   ? 'bg-[#1F140E] text-[#D4AF37] shadow-md border border-[#D4AF37]/40'
                   : 'text-[#1F140E]/80 hover:bg-[#FAF5EE] hover:text-[#1F140E]'
@@ -795,12 +1655,12 @@ export default function VillageCommonsHub({
                 <span className="text-base">🏡</span>
                 <span className="font-serif font-bold text-xs sm:text-sm">Housing &amp; Land</span>
               </div>
-              <ChevronRight className={`w-4 h-4 transition-transform hidden sm:block ${activeSubTab === 'housing' ? 'text-[#D4AF37] translate-x-0.5' : 'opacity-30 group-hover:opacity-80'}`} />
+              <ChevronRight className={`w-4 h-4 transition-transform ${activeSubTab === 'housing' ? 'text-[#D4AF37] translate-x-0.5' : 'opacity-30 group-hover:opacity-80'}`} />
             </button>
 
             <button
               onClick={() => setActiveSubTab('businesses')}
-              className={`shrink-0 min-w-[170px] lg:min-w-0 lg:w-full text-left px-3.5 py-3 rounded-2xl font-bold transition-all cursor-pointer flex items-center justify-between group ${
+              className={`w-full text-left px-3.5 py-3 rounded-2xl font-bold transition-all cursor-pointer flex items-center justify-between group ${
                 activeSubTab === 'businesses'
                   ? 'bg-[#1F140E] text-[#D4AF37] shadow-md border border-[#D4AF37]/40'
                   : 'text-[#1F140E]/80 hover:bg-[#FAF5EE] hover:text-[#1F140E]'
@@ -811,12 +1671,12 @@ export default function VillageCommonsHub({
                 <span className="text-base">⭐</span>
                 <span className="font-serif font-bold text-xs sm:text-sm">Sister Businesses</span>
               </div>
-              <ChevronRight className={`w-4 h-4 transition-transform hidden sm:block ${activeSubTab === 'businesses' ? 'text-[#D4AF37] translate-x-0.5' : 'opacity-30 group-hover:opacity-80'}`} />
+              <ChevronRight className={`w-4 h-4 transition-transform ${activeSubTab === 'businesses' ? 'text-[#D4AF37] translate-x-0.5' : 'opacity-30 group-hover:opacity-80'}`} />
             </button>
 
             <button
               onClick={() => setActiveSubTab('events')}
-              className={`shrink-0 min-w-[140px] lg:min-w-0 lg:w-full text-left px-3.5 py-3 rounded-2xl font-bold transition-all cursor-pointer flex items-center justify-between group ${
+              className={`w-full text-left px-3.5 py-3 rounded-2xl font-bold transition-all cursor-pointer flex items-center justify-between group ${
                 activeSubTab === 'events'
                   ? 'bg-[#1F140E] text-[#D4AF37] shadow-md border border-[#D4AF37]/40'
                   : 'text-[#1F140E]/80 hover:bg-[#FAF5EE] hover:text-[#1F140E]'
@@ -827,12 +1687,12 @@ export default function VillageCommonsHub({
                 <span className="text-base">📅</span>
                 <span className="font-serif font-bold text-xs sm:text-sm">Gatherings</span>
               </div>
-              <ChevronRight className={`w-4 h-4 transition-transform hidden sm:block ${activeSubTab === 'events' ? 'text-[#D4AF37] translate-x-0.5' : 'opacity-30 group-hover:opacity-80'}`} />
+              <ChevronRight className={`w-4 h-4 transition-transform ${activeSubTab === 'events' ? 'text-[#D4AF37] translate-x-0.5' : 'opacity-30 group-hover:opacity-80'}`} />
             </button>
 
             <button
               onClick={() => setActiveSubTab('map')}
-              className={`shrink-0 min-w-[150px] lg:min-w-0 lg:w-full text-left px-3.5 py-3 rounded-2xl font-bold transition-all cursor-pointer flex items-center justify-between group ${
+              className={`w-full text-left px-3.5 py-3 rounded-2xl font-bold transition-all cursor-pointer flex items-center justify-between group ${
                 activeSubTab === 'map'
                   ? 'bg-[#1F140E] text-[#D4AF37] shadow-md border border-[#D4AF37]/40'
                   : 'text-[#1F140E]/80 hover:bg-[#FAF5EE] hover:text-[#1F140E]'
@@ -856,29 +1716,49 @@ export default function VillageCommonsHub({
               <button
                 onClick={() => setIsNewPostModalOpen(true)}
                 className="w-full py-3 bg-gradient-to-r from-[#B87333] to-[#D4AF37] text-white font-mono text-xs font-bold rounded-2xl shadow-md hover:scale-102 active:scale-98 transition-all flex items-center justify-center space-x-2 cursor-pointer"
-                title="Post a message, reflection, remedy advice, or question to the village"
+                title="Share a reflection, remedy advice, question, or encouragement with the sisterhood"
               >
                 <Plus className="w-4 h-4" />
-                <span>+ Post to Forum</span>
+                <span>+ Share Reflection / Post</span>
+              </button>
+            )}
+
+            {activeSubTab === 'gigs' && (
+              <button
+                onClick={() => {
+                  setUnifiedModalCategory('gig');
+                  setIsUnifiedCreateModalOpen(true);
+                }}
+                className="w-full py-3 bg-[#1F140E] hover:bg-[#2A1D16] text-[#D4AF37] font-mono text-xs font-bold rounded-2xl shadow-md border border-[#D4AF37]/50 flex items-center justify-center space-x-2 cursor-pointer transition-all"
+                title="Post a gig, doula contract, or trade opportunity with multi-photos & dual-sync"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Post Gig / Opportunity</span>
               </button>
             )}
 
             {activeSubTab === 'exchange' && (
               <button
-                onClick={() => setIsPostExchangeModalOpen(true)}
+                onClick={() => {
+                  setUnifiedModalCategory('barter');
+                  setIsUnifiedCreateModalOpen(true);
+                }}
                 className="w-full py-3 bg-gradient-to-r from-emerald-800 to-emerald-700 text-white font-mono text-xs font-bold rounded-2xl shadow-md hover:scale-102 active:scale-98 transition-all flex items-center justify-center space-x-2 cursor-pointer"
-                title="Post a free item, barter offer, or time-credit listing"
+                title="Post a barter item or trade offer with multi-photos and dual-hub sync"
               >
                 <Plus className="w-4 h-4" />
-                <span>+ Post Free / Barter</span>
+                <span>+ Post Barter / Trade</span>
               </button>
             )}
 
             {activeSubTab === 'housing' && (
               <button
-                onClick={() => setIsPostHousingModalOpen(true)}
-                className="w-full py-3 bg-[#1F140E] hover:bg-[#2A1D16] text-[#D4AF37] font-mono text-xs font-bold rounded-2xl shadow-md border border-[#D4AF37]/50 flex items-center justify-center space-x-2 cursor-pointer"
-                title="Post a room, cottage, respite suite, or land opportunity"
+                onClick={() => {
+                  setUnifiedModalCategory('housing');
+                  setIsUnifiedCreateModalOpen(true);
+                }}
+                className="w-full py-3 bg-[#1F140E] hover:bg-[#2A1D16] text-[#D4AF37] font-mono text-xs font-bold rounded-2xl shadow-md border border-[#D4AF37]/50 flex items-center justify-center space-x-2 cursor-pointer transition-all"
+                title="Post a room, cottage, respite suite, or land opportunity with specs & photos"
               >
                 <Plus className="w-4 h-4" />
                 <span>+ Post Space or Land</span>
@@ -887,20 +1767,26 @@ export default function VillageCommonsHub({
 
             {activeSubTab === 'businesses' && (
               <button
-                onClick={() => setIsRegisterBizModalOpen(true)}
+                onClick={() => {
+                  setUnifiedModalCategory('business');
+                  setIsUnifiedCreateModalOpen(true);
+                }}
                 className="w-full py-3 bg-gradient-to-r from-[#B87333] to-[#D4AF37] text-white font-mono text-xs font-bold rounded-2xl shadow-md hover:scale-102 active:scale-98 transition-all flex items-center justify-center space-x-2 cursor-pointer"
-                title="Register your sister business or service"
+                title="Register your sister business with photos & community offers"
               >
                 <Plus className="w-4 h-4" />
                 <span>+ Register Business</span>
               </button>
             )}
 
-            {activeSubTab === 'events' && isUserSpearheadOrAdmin && (
+            {activeSubTab === 'events' && (
               <button
-                onClick={() => setIsCreateEventModalOpen(true)}
+                onClick={() => {
+                  setUnifiedModalCategory('event');
+                  setIsUnifiedCreateModalOpen(true);
+                }}
                 className="w-full py-3 bg-gradient-to-r from-[#B87333] to-[#D4AF37] text-white font-mono text-xs font-bold rounded-2xl shadow-md hover:scale-102 active:scale-98 transition-all flex items-center justify-center space-x-2 cursor-pointer"
-                title="Schedule a circle gathering (Spearhead & Admin permission)"
+                title="Schedule a circle gathering with supplies list & RSVP tracking"
               >
                 <Plus className="w-4 h-4" />
                 <span>+ Create Gathering</span>
@@ -956,115 +1842,6 @@ export default function VillageCommonsHub({
             </div>
           )}
 
-          {/* ================================================== */}
-          {/* SUGGESTED SANCTUARY FAVES / SAVED ITEMS (LEFT PANEL) */}
-          {/* ================================================== */}
-          <div className="bg-white rounded-2xl p-3.5 border-2 border-copper-penny/25 shadow-xs space-y-2.5">
-            <div className="flex items-center justify-between border-b border-copper-penny/10 pb-1.5">
-              <div className="flex items-center space-x-1.5">
-                <Bookmark className="w-3.5 h-3.5 text-[#D4AF37] fill-[#D4AF37]" />
-                <h5 className="font-serif font-black text-xs text-[#1F140E]">
-                  Suggested Sanctuary Faves
-                </h5>
-              </div>
-              <span className="text-[9px] font-mono text-soft-sage font-bold">
-                {savedItems.length > 0 ? `${savedItems.length} Saved` : 'Curated'}
-              </span>
-            </div>
-
-            {/* Quick rotating or top favorite preview */}
-            {(() => {
-              const defaultFaves: SavedCommonsItem[] = [
-                {
-                  id: 'sugg-1',
-                  type: 'exchange',
-                  title: 'Solid Hardwood Montessori Bookshelf',
-                  subtitle: 'Free giveaway in West End / Cascade, Atlanta',
-                  imageUrl: 'https://images.unsplash.com/photo-1594980596870-8aa52a78d8cd?auto=format&fit=crop&w=600&q=80',
-                  categoryBadge: 'Free Giveaway',
-                  location: 'Atlanta, GA',
-                  terms: '100% Free Gift'
-                },
-                {
-                  id: 'sugg-2',
-                  type: 'housing',
-                  title: 'Garden Cottage & Sanctuary Room',
-                  subtitle: 'Private garden entrance, peaceful work nook & bath',
-                  imageUrl: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=600&q=80',
-                  categoryBadge: 'Housing Haven',
-                  location: 'Stone Mountain, GA',
-                  terms: '$650/mo utilities included'
-                },
-                {
-                  id: 'sugg-3',
-                  type: 'business',
-                  title: 'Roots & Resilience Master Apothecary',
-                  subtitle: 'Ancestral botanical oxymels & nettle infusions',
-                  imageUrl: '/apothecary_sister_herbal.jpg',
-                  categoryBadge: 'Sister Business',
-                  location: 'Atlanta, GA',
-                  terms: '15% Off with code COPPERMOMMIE'
-                }
-              ];
-              const displayList = savedItems.length > 0 ? savedItems : defaultFaves;
-              const topItem = displayList[0];
-
-              return topItem ? (
-                <div 
-                  onClick={() => {
-                    setSelectedReviewItem(topItem);
-                    if (topItem.type === 'exchange') {
-                      setActiveSubTab('exchange');
-                    } else if (topItem.type === 'housing') {
-                      setActiveSubTab('housing');
-                    } else if (topItem.type === 'business') {
-                      setActiveSubTab('businesses');
-                    } else if (topItem.type === 'event') {
-                      setActiveSubTab('events');
-                    }
-                  }}
-                  className="space-y-2 cursor-pointer group"
-                  title={`View ${topItem.title}`}
-                >
-                  <div className="relative aspect-[16/10] w-full rounded-xl overflow-hidden bg-neutral-100 border border-copper-penny/15">
-                    <img 
-                      src={topItem.imageUrl} 
-                      alt={topItem.title} 
-                      className="w-full h-full object-cover group-hover:scale-103 transition-transform"
-                      referrerPolicy="no-referrer"
-                    />
-                    <span className="absolute top-1.5 left-1.5 bg-[#1F140E]/90 text-[#D4AF37] text-[8px] font-bold px-1.5 py-0.5 rounded border border-[#D4AF37]/30">
-                      {topItem.categoryBadge}
-                    </span>
-                    {topItem.location && (
-                      <span className="absolute bottom-1.5 right-1.5 bg-black/75 text-white text-[8px] px-1.5 py-0.5 rounded">
-                        {topItem.location}
-                      </span>
-                    )}
-                  </div>
-
-                  <div>
-                    <h6 className="font-serif font-bold text-xs text-[#1F140E] line-clamp-1 group-hover:text-copper-penny transition-colors">
-                      {topItem.title}
-                    </h6>
-                    <p className="text-[10px] text-[#1F140E]/75 font-sans line-clamp-1 mt-0.5">
-                      {topItem.subtitle}
-                    </p>
-                    {topItem.terms && (
-                      <span className="text-[9px] font-bold text-amber-900 block mt-0.5 font-mono">
-                        {topItem.terms}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between text-[10px] font-mono font-bold text-copper-penny pt-0.5">
-                    <span>Open Listing</span>
-                    <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </div>
-              ) : null;
-            })()}
-          </div>
 
         </nav>
 
@@ -1100,71 +1877,93 @@ export default function VillageCommonsHub({
                 />
               </div>
 
-              {/* Dynamic Topic Filter Button for Community Forums & Feed */}
+              {/* Village Stream Open Feed Status Indicator with Internal Safety Shield */}
               {activeSubTab === 'feed' && (
-                <button
-                  type="button"
-                  onClick={() => setShowTopicFilterModal(true)}
-                  className={`px-3 py-2 rounded-xl text-xs font-mono font-bold flex items-center space-x-1.5 transition-all cursor-pointer shrink-0 border ${
-                    selectedTopic !== 'all'
-                      ? 'bg-[#1F140E] text-[#D4AF37] border-[#D4AF37]'
-                      : 'bg-[#FAF5EE] hover:bg-[#F3EADF] text-[#1F140E] border-copper-penny/30'
-                  }`}
-                  title="Filter forum topics dynamically"
+                <div 
+                  className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold flex items-center space-x-1.5 bg-[#FAF5EE] text-[#1F140E] border border-copper-penny/25 shrink-0"
+                  title="The Village Stream is open to all community reflections, guarded by the backend Sanctuary Trigger & Safety Filter"
                 >
-                  <Filter className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">
-                    {selectedTopic === 'all' 
-                      ? 'Topic Filter' 
-                      : selectedTopic === 'herbal-remedies'
-                      ? '🌿 Remedies'
-                      : selectedTopic === 'birth-postpartum'
-                      ? '👶 Motherhood'
-                      : selectedTopic === 'homeschool-nestbright'
-                      ? '📚 Homeschool'
-                      : selectedTopic === 'homestead-seeds'
-                      ? '🌾 Homestead'
-                      : selectedTopic === 'wealth-strategies'
-                      ? '💰 Wealth'
-                      : '🕊️ Daily Uplift'}
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#B87333]" />
+                  <span className="hidden sm:inline">Open Village Stream</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-mono font-bold">
+                    Filter Active
                   </span>
-                  <span className="sm:hidden font-mono text-[11px]">Filter</span>
-                  {selectedTopic !== 'all' && (
-                    <span className="w-2 h-2 rounded-full bg-[#D4AF37]" />
-                  )}
-                </button>
+                </div>
               )}
             </div>
 
-            {/* Active Topic Filter Chip (When filtered in Feed) */}
-            {activeSubTab === 'feed' && selectedTopic !== 'all' && (
-              <div className="flex items-center space-x-2 pt-1 border-t border-copper-penny/10">
-                <span className="text-[10px] font-mono text-soft-sage uppercase font-bold">Filtered By:</span>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#1F140E] text-[#D4AF37] border border-[#D4AF37]/40 flex items-center space-x-1">
-                  <span>
-                    {selectedTopic === 'herbal-remedies' && '🌿 Remedies & Healing'}
-                    {selectedTopic === 'birth-postpartum' && '👶 Motherhood, Birth & Family'}
-                    {selectedTopic === 'homeschool-nestbright' && '📚 Homeschool & Co-op'}
-                    {selectedTopic === 'homestead-seeds' && '🌾 Homesteading & Seeds'}
-                    {selectedTopic === 'wealth-strategies' && '💰 Wealth & Co-op Gigs'}
-                    {selectedTopic === 'daily-uplift' && '🕊️ Daily Uplift & Affirmations'}
-                  </span>
+            {/* STREAMLINED VILLAGE COMMONS FEED FILTER BAR */}
+            {activeSubTab === 'feed' && (
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 pt-2.5 border-t border-copper-penny/15 min-w-0 w-full overflow-hidden">
+                
+                {/* Streamlined Dropdown Select */}
+                <div className="flex items-center space-x-2 text-xs font-mono min-w-0 w-full md:w-auto">
+                  <Filter className="w-3.5 h-3.5 text-[#B87333] shrink-0" />
+                  <span className="text-[10px] text-gray-500 uppercase font-bold shrink-0">Filter:</span>
+                  <select
+                    value={feedFilterType}
+                    onChange={(e) => setFeedFilterType(e.target.value as any)}
+                    className="flex-1 md:flex-initial bg-[#FAF5EE] border border-copper-penny/30 rounded-xl px-2.5 py-1.5 text-xs font-bold text-[#1F140E] font-mono focus:outline-none focus:ring-1 focus:ring-[#D4AF37] cursor-pointer truncate shadow-2xs max-w-full"
+                    title="Filter Village Commons feed posts"
+                  >
+                    <option value="all">🌐 All Feed Activity ({posts.length})</option>
+                    <option value="giveaways">🎁 Free Giveaways</option>
+                    <option value="barter">🤝 Barter Requests</option>
+                    <option value="announcements">📢 Community Announcements</option>
+                  </select>
+                </div>
+
+                {/* Streamlined Quick Filter Buttons (Compact & Responsive for Notebooks/Laptops) */}
+                <div className="flex items-center gap-1.5 text-xs font-mono overflow-x-auto pb-0.5 md:pb-0 scrollbar-none max-w-full shrink-0">
                   <button
                     type="button"
-                    onClick={() => setSelectedTopic('all')}
-                    className="ml-1 text-white/70 hover:text-white cursor-pointer"
-                    title="Clear filter"
+                    onClick={() => setFeedFilterType('all')}
+                    className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all cursor-pointer shrink-0 ${
+                      feedFilterType === 'all'
+                        ? 'bg-[#1F140E] text-[#D4AF37] shadow-xs'
+                        : 'bg-[#FAF5EE] text-[#1F140E]/80 hover:bg-[#F0E6D8]'
+                    }`}
                   >
-                    ×
+                    All
                   </button>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedTopic('all')}
-                  className="text-[10px] font-mono text-[#B87333] hover:underline font-bold"
-                >
-                  Reset to All Topics
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setFeedFilterType('giveaways')}
+                    className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all cursor-pointer flex items-center space-x-1 shrink-0 ${
+                      feedFilterType === 'giveaways'
+                        ? 'bg-emerald-800 text-white shadow-xs'
+                        : 'bg-emerald-50 text-emerald-900 border border-emerald-300/40 hover:bg-emerald-100'
+                    }`}
+                  >
+                    <span>🎁</span>
+                    <span>Free</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFeedFilterType('barter')}
+                    className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all cursor-pointer flex items-center space-x-1 shrink-0 ${
+                      feedFilterType === 'barter'
+                        ? 'bg-[#1F140E] text-[#D4AF37] shadow-xs'
+                        : 'bg-amber-50 text-amber-950 border border-amber-300/40 hover:bg-amber-100'
+                    }`}
+                  >
+                    <span>🤝</span>
+                    <span>Barter</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFeedFilterType('announcements')}
+                    className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all cursor-pointer flex items-center space-x-1 shrink-0 ${
+                      feedFilterType === 'announcements'
+                        ? 'bg-[#B87333] text-white shadow-xs'
+                        : 'bg-orange-50 text-orange-950 border border-orange-300/40 hover:bg-orange-100'
+                    }`}
+                  >
+                    <span>📢</span>
+                    <span>News</span>
+                  </button>
+                </div>
+
               </div>
             )}
 
@@ -1399,9 +2198,9 @@ export default function VillageCommonsHub({
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleReportPost(post.id)}
+                            onClick={() => handleOpenReportModal(post)}
                             className="p-1.5 text-neutral-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                            title="Report to Grandmother Council"
+                            title="Report post"
                           >
                             <Flag className="w-3.5 h-3.5" />
                           </button>
@@ -1414,7 +2213,7 @@ export default function VillageCommonsHub({
                           <h3 className="font-serif font-bold text-base text-[#1F140E]">{post.title}</h3>
                         )}
                         <p className="text-xs sm:text-sm text-[#1F140E]/90 leading-relaxed font-sans whitespace-pre-line">
-                          {post.content}
+                          <FormattedContentWithHashtags content={post.content} onHashtagClick={onExecuteGlobalSearch} />
                         </p>
                       </div>
 
@@ -1480,81 +2279,117 @@ export default function VillageCommonsHub({
                             <p className="text-xs text-soft-sage italic">No replies yet. Speak the first blessing into this post.</p>
                           ) : (
                             post.comments.map(c => (
-                              <div key={c.id} className="text-xs space-y-0.5 border-b border-copper-penny/10 pb-2 last:border-none">
+                              <div key={c.id} className="text-xs space-y-1 border-b border-copper-penny/10 pb-2 last:border-none">
                                 <div className="flex items-center justify-between font-mono text-[10px]">
                                   <span className="font-bold text-[#1F140E]">{c.authorName} ({c.authorLocation})</span>
                                   <span className="text-soft-sage">{c.createdAt}</span>
                                 </div>
-                                <p className="text-xs text-[#1F140E]/85 font-sans leading-relaxed">{c.content}</p>
+                                <p className="text-xs text-[#1F140E]/85 font-sans leading-relaxed whitespace-pre-line">
+                                  <FormattedContentWithHashtags content={c.content} onHashtagClick={onExecuteGlobalSearch} />
+                                </p>
+                                {(c as any).imageUrl && (
+                                  <img src={(c as any).imageUrl} alt="Attached reply image" className="max-h-40 rounded-xl border border-copper-penny/20 mt-1 object-cover" />
+                                )}
                               </div>
                             ))
                           )}
 
-                          <div className="flex items-center space-x-2 pt-1">
-                            <input
-                              type="text"
-                              value={commentInput}
-                              onChange={(e) => setCommentInput(e.target.value)}
-                              onKeyDown={(e) => e.key === 'Enter' && handleAddComment(post.id)}
-                              placeholder="Speak life into this sister..."
-                              className="flex-1 bg-white border border-copper-penny/25 px-3 py-1.5 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-[#D4AF37]"
+                          <div className="pt-1">
+                            <InteractiveReplyBox
+                              placeholder="Speak life into this sister... (use @ for sister tags, # for hashtags)"
+                              buttonLabel="Reply"
+                              onSubmit={(text, imageUrl) => {
+                                let finalContent = text;
+                                const scanResult = scanContentForTriggers(finalContent.trim());
+                                if (scanResult.recommendedAction === 'block') {
+                                  showToast(scanResult.warningMessage || '⚠️ Inappropriate words or scam triggers detected. Please adjust your reply.');
+                                  return;
+                                }
+
+                                const newComment = {
+                                  id: `c-${Date.now()}`,
+                                  authorName: userName,
+                                  authorLocation: `${selectedState} Circle`,
+                                  content: finalContent.trim(),
+                                  createdAt: 'Just now',
+                                  imageUrl: imageUrl
+                                };
+
+                                setPosts(prev => prev.map(p => {
+                                  if (p.id === post.id) {
+                                    return {
+                                      ...p,
+                                      comments: [...p.comments, newComment]
+                                    };
+                                  }
+                                  return p;
+                                }));
+
+                                showToast('💬 Sister reply posted to community feed!');
+                              }}
+                              onExecuteHashtagSearch={onExecuteGlobalSearch}
                             />
-                            <button
-                              type="button"
-                              onClick={() => handleAddComment(post.id)}
-                              className="px-3.5 py-1.5 bg-[#1F140E] text-[#D4AF37] font-mono text-xs font-bold rounded-xl cursor-pointer"
-                            >
-                              Reply
-                            </button>
                           </div>
                         </div>
                       )}
                     </article>
 
-                    {/* INTERSPERSED SPONSORED / FEATURED SISTER BUSINESS AD IN FEED (NEXTDOOR STYLE) */}
+                    {/* INTERSPERSED SPONSORED / FEATURED SISTER BUSINESS AD IN FEED (STANDARDIZED SPOTLIGHT AD) */}
                     {shouldShowInterspersedAd && (
-                      <aside className="rounded-3xl bg-gradient-to-br from-[#1C1510] via-[#2A1D16] to-[#120D0A] p-5 sm:p-6 border-2 border-[#D4AF37]/40 shadow-md text-[#FAF5EE] space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <span className="w-7 h-7 rounded-lg bg-[#D4AF37] text-[#1F140E] flex items-center justify-center font-bold text-xs shadow-xs">
+                      <aside className="w-full rounded-3xl bg-gradient-to-br from-[#1C1510] via-[#2A1D16] to-[#120D0A] p-4 sm:p-5 lg:p-6 border-2 border-[#D4AF37]/40 shadow-md text-[#FAF5EE] space-y-3 animate-fade-in">
+                        {/* Top Header Bar: Sponsor Name + Verified Partner Tag */}
+                        <div className="flex items-center justify-between border-b border-[#D4AF37]/20 pb-2.5">
+                          <div className="flex items-center space-x-2.5 min-w-0">
+                            <span className="w-7 h-7 rounded-lg bg-[#D4AF37] text-[#1F140E] flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
                               ⭐
                             </span>
-                            <div>
+                            <div className="min-w-0">
                               <div className="flex items-center space-x-2">
-                                <span className="font-serif font-bold text-sm text-[#FAF5EE]">
+                                <span className="font-serif font-black text-sm sm:text-base text-[#FAF5EE] truncate">
                                   {postIndex === 1 ? 'Roots & Resilience Master Apothecary' : 'NestBright Academy'}
                                 </span>
-                                <span className="px-2 py-0.2 rounded-full text-[9px] font-mono font-bold bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40 uppercase tracking-widest">
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40 uppercase tracking-widest shrink-0">
                                   Sponsored
                                 </span>
                               </div>
-                              <span className="text-[10px] font-mono text-soft-sage">
+                              <span className="text-[10px] font-mono text-soft-sage truncate block">
                                 Vouched Melanated Woman-Owned Partner &bull; {selectedState} Circle
                               </span>
                             </div>
                           </div>
-                          <span className="text-[10px] font-mono text-[#D4AF37] font-bold">Verified Partner</span>
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/35 flex items-center space-x-1 shrink-0">
+                            <ShieldCheck className="w-3.5 h-3.5 text-[#D4AF37]" />
+                            <span className="hidden sm:inline">Verified Partner</span>
+                          </span>
                         </div>
 
-                        <p className="text-xs text-[#FAF5EE]/90 leading-relaxed font-sans">
+                        {/* Short Ad Tagline */}
+                        <p className="text-xs text-[#FAF5EE]/90 font-sans leading-snug line-clamp-1">
                           {postIndex === 1 
-                            ? 'Hand-crafted ancestral botanical oxymels, pure grass-fed tallow skin salves, and restorative mineral teas for mother & family wellness. Made with organic wildcrafted herbs.'
-                            : 'Self-determined elementary learning curriculum (Grades 3–5) for homeschool families. Built to inspire academic confidence and independent mastery.'
+                            ? 'Hand-crafted ancestral botanical oxymels, pure tallow salves & mineral teas for maternal wellness.'
+                            : 'Self-determined elementary homeschool learning curriculum (Grades 3–5) for sovereign families.'
                           }
                         </p>
 
-                        <div className="relative aspect-[21/9] w-full rounded-2xl overflow-hidden bg-neutral-900 border border-[#D4AF37]/30">
+                        {/* Centered 16:9 Image Container with Integrated Offer Overlay & CTA Button */}
+                        <div className="relative aspect-[16/9] w-full rounded-2xl overflow-hidden bg-neutral-900 border border-[#D4AF37]/35 shadow-inner group">
                           <img 
-                            src={postIndex === 1 ? '/apothecary_sister_herbal.jpg' : 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=900&q=80'}
-                            alt="Sponsored advertisement"
-                            className="w-full h-full object-cover opacity-90"
+                            src={postIndex === 1 ? '/apothecary_sister_herbal.jpg' : 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=1200&q=80'}
+                            alt="Sponsored spotlight advertisement"
+                            className="w-full h-full object-cover object-center opacity-90 group-hover:scale-[1.02] transition-transform duration-500"
                           />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-3 sm:p-4">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 w-full">
-                              <span className="text-xs font-mono font-bold text-emerald-300">
-                                {postIndex === 1 ? 'Special Village Offer: 15% Off with code COPPERMOMMIE' : 'Exclusive Village Rate: $5.99/mo (Reg. $24.99/mo)'}
-                              </span>
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex items-end p-3.5 sm:p-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 w-full">
+                              <div className="space-y-0.5">
+                                <span className="text-[10px] font-mono uppercase tracking-wider text-[#D4AF37] font-bold block">
+                                  Exclusive Community Offer:
+                                </span>
+                                <span className="text-xs sm:text-sm font-mono font-black text-emerald-300">
+                                  {postIndex === 1 ? '15% Off with code COPPERMOMMIE' : '$5.99/mo Member Rate (Reg. $24.99/mo)'}
+                                </span>
+                              </div>
                               <button
+                                type="button"
                                 onClick={() => {
                                   if (postIndex === 1) {
                                     setActiveSubTab('businesses');
@@ -1562,9 +2397,10 @@ export default function VillageCommonsHub({
                                     window.open('https://nestbrightacademy.com', '_blank');
                                   }
                                 }}
-                                className="px-3.5 py-1.5 rounded-xl bg-[#D4AF37] hover:bg-[#c29f2f] text-[#1F140E] font-serif font-black text-xs shadow-md transition-all self-start sm:self-auto cursor-pointer"
+                                className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#B87333] hover:from-[#e0bc46] hover:to-[#c47f3e] text-[#1F140E] font-serif font-black text-xs shadow-md transition-all self-start sm:self-auto cursor-pointer flex items-center space-x-1.5 active:scale-95"
                               >
-                                {postIndex === 1 ? 'View Sister Apothecary ↗' : 'Visit NestBright ↗'}
+                                <span>{postIndex === 1 ? 'View Sister Apothecary' : 'Explore NestBright'}</span>
+                                <ArrowRight className="w-3.5 h-3.5 text-[#1F140E]" />
                               </button>
                             </div>
                           </div>
@@ -1577,180 +2413,444 @@ export default function VillageCommonsHub({
             </div>
           )}
 
-          {/* VIEW: 2. THE EXCHANGE (PHOTO GRID) */}
-          {activeSubTab === 'exchange' && (
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-4 animate-fade-in">
-              {filteredExchangeItems.map(item => {
-                const saved = isItemSaved(item.id);
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => setSelectedExchangeItem(item)}
-                    className="bg-white rounded-2xl overflow-hidden border border-copper-penny/20 hover:border-[#D4AF37] hover:shadow-lg transition-all flex flex-col justify-between cursor-pointer group"
-                    title={item.title}
-                  >
-                    <div>
-                      <div className="relative aspect-square w-full bg-neutral-100 overflow-hidden">
-                        <img 
-                          src={item.imageUrl} 
-                          alt={item.title} 
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          referrerPolicy="no-referrer"
-                        />
-                        <div className="absolute top-2 left-2">
-                          {item.type === 'free' ? (
-                            <span className="px-2 py-0.5 rounded-md text-[9px] font-mono font-black bg-emerald-700 text-white shadow-md">
-                              FREE
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-md text-[9px] font-mono font-black bg-[#1F140E] text-[#D4AF37] border border-[#D4AF37]/50 shadow-md">
-                              BARTER
-                            </span>
-                          )}
-                        </div>
-                        {/* Bookmark in Corner */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleSaveItem({
-                              id: item.id,
-                              type: 'exchange',
-                              title: item.title,
-                              subtitle: item.description.slice(0, 60) + '...',
-                              imageUrl: item.imageUrl,
-                              categoryBadge: item.type === 'free' ? 'Free Giveaway' : 'Barter Item',
-                              location: `${item.locationCity}, ${item.locationState}`,
-                              terms: item.terms
-                            });
-                          }}
-                          className={`absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 backdrop-blur-xs transition-colors cursor-pointer ${
-                            saved ? 'text-[#D4AF37]' : 'text-white/80 hover:text-[#D4AF37]'
-                          }`}
-                          title={saved ? "Saved in Column 3" : "Save to Column 3 Saved Items"}
-                        >
-                          <Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-[#D4AF37]' : ''}`} />
-                        </button>
-                      </div>
-
-                      <div className="p-3 space-y-1">
-                        <span className="text-[9px] font-mono text-soft-sage uppercase font-bold block">{item.category}</span>
-                        <h4 className="font-serif font-bold text-xs sm:text-sm text-[#1F140E] line-clamp-2 leading-snug group-hover:text-copper-penny transition-colors">
-                          {item.title}
-                        </h4>
-                      </div>
-                    </div>
-
-                    <div className="p-3 pt-0 border-t border-copper-penny/10 flex items-center justify-between text-[10px] font-mono">
-                      <span className="text-soft-sage">{item.locationCity}</span>
-                      <span className="font-bold text-copper-penny truncate max-w-[110px]">{item.terms}</span>
-                    </div>
+          {/* VIEW: OPPORTUNITIES & GIGS (COMMONS GIG DESK) */}
+          {activeSubTab === 'gigs' && (
+            <div className="space-y-5 animate-fade-in">
+              {/* Header Banner */}
+              <div className="bg-[#FAF5EE] border border-[#B87333]/25 rounded-3xl p-5 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-serif font-black text-xl text-[#1F1813]">
+                      💼 Opportunities &amp; Maternal Gigs
+                    </h3>
+                    <p className="text-xs text-soft-sage font-mono mt-0.5">
+                      Vetted homestead preservation, doula support, childcare swaps, and cooperative contracts.
+                    </p>
                   </div>
-                );
-              })}
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => onNavigateToTab?.('commerce')}
+                      className="px-3 py-1.5 bg-white hover:bg-stone-100 rounded-xl text-xs font-mono font-bold text-[#1F140E] border border-copper-penny/25 shadow-xs transition-colors cursor-pointer flex items-center space-x-1"
+                    >
+                      <span>Open Commerce Hub Job Desk</span>
+                      <ArrowRight className="w-3.5 h-3.5 text-[#B87333]" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUnifiedModalCategory('gig');
+                        setIsUnifiedCreateModalOpen(true);
+                      }}
+                      className="px-4 py-1.5 bg-[#D4AF37] hover:bg-[#B87333] hover:text-white text-[#1F140E] rounded-xl text-xs font-mono font-black uppercase tracking-wider transition-all shadow-xs cursor-pointer flex items-center space-x-1.5"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Post A Gig</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Filter Controls */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-copper-penny/10 font-mono text-xs">
+                  {['all', 'Contract', 'Micro-Gig', 'Part-time', 'Full-time'].map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setGigTypeFilter(type)}
+                      className={`px-3 py-1 rounded-xl font-bold transition-all cursor-pointer ${
+                        gigTypeFilter === type
+                          ? 'bg-[#1F140E] text-[#D4AF37] shadow-xs'
+                          : 'bg-white text-[#1F140E]/80 hover:bg-[#F0E6D8] border border-copper-penny/15'
+                      }`}
+                    >
+                      {type === 'all' ? 'All Gigs & Opportunities' : type}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Gigs List */}
+              <div className="space-y-5">
+                {filteredUnifiedGigs.map(gig => renderUnifiedListingCard(gig, 'commerce', 'View in Opportunities & Job Desk'))}
+                {filteredUnifiedGigs.length === 0 && (
+                  <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-copper-penny/25 p-6 space-y-2">
+                    <p className="font-serif text-[#1F1813] text-sm font-bold">No active gigs match this filter.</p>
+                    <p className="text-xs text-soft-sage font-mono">Post the first contract or micro-gig for our sisterhood!</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* VIEW: 2. THE EXCHANGE (PHOTO GRID & MULTI-PHOTO BARTER) */}
+          {activeSubTab === 'exchange' && (
+            <div className="space-y-6 animate-fade-in">
+              {/* Featured Multi-Photo Barter Listings */}
+              {filteredUnifiedBarters.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between border-b border-copper-penny/15 pb-2">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-lg">🤝</span>
+                      <h4 className="font-serif font-black text-base text-[#1F1813]">
+                        Multi-Photo Barters &amp; Trade Requests ({filteredUnifiedBarters.length})
+                      </h4>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onNavigateToTab?.('economy')}
+                      className="text-xs font-mono text-[#B87333] hover:underline flex items-center space-x-1 cursor-pointer font-bold"
+                    >
+                      <span>Cooperative Economy Hub</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div className="space-y-5">
+                    {filteredUnifiedBarters.map(item => renderUnifiedListingCard(item, 'economy', 'View in Cooperative Economy Hub'))}
+                  </div>
+                </div>
+              )}
+
+              {/* Original Exchange Photo Grid */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b border-copper-penny/10 pb-2">
+                  <h4 className="font-serif font-bold text-sm text-[#1F1813]">
+                    Community Goods, Gifts &amp; Swaps ({filteredExchangeItems.length})
+                  </h4>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {filteredExchangeItems.map(item => {
+                    const saved = isItemSaved(item.id);
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => setSelectedExchangeItem(item)}
+                        className="bg-white rounded-2xl overflow-hidden border border-copper-penny/20 hover:border-[#D4AF37] hover:shadow-lg transition-all flex flex-col justify-between cursor-pointer group"
+                        title={item.title}
+                      >
+                        <div>
+                          <div className="relative aspect-square w-full bg-neutral-100 overflow-hidden">
+                            <img 
+                              src={item.imageUrl} 
+                              alt={item.title} 
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                              referrerPolicy="no-referrer"
+                            />
+                            <div className="absolute top-2 left-2">
+                              {item.type === 'free' ? (
+                                <span className="px-2 py-0.5 rounded-md text-[9px] font-mono font-black bg-emerald-700 text-white shadow-md">
+                                  FREE
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-md text-[9px] font-mono font-black bg-[#1F140E] text-[#D4AF37] border border-[#D4AF37]/50 shadow-md">
+                                  BARTER
+                                </span>
+                              )}
+                            </div>
+                            {/* Bookmark in Corner */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleSaveItem({
+                                  id: item.id,
+                                  type: 'exchange',
+                                  title: item.title,
+                                  subtitle: item.description.slice(0, 60) + '...',
+                                  imageUrl: item.imageUrl,
+                                  categoryBadge: item.type === 'free' ? 'Free Giveaway' : 'Barter Item',
+                                  location: `${item.locationCity}, ${item.locationState}`,
+                                  terms: item.terms
+                                });
+                              }}
+                              className={`absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 backdrop-blur-xs transition-colors cursor-pointer ${
+                                saved ? 'text-[#D4AF37]' : 'text-white/80 hover:text-[#D4AF37]'
+                              }`}
+                              title={saved ? "Saved in Column 3" : "Save to Column 3 Saved Items"}
+                            >
+                              <Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-[#D4AF37]' : ''}`} />
+                            </button>
+                          </div>
+
+                          <div className="p-3 space-y-1">
+                            <span className="text-[9px] font-mono text-soft-sage uppercase font-bold block">{item.category}</span>
+                            <h4 className="font-serif font-bold text-xs sm:text-sm text-[#1F140E] line-clamp-2 leading-snug group-hover:text-copper-penny transition-colors">
+                              {item.title}
+                            </h4>
+                          </div>
+                        </div>
+
+                        <div className="p-3 pt-0 border-t border-copper-penny/10 flex items-center justify-between text-[10px] font-mono">
+                          <span className="text-soft-sage">{item.locationCity}</span>
+                          <span className="font-bold text-copper-penny truncate max-w-[110px]">{item.terms}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
 
           {/* VIEW: 3. SANCTUARY HOUSING & LAND */}
           {activeSubTab === 'housing' && (
-            <div className="space-y-5 animate-fade-in">
-              {filteredHousing.map(house => {
-                const saved = isItemSaved(house.id);
-                return (
-                  <div 
-                    key={house.id}
-                    className="bg-white rounded-3xl overflow-hidden border-2 border-copper-penny/20 shadow-sm hover:border-[#D4AF37] transition-all p-5 space-y-3"
-                  >
-                    <div className="relative h-48 sm:h-56 w-full rounded-2xl overflow-hidden bg-neutral-100">
-                      <img 
-                        src={house.imageUrl} 
-                        alt={house.title} 
-                        className="w-full h-full object-cover"
-                        referrerPolicy="no-referrer"
-                      />
-                      <span className="absolute top-2.5 left-2.5 px-3 py-1 rounded-xl text-xs font-mono font-bold bg-[#1F140E]/90 text-[#D4AF37] border border-[#D4AF37]/50 shadow-md">
-                        {house.spaceType === 'maternity' ? 'RESPITE HAVEN' : house.spaceType.toUpperCase()}
-                      </span>
+            <div className="space-y-6 animate-fade-in">
+              {/* Unified Multi-Photo Housing Listings */}
+              {filteredUnifiedHousing.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between border-b border-copper-penny/15 pb-2">
+                    <h4 className="font-serif font-black text-base text-[#1F1813]">
+                      🏡 Featured Maternity Suites, Havens &amp; Acreage ({filteredUnifiedHousing.length})
+                    </h4>
+                  </div>
+                  <div className="space-y-5">
+                    {filteredUnifiedHousing.map(house => renderUnifiedListingCard(house, 'commons', 'Sanctuary Housing Board'))}
+                  </div>
+                </div>
+              )}
+
+              {/* Standard Housing Listings */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-copper-penny/10 pb-2">
+                  <h4 className="font-serif font-bold text-sm text-[#1F1813]">
+                    Community Rooms, Cottages &amp; Co-ops ({filteredHousing.length})
+                  </h4>
+                </div>
+                {filteredHousing.map(house => {
+                  const saved = isItemSaved(house.id);
+                  return (
+                    <div 
+                      key={house.id}
+                      className="bg-white rounded-3xl overflow-hidden border-2 border-copper-penny/20 shadow-sm hover:border-[#D4AF37] transition-all p-5 space-y-3"
+                    >
+                      <div className="relative h-48 sm:h-56 w-full rounded-2xl overflow-hidden bg-neutral-100">
+                        <img 
+                          src={house.imageUrl} 
+                          alt={house.title} 
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                        <span className="absolute top-2.5 left-2.5 px-3 py-1 rounded-xl text-xs font-mono font-bold bg-[#1F140E]/90 text-[#D4AF37] border border-[#D4AF37]/50 shadow-md">
+                          {house.spaceType === 'maternity' ? 'RESPITE HAVEN' : house.spaceType.toUpperCase()}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => toggleSaveItem({
+                            id: house.id,
+                            type: 'housing',
+                            title: house.title,
+                            subtitle: house.pricingTerms,
+                            imageUrl: house.imageUrl,
+                            categoryBadge: 'Housing Haven',
+                            location: `${house.regionOrCity}, ${house.stateCode}`,
+                            terms: house.pricingTerms
+                          })}
+                          className={`absolute top-2.5 right-2.5 p-2 rounded-xl bg-black/60 backdrop-blur-xs transition-colors cursor-pointer ${
+                            saved ? 'text-[#D4AF37]' : 'text-white/80 hover:text-[#D4AF37]'
+                          }`}
+                          title={saved ? 'Saved in Column 3' : 'Save to Column 3'}
+                        >
+                          <Bookmark className={`w-4 h-4 ${saved ? 'fill-[#D4AF37]' : ''}`} />
+                        </button>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs font-mono text-soft-sage">
+                          <span>{house.regionOrCity}, {house.stateCode}</span>
+                          <span>Posted {house.createdAt}</span>
+                        </div>
+                        <h3 className="font-serif font-black text-lg text-[#1F140E]">{house.title}</h3>
+                        <div className="bg-[#FAF5EE] border border-[#D4AF37]/40 p-2.5 rounded-xl font-mono text-xs font-bold text-[#1F140E]">
+                          Terms: {house.pricingTerms}
+                        </div>
+                        <p className="text-xs font-sans text-[#1F140E]/80">{house.rulesAndExpectations}</p>
+                      </div>
+
                       <button
                         type="button"
-                        onClick={() => toggleSaveItem({
-                          id: house.id,
-                          type: 'housing',
-                          title: house.title,
-                          subtitle: house.pricingTerms,
-                          imageUrl: house.imageUrl,
-                          categoryBadge: 'Housing Haven',
-                          location: `${house.regionOrCity}, ${house.stateCode}`,
-                          terms: house.pricingTerms
-                        })}
-                        className={`absolute top-2.5 right-2.5 p-2 rounded-xl bg-black/60 backdrop-blur-xs transition-colors cursor-pointer ${
-                          saved ? 'text-[#D4AF37]' : 'text-white/80 hover:text-[#D4AF37]'
-                        }`}
-                        title={saved ? 'Saved in Column 3' : 'Save to Column 3'}
+                        onClick={() => handleOpenMessageModal(house.authorName, `Inquiry regarding: ${house.title}`)}
+                        className="w-full py-2.5 bg-[#1F140E] hover:bg-[#2A1D16] text-[#D4AF37] font-mono text-xs font-bold rounded-xl flex items-center justify-center space-x-2 border border-[#D4AF37]/40 cursor-pointer"
+                        title="Send safe private message to host sister"
                       >
-                        <Bookmark className={`w-4 h-4 ${saved ? 'fill-[#D4AF37]' : ''}`} />
+                        <span>💌 Message Sister {house.authorName} Privately</span>
                       </button>
                     </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs font-mono text-soft-sage">
-                        <span>{house.regionOrCity}, {house.stateCode}</span>
-                        <span>Posted {house.createdAt}</span>
-                      </div>
-                      <h3 className="font-serif font-black text-lg text-[#1F140E]">{house.title}</h3>
-                      <div className="bg-[#FAF5EE] border border-[#D4AF37]/40 p-2.5 rounded-xl font-mono text-xs font-bold text-[#1F140E]">
-                        Terms: {house.pricingTerms}
-                      </div>
-                      <p className="text-xs font-sans text-[#1F140E]/80">{house.rulesAndExpectations}</p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => handleOpenMessageModal(house.authorName, `Inquiry regarding: ${house.title}`)}
-                      className="w-full py-2.5 bg-[#1F140E] hover:bg-[#2A1D16] text-[#D4AF37] font-mono text-xs font-bold rounded-xl flex items-center justify-center space-x-2 border border-[#D4AF37]/40 cursor-pointer"
-                      title="Send safe private message to host sister"
-                    >
-                      <span>💌 Message Sister {house.authorName} Privately</span>
-                    </button>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           )}
 
           {/* VIEW: 4. SISTER BUSINESSES */}
           {activeSubTab === 'businesses' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in">
-              {filteredBusinesses.map(biz => {
-                const saved = isItemSaved(biz.id);
-                const alreadyVouched = biz.vouchedBy.includes(userName);
-                return (
-                  <div 
-                    key={biz.id}
-                    className="bg-white rounded-3xl overflow-hidden border border-copper-penny/20 shadow-sm p-4 space-y-3 flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="relative h-40 w-full rounded-2xl overflow-hidden bg-neutral-100">
+            <div className="space-y-6 animate-fade-in">
+              {/* Unified Sister Businesses */}
+              {filteredUnifiedBusinesses.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between border-b border-copper-penny/15 pb-2">
+                    <h4 className="font-serif font-black text-base text-[#1F1813]">
+                      ⭐ Featured Sister Enterprises ({filteredUnifiedBusinesses.length})
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => onNavigateToTab?.('commerce')}
+                      className="text-xs font-mono text-[#B87333] hover:underline flex items-center space-x-1 cursor-pointer font-bold"
+                    >
+                      <span>Mommie Business Directory</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div className="space-y-5">
+                    {filteredUnifiedBusinesses.map(biz => renderUnifiedListingCard(biz, 'commerce', 'View in Business Directory'))}
+                  </div>
+                </div>
+              )}
+
+              {/* Standard Vouched Businesses */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b border-copper-penny/10 pb-2">
+                  <h4 className="font-serif font-bold text-sm text-[#1F1813]">
+                    Community Vouched Sister Faves ({filteredBusinesses.length})
+                  </h4>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {filteredBusinesses.map(biz => {
+                    const saved = isItemSaved(biz.id);
+                    const alreadyVouched = biz.vouchedBy.includes(userName);
+                    return (
+                      <div 
+                        key={biz.id}
+                        className="bg-white rounded-3xl overflow-hidden border border-copper-penny/20 shadow-sm p-4 space-y-3 flex flex-col justify-between"
+                      >
+                        <div>
+                          <div className="relative h-40 w-full rounded-2xl overflow-hidden bg-neutral-100">
+                            <img 
+                              src={biz.imageUrl} 
+                              alt={biz.name} 
+                              className="w-full h-full object-cover"
+                              referrerPolicy="no-referrer"
+                            />
+                            <span className="absolute top-2 left-2 bg-black/75 text-[#D4AF37] text-[9px] font-mono px-2 py-0.5 rounded-md font-bold">
+                              {biz.industry}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => toggleSaveItem({
+                                id: biz.id,
+                                type: 'business',
+                                title: biz.name,
+                                subtitle: biz.offerDescription.slice(0, 60) + '...',
+                                imageUrl: biz.imageUrl,
+                                categoryBadge: 'Sister Business',
+                                location: `${biz.locationCity}, ${biz.locationState}`,
+                                terms: biz.sisterDiscountOrBarter
+                              })}
+                              className={`absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 backdrop-blur-xs transition-colors cursor-pointer ${
+                                saved ? 'text-[#D4AF37]' : 'text-white/80 hover:text-[#D4AF37]'
+                              }`}
+                              title={saved ? 'Saved in Column 3' : 'Save to Column 3'}
+                            >
+                              <Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-[#D4AF37]' : ''}`} />
+                            </button>
+                          </div>
+
+                          <div className="pt-2 space-y-1">
+                            <h4 className="font-serif font-bold text-sm text-[#1F140E]">{biz.name}</h4>
+                            <p className="text-[11px] text-soft-sage font-mono">Owner: {biz.ownerName} • {biz.locationCity}</p>
+                            <p className="text-xs text-[#1F140E]/80 line-clamp-2">{biz.offerDescription}</p>
+                            <span className="text-[10px] font-mono font-bold text-amber-900 block pt-1">{biz.sisterDiscountOrBarter}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2 pt-2 border-t border-copper-penny/10">
+                          <button
+                            type="button"
+                            onClick={() => handleVouchForBusiness(biz.id)}
+                            className={`flex-1 py-1.5 rounded-xl text-xs font-mono font-bold border transition-colors cursor-pointer flex items-center justify-center space-x-1 ${
+                              alreadyVouched ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-[#1F140E] text-[#D4AF37] border-[#D4AF37]/40'
+                            }`}
+                            title="Vouch for Sister"
+                          >
+                            <ThumbsUp className="w-3 h-3" />
+                            <span>{alreadyVouched ? 'Vouched' : `Vouch (${biz.vouchesCount})`}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenMessageModal(biz.ownerName, `Inquiry regarding: ${biz.name}`)}
+                            className="px-3 py-1.5 bg-[#FAF5EE] rounded-xl text-xs font-mono font-bold border border-copper-penny/20"
+                            title="Message Owner"
+                          >
+                            💌 Message
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* VIEW: 5. GATHERINGS & EVENTS */}
+          {activeSubTab === 'events' && (
+            <div className="space-y-6 animate-fade-in">
+              {/* Unified Circle Gatherings */}
+              {filteredUnifiedEvents.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between border-b border-copper-penny/15 pb-2">
+                    <h4 className="font-serif font-black text-base text-[#1F1813]">
+                      📅 Sovereign Circles &amp; Hands-On Workshops ({filteredUnifiedEvents.length})
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => onNavigateToTab?.('gathering')}
+                      className="text-xs font-mono text-[#B87333] hover:underline flex items-center space-x-1 cursor-pointer font-bold"
+                    >
+                      <span>Circle Gatherings Hub</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div className="space-y-5">
+                    {filteredUnifiedEvents.map(ev => renderUnifiedListingCard(ev, 'gathering', 'View in Circle Event Calendar'))}
+                  </div>
+                </div>
+              )}
+
+              {/* Standard Gatherings List */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-copper-penny/10 pb-2">
+                  <h4 className="font-serif font-bold text-sm text-[#1F1813]">
+                    Regional Sister Circles ({filteredEvents.length})
+                  </h4>
+                </div>
+                {filteredEvents.map(ev => {
+                  const currentRsvp = ev.rsvps[userName];
+                  const saved = isItemSaved(ev.id);
+                  return (
+                    <div 
+                      key={ev.id}
+                      className="bg-white rounded-3xl overflow-hidden border border-copper-penny/20 shadow-sm p-5 space-y-3"
+                    >
+                      <div className="relative h-44 w-full rounded-2xl overflow-hidden bg-neutral-100">
                         <img 
-                          src={biz.imageUrl} 
-                          alt={biz.name} 
+                          src={ev.coverImageUrl} 
+                          alt={ev.title} 
                           className="w-full h-full object-cover"
                           referrerPolicy="no-referrer"
                         />
-                        <span className="absolute top-2 left-2 bg-black/75 text-[#D4AF37] text-[9px] font-mono px-2 py-0.5 rounded-md font-bold">
-                          {biz.industry}
+                        <span className="absolute top-2 left-2 bg-black/75 text-[#D4AF37] text-[10px] font-mono px-2 py-0.5 rounded-md font-bold">
+                          {ev.category}
                         </span>
                         <button
                           type="button"
                           onClick={() => toggleSaveItem({
-                            id: biz.id,
-                            type: 'business',
-                            title: biz.name,
-                            subtitle: biz.offerDescription.slice(0, 60) + '...',
-                            imageUrl: biz.imageUrl,
-                            categoryBadge: 'Sister Business',
-                            location: `${biz.locationCity}, ${biz.locationState}`,
-                            terms: biz.sisterDiscountOrBarter
+                            id: ev.id,
+                            type: 'event',
+                            title: ev.title,
+                            subtitle: `${ev.date} • ${ev.time}`,
+                            imageUrl: ev.coverImageUrl,
+                            categoryBadge: 'Gathering',
+                            location: ev.venueOrCity,
+                            terms: ev.date
                           })}
                           className={`absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 backdrop-blur-xs transition-colors cursor-pointer ${
                             saved ? 'text-[#D4AF37]' : 'text-white/80 hover:text-[#D4AF37]'
@@ -1761,116 +2861,40 @@ export default function VillageCommonsHub({
                         </button>
                       </div>
 
-                      <div className="pt-2 space-y-1">
-                        <h4 className="font-serif font-bold text-sm text-[#1F140E]">{biz.name}</h4>
-                        <p className="text-[11px] text-soft-sage font-mono">Owner: {biz.ownerName} • {biz.locationCity}</p>
-                        <p className="text-xs text-[#1F140E]/80 line-clamp-2">{biz.offerDescription}</p>
-                        <span className="text-[10px] font-mono font-bold text-amber-900 block pt-1">{biz.sisterDiscountOrBarter}</span>
+                      <div>
+                        <span className="text-xs font-mono font-bold text-copper-penny block">{ev.date} • {ev.time}</span>
+                        <h3 className="font-serif font-bold text-base text-[#1F1813] mt-0.5">{ev.title}</h3>
+                        <p className="text-xs text-[#1F1813]/80 font-sans mt-1">{ev.description}</p>
+                        <p className="text-[11px] font-mono text-soft-sage mt-1">📍 Location: {ev.venueOrCity}</p>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-copper-penny/10">
+                        <span className="text-[10px] font-mono text-soft-sage">Your RSVP:</span>
+                        <div className="flex items-center space-x-1.5 font-mono text-xs">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateRsvp(ev.id, 'going')}
+                            className={`px-3 py-1 rounded-xl font-bold transition-all cursor-pointer ${
+                              currentRsvp === 'going' ? 'bg-emerald-800 text-white' : 'bg-emerald-50 text-emerald-900 border border-emerald-200'
+                            }`}
+                          >
+                            Going
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateRsvp(ev.id, 'interested')}
+                            className={`px-3 py-1 rounded-xl font-bold transition-all cursor-pointer ${
+                              currentRsvp === 'interested' ? 'bg-amber-800 text-white' : 'bg-[#FAF5EE] text-[#1F140E] border border-copper-penny/25'
+                            }`}
+                          >
+                            Interested
+                          </button>
+                        </div>
                       </div>
                     </div>
-
-                    <div className="flex items-center space-x-2 pt-2 border-t border-copper-penny/10">
-                      <button
-                        type="button"
-                        onClick={() => handleVouchForBusiness(biz.id)}
-                        className={`flex-1 py-1.5 rounded-xl text-xs font-mono font-bold border transition-colors cursor-pointer flex items-center justify-center space-x-1 ${
-                          alreadyVouched ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-[#1F140E] text-[#D4AF37] border-[#D4AF37]/40'
-                        }`}
-                        title="Vouch for Sister"
-                      >
-                        <ThumbsUp className="w-3 h-3" />
-                        <span>{alreadyVouched ? 'Vouched' : `Vouch (${biz.vouchesCount})`}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenMessageModal(biz.ownerName, `Inquiry regarding: ${biz.name}`)}
-                        className="px-3 py-1.5 bg-[#FAF5EE] rounded-xl text-xs font-mono font-bold border border-copper-penny/20"
-                        title="Message Owner"
-                      >
-                        💌 Message
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* VIEW: 5. GATHERINGS & EVENTS */}
-          {activeSubTab === 'events' && (
-            <div className="space-y-4 animate-fade-in">
-              {filteredEvents.map(ev => {
-                const currentRsvp = ev.rsvps[userName];
-                const saved = isItemSaved(ev.id);
-                return (
-                  <div 
-                    key={ev.id}
-                    className="bg-white rounded-3xl overflow-hidden border border-copper-penny/20 shadow-sm p-5 space-y-3"
-                  >
-                    <div className="relative h-44 w-full rounded-2xl overflow-hidden bg-neutral-100">
-                      <img 
-                        src={ev.coverImageUrl} 
-                        alt={ev.title} 
-                        className="w-full h-full object-cover"
-                        referrerPolicy="no-referrer"
-                      />
-                      <span className="absolute top-2 left-2 bg-black/75 text-[#D4AF37] text-[10px] font-mono px-2 py-0.5 rounded-md font-bold">
-                        {ev.category}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => toggleSaveItem({
-                          id: ev.id,
-                          type: 'event',
-                          title: ev.title,
-                          subtitle: `${ev.date} • ${ev.time}`,
-                          imageUrl: ev.coverImageUrl,
-                          categoryBadge: 'Gathering',
-                          location: ev.venueOrCity,
-                          terms: ev.date
-                        })}
-                        className={`absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 backdrop-blur-xs transition-colors cursor-pointer ${
-                          saved ? 'text-[#D4AF37]' : 'text-white/80 hover:text-[#D4AF37]'
-                        }`}
-                        title={saved ? 'Saved in Column 3' : 'Save to Column 3'}
-                      >
-                        <Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-[#D4AF37]' : ''}`} />
-                      </button>
-                    </div>
-
-                    <div>
-                      <span className="text-xs font-mono font-bold text-copper-penny block">{ev.date} • {ev.time}</span>
-                      <h3 className="font-serif font-bold text-base text-[#1F140E] mt-0.5">{ev.title}</h3>
-                      <p className="text-xs text-[#1F140E]/80 font-sans mt-1">{ev.description}</p>
-                      <p className="text-[11px] font-mono text-soft-sage mt-1">📍 Location: {ev.venueOrCity}</p>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2 border-t border-copper-penny/10">
-                      <span className="text-[10px] font-mono text-soft-sage">Your RSVP:</span>
-                      <div className="flex items-center space-x-1.5 font-mono text-xs">
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateRsvp(ev.id, 'going')}
-                          className={`px-3 py-1 rounded-xl font-bold transition-all cursor-pointer ${
-                            currentRsvp === 'going' ? 'bg-emerald-800 text-white' : 'bg-emerald-50 text-emerald-900 border border-emerald-200'
-                          }`}
-                        >
-                          Going
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateRsvp(ev.id, 'interested')}
-                          className={`px-3 py-1 rounded-xl font-bold transition-all cursor-pointer ${
-                            currentRsvp === 'interested' ? 'bg-amber-800 text-white' : 'bg-[#FAF5EE] text-[#1F140E] border border-copper-penny/25'
-                          }`}
-                        >
-                          Interested
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           )}
 
@@ -1935,20 +2959,18 @@ export default function VillageCommonsHub({
             </div>
 
             <form onSubmit={handleCreatePost} className="space-y-4 text-xs font-mono">
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-soft-sage mb-1">Topic Category:</label>
-                <select
-                  value={newPostTopic}
-                  onChange={(e) => setNewPostTopic(e.target.value as CommonsForumTopic)}
-                  className="w-full bg-white border border-copper-penny/25 p-2.5 rounded-xl text-xs font-bold text-[#1F140E]"
-                >
-                  <option value="daily-uplift">🕊️ Daily Uplift &amp; Affirmations</option>
-                  <option value="herbal-remedies">🌿 Herbal Remedies &amp; Healing</option>
-                  <option value="birth-postpartum">👶 Motherhood, Birth &amp; Family Life</option>
-                  <option value="homeschool-nestbright">📚 Homeschool &amp; NestBright</option>
-                  <option value="homestead-seeds">🌾 Homesteading &amp; Seeds</option>
-                  <option value="wealth-strategies">💰 Wealth &amp; Co-op Gigs</option>
-                </select>
+              <div className="bg-white p-3 rounded-2xl border border-copper-penny/20 flex items-center justify-between">
+                <div className="flex items-center space-x-2.5">
+                  <span className="text-xl">🌿</span>
+                  <div>
+                    <div className="font-serif font-bold text-xs text-[#1F140E]">The Village Stream (Open Community)</div>
+                    <div className="text-[10px] text-soft-sage font-sans">Open to all reflections, mother wisdom, questions &amp; encouragement</div>
+                  </div>
+                </div>
+                <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center space-x-1 shrink-0">
+                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                  <span>Sanctuary Protected</span>
+                </span>
               </div>
 
               <div>
@@ -2929,6 +3951,172 @@ export default function VillageCommonsHub({
           </div>
         </div>
       )}
+
+      {/* ==================================================== */}
+      {/* MODAL: MANDATORY REPORT POST CONFIRMATION POP-OUT     */}
+      {/* ==================================================== */}
+      {postToReport && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#FAF5EE] border-2 border-red-500/50 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-scale-up max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-copper-penny/20 pb-3">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-8 h-8 rounded-xl bg-red-100 border border-red-300 flex items-center justify-center text-red-600">
+                  <ShieldAlert className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-serif font-black text-base text-[#1F140E]">
+                    Report Post
+                  </h3>
+                  <p className="text-[10px] font-mono text-soft-sage">
+                    Community Guidelines Review
+                  </p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setPostToReport(null)}
+                className="p-1.5 rounded-lg hover:bg-neutral-200 text-neutral-500 cursor-pointer"
+                title="Cancel"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Policy & Review Banner */}
+            <div className="p-3.5 bg-amber-50 border border-amber-300 rounded-2xl space-y-1">
+              <div className="flex items-center space-x-2 text-amber-900 font-mono text-xs font-bold">
+                <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
+                <span>Community Review Notice</span>
+              </div>
+              <p className="text-xs text-[#2A221B]/85 font-sans leading-relaxed">
+                <strong>Reporting will NOT automatically delete or hide this post.</strong> Your report will be carefully reviewed against our community guidelines by administration.
+              </p>
+            </div>
+
+            {/* Post Snippet Verification */}
+            <div className="p-3 bg-white rounded-2xl border border-copper-penny/20 space-y-1">
+              <div className="flex items-center justify-between text-[10px] font-mono text-soft-sage">
+                <span className="font-bold text-[#1F140E]">Author: {postToReport.authorName} ({postToReport.authorState} Circle)</span>
+                <span>{postToReport.createdAt}</span>
+              </div>
+              {postToReport.title && (
+                <div className="font-serif font-bold text-xs text-[#1F140E]">{postToReport.title}</div>
+              )}
+              <p className="text-xs text-[#1F140E]/80 font-sans italic line-clamp-3">
+                "{postToReport.content}"
+              </p>
+            </div>
+
+            {/* Form */}
+            <div className="space-y-3.5 text-xs font-mono">
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-soft-sage mb-1">
+                  Reason for Reporting *
+                </label>
+                <select
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                  className="w-full bg-white border border-copper-penny/25 p-2.5 rounded-xl text-xs font-bold text-[#1F140E] focus:outline-none focus:ring-1 focus:ring-[#D4AF37]"
+                >
+                  <option value="Commercial / Wholesale Spam or Reselling">📦 Commercial Wholesale Spam or Dropshipping</option>
+                  <option value="Financial Scam, Crypto, or Money Solicitation">🪙 Financial Scam, Crypto, or Cash App Flip</option>
+                  <option value="Harassment, Bullying, or Personal Disrespect">🛑 Harassment, Bullying, or Disrespect to Sisters</option>
+                  <option value="Hate Speech or Offensive Slurs">🚫 Hate Speech or Offensive Language</option>
+                  <option value="Inappropriate or Harmful Substances">⚠️ Dangerous Substances or Black-Market Meds</option>
+                  <option value="Off-Platform Solicitations (Telegram / WhatsApp)">📱 Off-Platform Solicitations (Telegram / WhatsApp / Wire)</option>
+                  <option value="Doxxing or Sharing Private Information">🔒 Doxxing or Sharing Private Personal Details</option>
+                  <option value="Other Sacred Space Violation">🌿 Other Community Guideline Concern</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-soft-sage mb-1">
+                  Add Context / Notes (Optional):
+                </label>
+                <textarea
+                  value={reportNotes}
+                  onChange={(e) => setReportNotes(e.target.value)}
+                  rows={2.5}
+                  placeholder="Share a quick note explaining why you are reporting this post..."
+                  className="w-full bg-white border border-copper-penny/25 p-2.5 rounded-xl text-xs font-sans focus:outline-none focus:ring-1 focus:ring-[#D4AF37]"
+                />
+              </div>
+
+              {/* Mandatory Intentional Checkbox */}
+              <label className="p-3 bg-red-50/60 border border-red-200 rounded-2xl flex items-start space-x-2.5 cursor-pointer hover:bg-red-50 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={confirmReportChecked}
+                  onChange={(e) => setConfirmReportChecked(e.target.checked)}
+                  className="mt-0.5 rounded text-red-600 focus:ring-red-500 h-4 w-4 cursor-pointer"
+                />
+                <span className="text-[11px] text-red-950 font-sans leading-tight">
+                  <strong>I confirm this is an intentional report</strong>, and I am requesting administrative review for this post against community guidelines.
+                </span>
+              </label>
+
+              {/* Action Buttons */}
+              <div className="pt-2 flex items-center justify-between border-t border-copper-penny/10">
+                <button
+                  type="button"
+                  onClick={() => setPostToReport(null)}
+                  className="px-4 py-2 bg-neutral-200 hover:bg-neutral-300 text-neutral-800 rounded-xl font-bold cursor-pointer transition-colors"
+                >
+                  Cancel Report
+                </button>
+                <button
+                  type="button"
+                  disabled={!confirmReportChecked}
+                  onClick={handleConfirmReport}
+                  className={`px-5 py-2 rounded-xl font-bold font-mono text-xs flex items-center space-x-1.5 transition-all shadow-md ${
+                    confirmReportChecked 
+                      ? 'bg-red-600 hover:bg-red-700 text-white cursor-pointer' 
+                      : 'bg-neutral-300 text-neutral-500 cursor-not-allowed opacity-60'
+                  }`}
+                >
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  <span>Submit Official Report</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Trade Handshake Modal Overlay */}
+      <TradeHandshakeModal
+        isOpen={isTradeModalOpen}
+        onClose={() => {
+          setIsTradeModalOpen(false);
+          setActiveTradeListing(null);
+          setActiveTradeRecord(null);
+        }}
+        listing={activeTradeListing}
+        existingTrade={activeTradeRecord}
+        userName={userName}
+        selectedState={selectedState}
+        onTradeUpdated={(trade) => {
+          setActiveTradeRecord(trade);
+          showToast(`🤝 Trade proposal sent to ${trade.recipientName}! Handshake tracker opened.`);
+        }}
+        showToast={showToast}
+      />
+
+      {/* Create Unified Marketplace Listing Overlay Modal */}
+      <CreateUnifiedListingModal
+        isOpen={isUnifiedCreateModalOpen}
+        onClose={() => setIsUnifiedCreateModalOpen(false)}
+        userName={userName}
+        selectedState={selectedState}
+        initialCategory={unifiedModalCategory}
+        onListingCreated={(newListing) => {
+          setIsUnifiedCreateModalOpen(false);
+          setUnifiedListings(getStoredUnifiedListings());
+          showToast(`✨ Published new ${newListing.categoryType.toUpperCase()} listing!`);
+        }}
+        showToast={showToast}
+      />
 
     </div>
   );

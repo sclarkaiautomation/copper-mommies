@@ -49,10 +49,31 @@ import {
   CornerUpLeft,
   Pin,
   Smile,
-  CheckCheck
+  CheckCheck,
+  Handshake,
+  RefreshCw
 } from 'lucide-react';
-import { SavedCommonsItem, TimeCreditLog, DirectChatThread, ChatMember, DirectChatMessage } from '../types';
+import { SavedCommonsItem, TimeCreditLog, DirectChatThread, ChatMember, DirectChatMessage, BusinessAdSubmission } from '../types';
 import { INITIAL_CHAT_MEMBERS, INITIAL_DIRECT_CHAT_THREADS } from '../data/initialDirectChats';
+import { getStoredTrades, MultiStageTrade, completeTradeHandshake } from '../data/unifiedMarketplaceStore';
+
+const HUB_NAME_MAP: Record<string, string> = {
+  landing: 'Home / Sanctuary Overview',
+  commons: 'Village Commons',
+  academy: 'Mothers Academy',
+  economy: 'Cooperative Economy & Barter',
+  commerce: 'Sister Enterprises & Micro-Grants',
+  healing: 'Apothecary & Healing Sanctum',
+  village: 'Education & Village Care Hub',
+  gathering: 'The Copper Circle & Gatherings',
+  audio: 'Audio Sanctuary Lounge',
+  kinship: 'Kinship Vault & Lineage Archives',
+  treasury: 'Sovereign Treasury Hub',
+  advertise: 'Sponsor Advertising Portal',
+  profile: 'Member Profile Hub',
+  vetting: 'Sisterhood Vetting Portal',
+  admin: 'Founder Admin Office'
+};
 
 interface MemberProfileHubProps {
   userName: string;
@@ -73,7 +94,7 @@ interface MemberProfileHubProps {
   onUpdateProfileName?: (name: string) => void;
   onAddLedgerLog?: (activity: string, hours: number, type: 'earn' | 'spend') => void;
   initialChatThreadId?: string | null;
-  initialProfileTab?: 'overview' | 'chats' | 'bookmarks' | 'posts' | 'events' | 'faves' | 'groups' | 'ledger';
+  initialProfileTab?: 'overview' | 'chats' | 'bookmarks' | 'posts' | 'events' | 'faves' | 'groups' | 'ledger' | 'trades' | 'ads';
   lastVisitedTab?: string | null;
   onReturnToLastVisitedTab?: () => void;
 }
@@ -103,7 +124,7 @@ export default function MemberProfileHub({
 }: MemberProfileHubProps) {
   
   // Active subview within profile
-  const [activeProfileTab, setActiveProfileTab] = useState<'overview' | 'chats' | 'bookmarks' | 'posts' | 'events' | 'faves' | 'groups' | 'ledger'>(initialProfileTab || 'overview');
+  const [activeProfileTab, setActiveProfileTab] = useState<'overview' | 'chats' | 'bookmarks' | 'posts' | 'events' | 'faves' | 'groups' | 'ledger' | 'trades' | 'ads'>(initialProfileTab || 'overview');
 
   useEffect(() => {
     if (initialProfileTab) {
@@ -150,6 +171,77 @@ export default function MemberProfileHub({
     'Time Banking Co-ops'
   ]);
   const [newInterestInput, setNewInterestInput] = useState('');
+
+  // ----------------------------------------------------
+  // ACTIVE TRADES & BARTER HANDSHAKES STATE
+  // ----------------------------------------------------
+  const [activeTrades, setActiveTrades] = useState<MultiStageTrade[]>(() => {
+    return getStoredTrades();
+  });
+
+  useEffect(() => {
+    const handleSyncTrades = () => {
+      setActiveTrades(getStoredTrades());
+    };
+    window.addEventListener('copper_marketplace_sync', handleSyncTrades);
+    return () => window.removeEventListener('copper_marketplace_sync', handleSyncTrades);
+  }, []);
+
+  const handleCompleteTrade = (tradeId: string) => {
+    completeTradeHandshake(tradeId);
+    setActiveTrades(getStoredTrades());
+    showToast('Handshake completed! Time credit transfer recorded in Sovereign Ledger.');
+  };
+
+  // ----------------------------------------------------
+  // MEMBER AD SUBMISSIONS STATE
+  // ----------------------------------------------------
+  const [memberAds, setMemberAds] = useState<BusinessAdSubmission[]>(() => {
+    try {
+      const stored = localStorage.getItem('copper_business_ad_submissions');
+      if (stored) return JSON.parse(stored);
+    } catch (e) {
+      console.error(e);
+    }
+    return [
+      {
+        id: 'ad-sub-sample-1',
+        businessName: 'ClarkWorks Customs & Artisan Woodcraft',
+        ownerName: 'Shantrece Clark',
+        email: 'shantrecetogetherwewin@gmail.com',
+        websiteUrl: 'https://clarkworkscustoms.com',
+        placementType: 'both_bundle',
+        bannerImageUrl: '/nestbright_banner.jpg',
+        headline: 'Handcrafted Cedar Raised Beds & Sourdough Proofing Boxes',
+        tagline: 'Built with non-toxic timber by long-time SW Atlanta homeowner & homeschool mother.',
+        description: 'Custom cabinetry, homeschool study desks, and organic soil planters.',
+        callToActionText: 'Claim Sister Discount',
+        exclusiveDiscountCode: 'COPPER10',
+        discountOfferText: '10% off custom orders for verified Copper Mommies',
+        pricingTier: 'bundle_monthly',
+        pricingAmount: '$65/mo (Header + Sidebar Bundle)',
+        singleMelanatedWomanOwnedConfirmed: true,
+        status: 'approved_live',
+        submittedAt: 'Jan 10, 2026',
+        approvedAt: 'Jan 11, 2026',
+        viewsCount: 1420,
+        clicksCount: 184
+      }
+    ];
+  });
+
+  useEffect(() => {
+    const handleSyncAds = () => {
+      try {
+        const stored = localStorage.getItem('copper_business_ad_submissions');
+        if (stored) setMemberAds(JSON.parse(stored));
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    window.addEventListener('copper_ads_updated', handleSyncAds);
+    return () => window.removeEventListener('copper_ads_updated', handleSyncAds);
+  }, []);
 
   // ----------------------------------------------------
   // DIRECT CHATS & MESSAGES STATE (NEXTDOOR STYLE)
@@ -387,6 +479,65 @@ export default function MemberProfileHub({
   const [isAddBusinessOpen, setIsAddBusinessOpen] = useState(false);
   const [isNewPostModalOpen, setIsNewPostModalOpen] = useState(false);
   const [isNewTradeModalOpen, setIsNewTradeModalOpen] = useState(false);
+  const [isReferralModalOpen, setIsReferralModalOpen] = useState(false);
+  
+  // Sisterhood Referral & Growth Analytics State
+  const [memberReferrals, setMemberReferrals] = useState<Array<{
+    id: string;
+    code: string;
+    link: string;
+    createdAt: string;
+    status: 'active' | 'claimed';
+    analyticsSource: string;
+  }>>(() => {
+    try {
+      const stored = localStorage.getItem('copper_member_referrals');
+      if (stored) return JSON.parse(stored);
+    } catch (e) {
+      console.error(e);
+    }
+    return [
+      {
+        id: 'ref-default-1',
+        code: 'CMC-REF-90412-VILLAGE',
+        link: 'https://coppermommies.co/apply?ref=CMC-REF-90412-VILLAGE',
+        createdAt: 'Jan 15, 2026',
+        status: 'claimed',
+        analyticsSource: 'Member Profile Hub • Shantrece Clark'
+      }
+    ];
+  });
+  const [copiedReferralId, setCopiedReferralId] = useState<string | null>(null);
+
+  const handleGenerateReferralLink = () => {
+    const randomNum = Math.floor(10000 + Math.random() * 90000);
+    const newCode = `CMC-REF-${randomNum}-SISTER`;
+    const newLink = `https://coppermommies.co/apply?ref=${newCode}`;
+    const newRecord = {
+      id: `ref-${Date.now()}`,
+      code: newCode,
+      link: newLink,
+      createdAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      status: 'active' as const,
+      analyticsSource: `Member Profile Hub • ${displayName}`
+    };
+
+    const updated = [newRecord, ...memberReferrals];
+    setMemberReferrals(updated);
+    try {
+      localStorage.setItem('copper_member_referrals', JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+    showToast('New one-time Sisterhood referral link generated & tracked!');
+  };
+
+  const handleCopyReferralLink = (id: string, link: string) => {
+    navigator.clipboard?.writeText(link);
+    setCopiedReferralId(id);
+    setTimeout(() => setCopiedReferralId(null), 2500);
+    showToast('Referral link copied to clipboard!');
+  };
   
   // New Business Form State
   const [newBizName, setNewBizName] = useState('');
@@ -648,19 +799,21 @@ export default function MemberProfileHub({
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-fade-in pb-16">
       
-      {/* Return to Circle Map / Previous View Breadcrumb */}
+      {/* Return to Previous Hub Breadcrumb */}
       {lastVisitedTab && onReturnToLastVisitedTab && (
-        <div className="bg-[#1F140E] text-[#D4AF37] border-2 border-[#D4AF37]/50 p-3.5 rounded-2xl shadow-xl flex items-center justify-between font-mono text-xs animate-fade-in">
-          <div className="flex items-center space-x-2">
-            <Sparkles className="w-4 h-4 text-[#D4AF37] animate-pulse" />
-            <span>Navigated here for host sister messaging &amp; profile RSVPs</span>
+        <div className="flex items-center justify-between font-mono text-xs animate-fade-in py-1">
+          <div className="flex items-center space-x-2 text-soft-sage text-[11px]">
+            <Sparkles className="w-3.5 h-3.5 text-[#D4AF37]" />
+            <span className="hidden sm:inline">Navigated from <strong className="text-[#1F1813] font-serif">{HUB_NAME_MAP[lastVisitedTab] || lastVisitedTab}</strong></span>
           </div>
           <button
+            type="button"
+            id="profile-return-to-last-hub-btn"
             onClick={onReturnToLastVisitedTab}
-            className="px-4 py-2 bg-[#D4AF37] hover:bg-[#C5A02E] text-[#1F140E] rounded-xl font-black border border-white flex items-center space-x-1.5 cursor-pointer shadow-md transition-all active:scale-95"
+            className="inline-flex items-center space-x-2 px-3.5 py-1.5 bg-[#1F140E]/95 hover:bg-[#2A1D16] text-[#FAF5EE] hover:text-[#D4AF37] rounded-full font-mono text-xs font-extrabold uppercase tracking-wider border border-[#B2838E]/60 hover:border-[#D4AF37] shadow-xs transition-all cursor-pointer active:scale-95 shrink-0"
           >
-            <CornerUpLeft className="w-4 h-4 text-[#1F140E]" />
-            <span>↩️ Return to Circle Map</span>
+            <CornerUpLeft className="w-3.5 h-3.5 text-[#D4AF37]" />
+            <span>↩ Back to {HUB_NAME_MAP[lastVisitedTab] || lastVisitedTab}</span>
           </button>
         </div>
       )}
@@ -737,6 +890,15 @@ export default function MemberProfileHub({
                 <Plus className="w-3.5 h-3.5 text-white" />
                 <span>New Post</span>
               </button>
+
+              <button 
+                onClick={() => setIsReferralModalOpen(true)}
+                className="px-4 py-2 bg-gradient-to-r from-[#D4AF37] to-[#B87333] hover:from-[#e5bd42] hover:to-[#c27c39] text-[#1F140E] rounded-xl text-xs font-bold font-sans shadow-sm flex items-center space-x-1.5 cursor-pointer transition-all active:scale-95 font-mono"
+                title="Generate one-time Sisterhood referral link"
+              >
+                <Users className="w-3.5 h-3.5 text-[#1F140E]" />
+                <span>🕊️ Sisterhood Referral</span>
+              </button>
             </div>
           </div>
 
@@ -809,33 +971,33 @@ export default function MemberProfileHub({
       </div>
 
       {/* ==================================================== */}
-      {/* 2. SUB-NAV TILES (CHATS, BOOKMARKS, POSTS, FORUMS)   */}
+      {/* 2. SUB-NAV TILES (CHATS, BOOKMARKS, POSTS, FORUMS...) */}
       {/* ==================================================== */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-10 gap-2">
         
         <button
           onClick={() => setActiveProfileTab('overview')}
-          className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+          className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer ${
             activeProfileTab === 'overview'
               ? 'bg-[#1F1813] text-[#D4AF37] border-[#D4AF37] shadow-md font-bold'
               : 'bg-white text-gray-700 border-copper-penny/20 hover:bg-[#FAF5EE]'
           }`}
         >
           <Sparkles className="w-4 h-4 mx-auto mb-1" />
-          <span className="text-xs block font-bold">Overview</span>
+          <span className="text-[11px] block font-bold truncate">Overview</span>
         </button>
 
-        {/* CHATS TAB BUTTON (NEXTDOOR STYLE) */}
+        {/* CHATS TAB BUTTON */}
         <button
           onClick={() => setActiveProfileTab('chats')}
-          className={`p-3 rounded-2xl border text-center transition-all cursor-pointer relative ${
+          className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer relative ${
             activeProfileTab === 'chats'
               ? 'bg-[#1F1813] text-[#D4AF37] border-[#D4AF37] shadow-md font-bold'
               : 'bg-white text-gray-700 border-copper-penny/20 hover:bg-[#FAF5EE]'
           }`}
         >
           <MessageSquare className="w-4 h-4 mx-auto mb-1 text-copper-penny" />
-          <span className="text-xs block font-bold">Chats ({chatThreads.length})</span>
+          <span className="text-[11px] block font-bold truncate">Chats ({chatThreads.length})</span>
           {chatThreads.some(t => t.unreadCount > 0) && (
             <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
           )}
@@ -843,74 +1005,103 @@ export default function MemberProfileHub({
 
         <button
           onClick={() => setActiveProfileTab('bookmarks')}
-          className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+          className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer ${
             activeProfileTab === 'bookmarks'
               ? 'bg-[#1F1813] text-[#D4AF37] border-[#D4AF37] shadow-md font-bold'
               : 'bg-white text-gray-700 border-copper-penny/20 hover:bg-[#FAF5EE]'
           }`}
         >
           <Bookmark className="w-4 h-4 mx-auto mb-1 text-copper-penny" />
-          <span className="text-xs block font-bold">Saved ({savedItems.length})</span>
+          <span className="text-[11px] block font-bold truncate">Saved ({savedItems.length})</span>
         </button>
 
         <button
           onClick={() => setActiveProfileTab('posts')}
-          className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+          className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer ${
             activeProfileTab === 'posts'
               ? 'bg-[#1F1813] text-[#D4AF37] border-[#D4AF37] shadow-md font-bold'
               : 'bg-white text-gray-700 border-copper-penny/20 hover:bg-[#FAF5EE]'
           }`}
         >
           <Edit3 className="w-4 h-4 mx-auto mb-1 text-soft-sage" />
-          <span className="text-xs block font-bold">Posts ({userPosts.length})</span>
+          <span className="text-[11px] block font-bold truncate">Posts ({userPosts.length})</span>
+        </button>
+
+        {/* TRADES TAB BUTTON */}
+        <button
+          onClick={() => setActiveProfileTab('trades')}
+          className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer relative ${
+            activeProfileTab === 'trades'
+              ? 'bg-[#1F1813] text-[#D4AF37] border-[#D4AF37] shadow-md font-bold'
+              : 'bg-white text-gray-700 border-copper-penny/20 hover:bg-[#FAF5EE]'
+          }`}
+        >
+          <Handshake className="w-4 h-4 mx-auto mb-1 text-[#B87333]" />
+          <span className="text-[11px] block font-bold truncate">Trades ({activeTrades.length})</span>
+          {activeTrades.some(t => t.currentStage === 'agreed') && (
+            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+          )}
+        </button>
+
+        {/* MY ADS TAB BUTTON */}
+        <button
+          onClick={() => setActiveProfileTab('ads')}
+          className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer ${
+            activeProfileTab === 'ads'
+              ? 'bg-[#1F1813] text-[#D4AF37] border-[#D4AF37] shadow-md font-bold'
+              : 'bg-white text-gray-700 border-copper-penny/20 hover:bg-[#FAF5EE]'
+          }`}
+        >
+          <Tag className="w-4 h-4 mx-auto mb-1 text-amber-600" />
+          <span className="text-[11px] block font-bold truncate">My Ads ({memberAds.length})</span>
         </button>
 
         <button
           onClick={() => setActiveProfileTab('groups')}
-          className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+          className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer ${
             activeProfileTab === 'groups'
               ? 'bg-[#1F1813] text-[#D4AF37] border-[#D4AF37] shadow-md font-bold'
               : 'bg-white text-gray-700 border-copper-penny/20 hover:bg-[#FAF5EE]'
           }`}
         >
           <Users className="w-4 h-4 mx-auto mb-1 text-amber-700" />
-          <span className="text-xs block font-bold">Forums ({joinedGroups.filter(g => g.isJoined).length})</span>
+          <span className="text-[11px] block font-bold truncate">Forums ({joinedGroups.filter(g => g.isJoined).length})</span>
         </button>
 
         <button
           onClick={() => setActiveProfileTab('faves')}
-          className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+          className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer ${
             activeProfileTab === 'faves'
               ? 'bg-[#1F1813] text-[#D4AF37] border-[#D4AF37] shadow-md font-bold'
               : 'bg-white text-gray-700 border-copper-penny/20 hover:bg-[#FAF5EE]'
           }`}
         >
           <Heart className="w-4 h-4 mx-auto mb-1 text-rose-600" />
-          <span className="text-xs block font-bold">Faves ({favedBusinesses.length})</span>
+          <span className="text-[11px] block font-bold truncate">Faves ({favedBusinesses.length})</span>
         </button>
 
         <button
           onClick={() => setActiveProfileTab('events')}
-          className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+          className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer ${
             activeProfileTab === 'events'
               ? 'bg-[#1F1813] text-[#D4AF37] border-[#D4AF37] shadow-md font-bold'
               : 'bg-white text-gray-700 border-copper-penny/20 hover:bg-[#FAF5EE]'
           }`}
         >
           <Calendar className="w-4 h-4 mx-auto mb-1 text-indigo-600" />
-          <span className="text-xs block font-bold">RSVPs ({rsvpEvents.length})</span>
+          <span className="text-[11px] block font-bold truncate">RSVPs ({rsvpEvents.length})</span>
         </button>
 
         <button
           onClick={() => setActiveProfileTab('ledger')}
-          className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+          className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer ${
             activeProfileTab === 'ledger'
               ? 'bg-[#1F1813] text-[#D4AF37] border-[#D4AF37] shadow-md font-bold'
               : 'bg-white text-gray-700 border-copper-penny/20 hover:bg-[#FAF5EE]'
           }`}
         >
           <Scale className="w-4 h-4 mx-auto mb-1 text-emerald-700" />
-          <span className="text-xs block font-bold">Ledger</span>
+          <span className="text-[11px] block font-bold truncate">Ledger</span>
         </button>
 
       </div>
@@ -2032,6 +2223,249 @@ export default function MemberProfileHub({
         </div>
       )}
 
+      {/* ACTIVE TRADES & BARTER HANDSHAKES TAB */}
+      {activeProfileTab === 'trades' && (
+        <div className="bg-white border-2 border-copper-penny/20 rounded-3xl p-6 shadow-sm space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-copper-penny/15 pb-3 gap-2">
+            <div>
+              <h3 className="font-serif font-extrabold text-lg text-[#1F1813] flex items-center space-x-2">
+                <Handshake className="w-5 h-5 text-[#B87333]" />
+                <span>My Active Trades &amp; Multi-Stage Handshakes</span>
+              </h3>
+              <p className="text-xs text-gray-600">Track multi-stage barter negotiations, agreements, and time-credit handshakes</p>
+            </div>
+
+            <button 
+              onClick={() => onNavigateToTab('economy')}
+              className="px-3.5 py-1.5 bg-[#B87333] hover:bg-[#A85138] text-white rounded-xl text-xs font-bold cursor-pointer transition-all shadow-xs"
+            >
+              + Propose New Barter Trade
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {activeTrades.length === 0 ? (
+              <div className="p-8 text-center bg-[#FAF5EE] rounded-2xl border border-copper-penny/20 space-y-2">
+                <Handshake className="w-8 h-8 text-copper-penny mx-auto opacity-50" />
+                <p className="text-xs font-bold text-[#1F1813]">No active trades or handshakes currently open.</p>
+                <p className="text-[11px] text-gray-500">Browse the Village Commons or Economy Hub to propose a skill swap or product exchange!</p>
+                <button
+                  onClick={() => onNavigateToTab('commons')}
+                  className="mt-2 px-4 py-1.5 bg-[#1F1813] text-[#D4AF37] text-xs font-bold rounded-xl"
+                >
+                  Browse Commons Exchange
+                </button>
+              </div>
+            ) : (
+              activeTrades.map(trade => {
+                const stageLabel = 
+                  trade.currentStage === 'completed' ? '✓ Handshake Completed' :
+                  trade.currentStage === 'agreed' ? '🤝 Agreement Reached (Awaiting Completion)' :
+                  trade.currentStage === 'counter_offer' ? '💬 Counter-Offer Submitted' : '📩 Inquiry / Proposed Terms';
+
+                const stageBg = 
+                  trade.currentStage === 'completed' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                  trade.currentStage === 'agreed' ? 'bg-amber-100 text-amber-900 border-amber-300 animate-pulse' :
+                  trade.currentStage === 'counter_offer' ? 'bg-indigo-100 text-indigo-800 border-indigo-300' :
+                  'bg-neutral-100 text-neutral-800 border-neutral-300';
+
+                return (
+                  <div key={trade.id} className="bg-[#FAF5EE] border-2 border-copper-penny/20 rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-2xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-copper-penny/15 pb-2.5">
+                      <div>
+                        <span className={`text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border inline-block mb-1 ${stageBg}`}>
+                          {stageLabel}
+                        </span>
+                        <h4 className="font-serif font-extrabold text-base text-[#1F1813]">{trade.listingTitle}</h4>
+                        <p className="text-xs text-gray-600 font-sans">
+                          Between <strong className="text-[#1F1813]">{trade.initiatorName}</strong> ({trade.initiatorLocation}) &amp; <strong className="text-[#1F1813]">{trade.recipientName}</strong> ({trade.recipientLocation})
+                        </p>
+                      </div>
+
+                      <div className="text-left sm:text-right font-mono text-xs shrink-0">
+                        <span className="text-gray-500 block text-[10px]">Updated: {trade.updatedAt}</span>
+                        {trade.timeCreditHours && (
+                          <span className="font-black text-[#B87333] text-sm block">⚡ {trade.timeCreditHours} Time Credits</span>
+                        )}
+                        {trade.cashAmount && (
+                          <span className="font-bold text-emerald-800 text-xs block">💵 {trade.cashAmount}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Trade Terms Box */}
+                    <div className="bg-white p-3 rounded-xl border border-copper-penny/15 text-xs text-[#1F1813] space-y-1">
+                      <span className="font-bold font-mono text-[10px] uppercase text-gray-500 block">Agreed Trade Terms:</span>
+                      <p className="leading-relaxed">{trade.currentTerms || trade.initialProposal}</p>
+                      {trade.counterOfferNote && (
+                        <p className="text-indigo-900 bg-indigo-50 p-2 rounded-lg text-[11px] font-mono mt-1">
+                          <strong>Note from {trade.counterOfferedBy || 'Sister'}:</strong> {trade.counterOfferNote}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                      <button
+                        onClick={() => setActiveProfileTab('chats')}
+                        className="px-3.5 py-1.5 bg-white border border-copper-penny/30 rounded-xl text-xs font-bold text-[#1F1813] hover:bg-neutral-100 flex items-center space-x-1.5 cursor-pointer shadow-2xs"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5 text-copper-penny" />
+                        <span>Discuss in Direct Chats</span>
+                      </button>
+
+                      {trade.currentStage !== 'completed' && (
+                        <button
+                          onClick={() => handleCompleteTrade(trade.id)}
+                          className="px-4 py-2 bg-gradient-to-r from-emerald-700 to-emerald-600 hover:from-emerald-800 hover:to-emerald-700 text-white font-bold text-xs rounded-xl flex items-center space-x-1.5 cursor-pointer shadow-sm transition-all active:scale-95"
+                        >
+                          <Check className="w-4 h-4 text-white" />
+                          <span>Sign &amp; Complete Handshake</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MEMBER ADS & SPONSORSHIP PLACEMENTS TAB */}
+      {activeProfileTab === 'ads' && (
+        <div className="bg-white border-2 border-copper-penny/20 rounded-3xl p-6 shadow-sm space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-copper-penny/15 pb-3 gap-2">
+            <div>
+              <h3 className="font-serif font-extrabold text-lg text-[#1F1813] flex items-center space-x-2">
+                <Tag className="w-5 h-5 text-amber-600" />
+                <span>My Ad Submissions &amp; Sponsorship Placements</span>
+              </h3>
+              <p className="text-xs text-gray-600 font-sans">Manage your active header feature banners, sidebar cards, and discount codes</p>
+            </div>
+
+            <button 
+              onClick={() => onNavigateToTab('sponsors')}
+              className="px-3.5 py-1.5 bg-gradient-to-r from-[#D4AF37] to-[#B87333] text-[#1F140E] font-bold rounded-xl text-xs shadow-xs cursor-pointer hover:opacity-90 transition-all"
+            >
+              + Create Ad / Placement
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {memberAds.length === 0 ? (
+              <div className="p-8 text-center bg-[#FAF5EE] rounded-2xl border border-copper-penny/20 space-y-2">
+                <Award className="w-8 h-8 text-amber-600 mx-auto opacity-50" />
+                <p className="text-xs font-bold text-[#1F1813]">No active ad placements or sponsorship submissions found.</p>
+                <p className="text-[11px] text-gray-500">Promote your melanated sister business with true-size banners, exclusive member codes, and live tracking!</p>
+                <button
+                  onClick={() => onNavigateToTab('sponsors')}
+                  className="mt-2 px-4 py-1.5 bg-[#1F1813] text-[#D4AF37] text-xs font-bold rounded-xl cursor-pointer"
+                >
+                  Visit Sponsors Ad Hub
+                </button>
+              </div>
+            ) : (
+              memberAds.map(ad => {
+                const statusBadge = 
+                  ad.status === 'approved_live' ? '🟢 Live & Displaying' :
+                  ad.status === 'pending_review' ? '🟡 Pending Elder Review' : '🔴 Revision Requested';
+
+                const statusBg = 
+                  ad.status === 'approved_live' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                  ad.status === 'pending_review' ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                  'bg-rose-100 text-rose-800 border-rose-300';
+
+                return (
+                  <div key={ad.id} className="bg-[#FAF5EE] border-2 border-copper-penny/20 rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-2xs">
+                    
+                    {/* Header bar */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-copper-penny/15 pb-2.5">
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className={`text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border inline-block ${statusBg}`}>
+                            {statusBadge}
+                          </span>
+                          <span className="text-[10px] font-mono font-extrabold text-[#B87333] bg-[#B87333]/10 px-2 py-0.5 rounded-full border border-[#B87333]/20">
+                            {ad.pricingAmount}
+                          </span>
+                        </div>
+                        <h4 className="font-serif font-extrabold text-base text-[#1F1813] mt-1">{ad.businessName}</h4>
+                        <p className="text-xs text-gray-600">{ad.headline}</p>
+                      </div>
+
+                      {/* Performance Counters */}
+                      <div className="flex items-center space-x-3 bg-white p-2.5 rounded-xl border border-copper-penny/15 text-center font-mono shrink-0">
+                        <div>
+                          <span className="text-[9px] uppercase font-bold text-gray-400 block">Views</span>
+                          <span className="font-black text-xs text-[#1F1813]">{ad.viewsCount || 0}</span>
+                        </div>
+                        <div className="h-6 w-px bg-gray-200" />
+                        <div>
+                          <span className="text-[9px] uppercase font-bold text-gray-400 block">Clicks</span>
+                          <span className="font-black text-xs text-emerald-700">{ad.clicksCount || 0}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* True-size Banner Preview */}
+                    <div className="rounded-xl overflow-hidden border border-copper-penny/25 bg-black/5 relative group">
+                      <img 
+                        src={ad.bannerImageUrl || '/nestbright_banner.jpg'} 
+                        alt={ad.headline} 
+                        className="w-full h-32 sm:h-40 object-cover object-center"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-3 flex flex-col justify-end text-white">
+                        <span className="text-[9px] font-mono uppercase bg-[#D4AF37] text-black font-extrabold px-2 py-0.5 rounded-md self-start mb-1">
+                          Live Banner Preview
+                        </span>
+                        <h5 className="font-serif font-bold text-sm leading-tight text-white">{ad.headline}</h5>
+                        <p className="text-[11px] text-gray-200 truncate">{ad.tagline}</p>
+                      </div>
+                    </div>
+
+                    {/* Exclusive Promo Details */}
+                    <div className="bg-white p-3 rounded-xl border border-copper-penny/15 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                      <div>
+                        <span className="font-bold text-[#1F1813]">Exclusive Sister Offer:</span>
+                        <p className="text-gray-600 text-[11px]">{ad.discountOfferText}</p>
+                      </div>
+                      {ad.exclusiveDiscountCode && (
+                        <div className="bg-[#FAF5EE] border border-dashed border-[#D4AF37] px-3 py-1.5 rounded-xl font-mono text-xs font-black text-[#B87333] flex items-center space-x-1 shrink-0">
+                          <span>PROMO CODE:</span>
+                          <span className="text-[#1F1813] underline">{ad.exclusiveDiscountCode}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action Bar */}
+                    <div className="flex items-center justify-between pt-1 text-xs">
+                      <a 
+                        href={ad.websiteUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-copper-penny hover:underline font-bold flex items-center space-x-1"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>Visit {ad.websiteUrl.replace(/^https?:\/\//, '')}</span>
+                      </a>
+
+                      <button
+                        onClick={() => onNavigateToTab('sponsors')}
+                        className="px-3 py-1.5 bg-[#1F1813] text-[#FAF5EE] rounded-xl font-bold hover:bg-[#2A221B] cursor-pointer"
+                      >
+                        Edit in Ad Hub
+                      </button>
+                    </div>
+
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ==================================================== */}
       {/* 4. CREATE A CHAT MODAL (SCREENSHOTS 2 & 3)           */}
       {/* ==================================================== */}
@@ -2564,6 +2998,114 @@ export default function MemberProfileHub({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* ==================================================== */}
+      {/* 9. SISTERHOOD REFERRAL & ANALYTICS MODAL             */}
+      {/* ==================================================== */}
+      {isReferralModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#FAF5EE] border-2 border-[#D4AF37] rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 animate-scale-up">
+            <div className="flex items-center justify-between border-b border-copper-penny/20 pb-3">
+              <div className="flex items-center space-x-2">
+                <span className="w-8 h-8 rounded-xl bg-[#D4AF37] text-[#1F140E] flex items-center justify-center font-bold">🕊️</span>
+                <div>
+                  <h3 className="font-serif font-black text-lg text-[#1F140E]">
+                    Sisterhood Referral &amp; Growth Analytics
+                  </h3>
+                  <p className="text-[11px] text-gray-600 font-mono">
+                    Generate secure, one-time invitation links to welcome trusted sisters into our village.
+                  </p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setIsReferralModalOpen(false)}
+                className="text-gray-400 hover:text-black text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Generate Action Banner */}
+            <div className="p-4 bg-gradient-to-br from-[#1F1813] via-[#2A221B] to-[#1F1813] text-[#FAF5EE] rounded-2xl border border-[#D4AF37]/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="space-y-1 text-left">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-[#D4AF37] font-bold block">
+                  Exclusive Member Perk
+                </span>
+                <h4 className="font-serif font-black text-sm text-white">
+                  Invite a Trusted Sister to Apply
+                </h4>
+                <p className="text-[11px] text-gray-300 font-sans max-w-md">
+                  Each link tracks the invitation source for community growth analytics while upholding our verified application standards.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleGenerateReferralLink}
+                className="px-5 py-2.5 bg-gradient-to-r from-[#D4AF37] to-[#B87333] hover:from-[#e0bc46] hover:to-[#c47f3e] text-[#1F140E] font-serif font-black text-xs rounded-xl shadow-md transition-all cursor-pointer shrink-0 flex items-center space-x-1.5"
+              >
+                <Plus className="w-4 h-4 text-[#1F140E]" />
+                <span>Generate New Referral Link</span>
+              </button>
+            </div>
+
+            {/* Referrals Ledger & Analytics */}
+            <div className="space-y-3">
+              <h4 className="font-serif font-bold text-xs uppercase tracking-wider text-[#1F1813] flex items-center justify-between">
+                <span>Active &amp; Claimed Referral Links ({memberReferrals.length})</span>
+                <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  Analytics Tracked
+                </span>
+              </h4>
+
+              <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
+                {memberReferrals.map((ref) => (
+                  <div key={ref.id} className="p-3 bg-white rounded-2xl border border-copper-penny/25 shadow-2xs space-y-2 text-xs font-sans">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-bold text-[#B87333] bg-[#FAF5EE] px-2 py-0.5 rounded border border-[#D4AF37]/30">
+                        {ref.code}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase ${
+                        ref.status === 'claimed'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          : 'bg-amber-100 text-amber-900 border border-amber-300'
+                      }`}>
+                        {ref.status === 'claimed' ? '✓ Claimed & Joined' : '● Active & Unclaimed'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between bg-neutral-50 p-2 rounded-xl border border-gray-200 gap-2 font-mono text-[11px]">
+                      <span className="truncate text-gray-600">{ref.link}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyReferralLink(ref.id, ref.link)}
+                        className="px-3 py-1 bg-[#1F1813] hover:bg-[#2A221B] text-[#D4AF37] font-bold rounded-lg text-[10px] flex items-center space-x-1 cursor-pointer shrink-0"
+                      >
+                        {copiedReferralId === ref.id ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                        <span>{copiedReferralId === ref.id ? 'Copied!' : 'Copy Link'}</span>
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px] text-gray-500 font-mono pt-1 border-t border-gray-100">
+                      <span>Source: {ref.analyticsSource}</span>
+                      <span>Created: {ref.createdAt}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setIsReferralModalOpen(false)}
+                className="px-5 py-2.5 bg-[#1F1813] text-[#FAF5EE] rounded-xl font-bold text-xs cursor-pointer"
+              >
+                Close Referral Hub
+              </button>
+            </div>
           </div>
         </div>
       )}

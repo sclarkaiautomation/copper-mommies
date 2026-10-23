@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { BarterOffer, BarterComment, SafeMeetupSpot, ActiveTradeRecord } from '../types';
 import { SAFE_MEETUP_SPOTS } from '../data/phase1CommunityData';
+import { getStoredTrades } from '../data/unifiedMarketplaceStore';
 
 export interface BarterCardInteractiveProps {
   barter: BarterOffer;
@@ -33,14 +34,15 @@ export interface BarterCardInteractiveProps {
   onFindAIMatches?: (barter: BarterOffer) => void;
   onOpenSisterProfile?: (sisterName: string) => void;
   onOpenProfile?: (sisterName: string) => void;
+  activeTrade?: ActiveTradeRecord | null;
 }
 
 const QUICK_INQUIRY_PROMPTS = [
-  "🕊️ Sister, is this still available for trade?",
-  "🌱 I have heirloom seeds and dried herbs to trade!",
-  "🧴 Is this batch whipped with essential oils or unscented?",
-  "🚗 Can we swap this Tuesday afternoon at the cascade library?",
-  "👶 Would you be open to exchanging for homeschool printables?"
+  "👋 Hey, is this still available to trade?",
+  "🌱 I have fresh garden produce and home goods to swap!",
+  "🧴 Is this batch lightly scented or fragrance-free?",
+  "🚗 Can we connect this week at a verified safe spot?",
+  "💼 Open to trading for branding, business consulting, or styling?"
 ];
 
 export default function BarterCardInteractive(props: BarterCardInteractiveProps) {
@@ -58,7 +60,8 @@ export default function BarterCardInteractive(props: BarterCardInteractiveProps)
     onFindMatchesWithAI,
     onFindAIMatches,
     onOpenSisterProfile,
-    onOpenProfile
+    onOpenProfile,
+    activeTrade
   } = props;
   const currentState = userState || selectedState || 'GA';
   const handleOpenProfile = onOpenProfile || onOpenSisterProfile;
@@ -87,58 +90,74 @@ export default function BarterCardInteractive(props: BarterCardInteractiveProps)
     onAddComment(barter.id, promptText, true);
   };
 
+  const storedTrades = getStoredTrades();
+  const matchedTrade = activeTrade || (storedTrades as any[]).find(t => 
+    (t.listingId === barter.id || t.listingTitle === barter.title) &&
+    (t.initiatorName === userName || t.recipientName === userName)
+  );
+  const hasInitiatedTrade = !!matchedTrade;
+  const isTradeComplete = barter.handshakeComplete || matchedTrade?.currentStage === 'completed' || matchedTrade?.status === 'Completed Exchange';
+
   return (
-    <div className="border border-[#1F1813]/10 hover:border-copper-penny/35 bg-white rounded-3xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-all duration-300 space-y-4 flex flex-col justify-between">
+    <div className="border border-[#1F1813]/10 hover:border-copper-penny/40 bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col justify-between group">
       
-      {/* Top Header & Metadata */}
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between flex-wrap gap-1.5">
-          <span className="text-[9px] font-mono font-bold uppercase bg-[#B87333]/10 text-[#B87333] px-2.5 py-0.5 rounded-full border border-[#B87333]/20">
-            {barter.category}
-          </span>
-          
-          <span className={`text-[9px] font-mono font-bold uppercase px-2.5 py-0.5 rounded-full border ${
-            barter.intentTag === 'I need' 
-              ? 'bg-rose-50 text-rose-700 border-rose-200' 
-              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+      {/* Top Visual Image Container (Matched with Village Commons Exchange Aesthetic) */}
+      <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full bg-[#FAF5EE] overflow-hidden">
+        <img 
+          src={barter.imageUrl || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=800&q=80'} 
+          alt={barter.title} 
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          loading="lazy"
+        />
+        
+        {/* Gradient Overlay for Top Badges */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 pointer-events-none" />
+
+        {/* Top Badges Row */}
+        <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-1.5 z-10">
+          <div className="flex items-center space-x-1.5 flex-wrap gap-1">
+            <span className="px-2.5 py-0.5 rounded-lg text-[9px] font-mono font-black uppercase bg-[#1F140E]/90 text-[#D4AF37] border border-[#D4AF37]/50 shadow-md">
+              {barter.category}
+            </span>
+            {barter.crossPostedFromCommons && (
+              <span className="px-2 py-0.5 rounded-lg text-[8.5px] font-mono font-bold bg-emerald-900/90 text-emerald-200 border border-emerald-400/40 shadow-xs flex items-center space-x-1">
+                <span>🏡 Commons Synced</span>
+              </span>
+            )}
+          </div>
+
+          <span className={`px-2.5 py-0.5 rounded-lg text-[9px] font-mono font-black uppercase shadow-md ${
+            isGift 
+              ? 'bg-emerald-600 text-white' 
+              : barter.intentTag === 'I need'
+              ? 'bg-rose-700 text-white'
+              : 'bg-[#B87333] text-white'
           }`}>
-            {barter.intentTag || 'I have'}
-          </span>
-
-          <span className="text-[9px] font-mono font-bold uppercase bg-[#FAF5EE] text-copper-penny px-2 py-0.5 rounded-full border border-copper-penny/10">
-            {barter.requestType || 'Barter'}
-          </span>
-
-          <span className="text-[10px] text-soft-sage font-mono ml-auto">
-            {barter.createdAt ? barter.createdAt.split('T')[0] : 'Today'}
+            {isGift ? 'Village Gift' : barter.intentTag || 'I have'}
           </span>
         </div>
 
-        {/* Title, Proximity and Profile Link */}
-        <div>
-          <h4 className="font-serif font-extrabold text-base text-[#1F1813] leading-snug">
-            {barter.title}
-          </h4>
-          <div className="flex items-center justify-between mt-1 text-[10px] font-mono text-soft-sage">
-            <span className="flex items-center space-x-1">
-              <MapPin className="w-3 h-3 text-[#B87333] shrink-0" />
-              <span>
-                {(() => {
-                  if (barter.city && barter.cityZip) {
-                    if (barter.cityZip.toLowerCase().includes(barter.city.toLowerCase())) {
-                      return barter.cityZip.includes(barter.locationState) ? barter.cityZip : `${barter.cityZip}, ${barter.locationState}`;
-                    }
-                    return `${barter.city} (${barter.cityZip}), ${barter.locationState}`;
-                  }
-                  if (barter.city) {
-                    return `${barter.city}, ${barter.locationState}`;
-                  }
-                  if (barter.cityZip) {
-                    return barter.cityZip.includes(barter.locationState) ? barter.cityZip : `${barter.cityZip}, ${barter.locationState}`;
-                  }
-                  return `${barter.locationState} Circle`;
-                })()}
-              </span>
+        {/* Bottom Image Overlay Tag / Location */}
+        <div className="absolute bottom-2 left-2.5 right-2.5 flex items-center justify-between text-white text-[10px] font-mono z-10">
+          <span className="flex items-center space-x-1 drop-shadow-md">
+            <MapPin className="w-3 h-3 text-[#D4AF37] shrink-0" />
+            <span className="font-bold">
+              {barter.city ? `${barter.city}, ${barter.locationState}` : `${barter.locationState} Circle`}
+            </span>
+          </span>
+          <span className="text-[9px] bg-black/70 px-2 py-0.5 rounded-md border border-white/20 drop-shadow-md">
+            {barter.requestType || 'Barter'}
+          </span>
+        </div>
+      </div>
+
+      {/* Main Card Body */}
+      <div className="p-4 sm:p-5 space-y-3.5 flex-1 flex flex-col justify-between">
+        <div className="space-y-2">
+          {/* Sister Author Row */}
+          <div className="flex items-center justify-between text-[11px] font-mono">
+            <span className="text-soft-sage text-[10px]">
+              Posted {barter.createdAt ? barter.createdAt.split('T')[0] : 'Recently'}
             </span>
             <button
               onClick={() => handleOpenProfile && handleOpenProfile(barter.offerBy)}
@@ -147,48 +166,101 @@ export default function BarterCardInteractive(props: BarterCardInteractiveProps)
               By {barter.offerBy}
             </button>
           </div>
-        </div>
 
-        <p className="text-xs text-[#2A221B]/85 leading-relaxed">{barter.description}</p>
-      </div>
+          {/* Title */}
+          <h4 className="font-serif font-black text-base text-[#1F1813] leading-snug group-hover:text-copper-penny transition-colors">
+            {barter.title}
+          </h4>
 
-      {/* Trade Terms & Points Card */}
-      <div className="bg-[#FAF5EE]/70 p-3 rounded-2xl border border-copper-penny/10 space-y-1.5 text-xs">
-        <div className="flex items-center justify-between text-[11px]">
-          <span className="font-mono text-[9px] text-soft-sage uppercase tracking-wider font-bold">
-            {isGift ? "Gift Delivery:" : "Sister Desires:"}
-          </span>
-          <span className="font-bold text-[#A85138] truncate max-w-[170px]">{barter.tradeFor || "Open Mutual Aid"}</span>
-        </div>
-        
-        <div className="flex items-center justify-between text-[11px] pt-1 border-t border-dashed border-copper-penny/15">
-          <span className="font-mono text-[9px] text-soft-sage uppercase tracking-wider font-bold">Ledger Valuation:</span>
-          {isGift ? (
-            <span className="font-mono text-[9px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-extrabold flex items-center space-x-1">
-              <Heart className="w-2.5 h-2.5 text-emerald-600 fill-emerald-600" />
-              <span>Village Gift (Exempt)</span>
-            </span>
-          ) : (
-            <span className="font-mono text-[10px] font-bold text-copper-penny">{barter.valuePoints || 5} points / hours</span>
+          {/* Description */}
+          <p className="text-xs text-[#2A221B]/85 leading-relaxed line-clamp-2">{barter.description}</p>
+
+          {/* Hybrid Split Option Banner (If Available) */}
+          {barter.hybridSplitOption && (
+            <div className="p-2.5 bg-gradient-to-r from-amber-50 to-[#FAF5EE] border border-[#D4AF37]/40 rounded-xl space-y-1">
+              <span className="text-[8.5px] font-mono uppercase tracking-wider font-extrabold text-[#B87333] flex items-center space-x-1">
+                <Sparkles className="w-2.5 h-2.5 text-[#D4AF37]" />
+                <span>Hybrid Trade / Split Option:</span>
+              </span>
+              <p className="text-[11px] font-sans font-bold text-[#1F1813] leading-snug">
+                "{barter.hybridSplitOption}"
+              </p>
+            </div>
           )}
+        </div>
+
+        {/* Trade Terms & Points Card */}
+        <div className="bg-[#FAF5EE] p-3 rounded-2xl border border-copper-penny/15 space-y-1.5 text-xs">
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="font-mono text-[9px] text-soft-sage uppercase tracking-wider font-bold">
+              {isGift ? "Gift Delivery:" : "Looking For:"}
+            </span>
+            <span className="font-bold text-[#A85138] truncate max-w-[170px]">{barter.tradeFor || "Open Trade"}</span>
+          </div>
+          
+          <div className="flex items-center justify-between text-[11px] pt-1 border-t border-dashed border-copper-penny/15">
+            <span className="font-mono text-[9px] text-soft-sage uppercase tracking-wider font-bold">Equivalent Value:</span>
+            {isGift ? (
+              <span className="font-mono text-[9px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-extrabold flex items-center space-x-1">
+                <Heart className="w-2.5 h-2.5 text-emerald-600 fill-emerald-600" />
+                <span>Community Gift (Exempt)</span>
+              </span>
+            ) : (
+              <div className="flex items-center space-x-1.5 font-mono text-[10px] font-bold text-copper-penny">
+                <span>{barter.valuePoints || 5} CMC Credits</span>
+                {barter.timeCreditHours && (
+                  <span className="px-1.5 py-0.2 rounded bg-[#D4AF37]/20 text-[#1F140E] text-[9px]">
+                    or {barter.timeCreditHours}h CMC Time Credits
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Handshake Status & Action Controls */}
       <div className="bg-[#FAF5EE]/40 p-3 rounded-2xl border border-[#B87333]/15 space-y-2 text-xs">
+        {/* Active Trade Initiated Status Pill */}
+        {hasInitiatedTrade && (
+          <div className="p-2 rounded-xl bg-amber-50 border border-amber-300 text-[10px] font-mono text-[#1F1813] flex items-center justify-between">
+            <span className="flex items-center space-x-1.5 font-bold text-amber-900">
+              <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse shrink-0" />
+              <span>
+                {isTradeComplete 
+                  ? 'Trade Completed (+5 CMC Score) ✓' 
+                  : matchedTrade?.currentStage === 'agreed' || matchedTrade?.status === 'Awaiting Safe Handshake'
+                  ? 'Stage 3: Escrow Locked' 
+                  : matchedTrade?.currentStage === 'counter_offer'
+                  ? 'Stage 2: Counter-Offer Active'
+                  : 'Stage 1: Proposal In Review'}
+              </span>
+            </span>
+            <button 
+              type="button"
+              onClick={() => onInitiateTrade(barter, selectedSafeSpot || undefined)}
+              className="text-[9px] text-amber-800 hover:text-amber-950 font-bold underline cursor-pointer shrink-0"
+            >
+              View &rarr;
+            </button>
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
           <span className="font-mono text-[9px] uppercase tracking-wider text-soft-sage font-bold flex items-center space-x-1">
             <ShieldCheck className="w-3.5 h-3.5 text-copper-penny" />
-            <span>Co-op Handshake State</span>
+            <span>CMC Trade Status</span>
           </span>
           <span className="font-mono text-[9px] font-bold">
-            {barter.handshakeComplete ? (
+            {isTradeComplete ? (
               <span className="text-emerald-700 font-extrabold flex items-center space-x-0.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 inline shrink-0" />
                 <span>Dual Handshake Signed</span>
               </span>
+            ) : hasInitiatedTrade ? (
+              <span className="text-amber-700 font-bold">⏳ Handshake In Progress</span>
             ) : (
-              <span className="text-[#A85138] font-bold">⏳ In Negotiation</span>
+              <span className="text-soft-sage font-bold">Available for Trade</span>
             )}
           </span>
         </div>
@@ -202,20 +274,44 @@ export default function BarterCardInteractive(props: BarterCardInteractiveProps)
           </div>
           <div className="flex items-center space-x-1 bg-white p-1 rounded-lg border border-copper-penny/10">
             <span>Recipient:</span>
-            <span className={barter.recipientConfirmed ? "text-emerald-600 font-bold" : "text-amber-600"}>
-              {barter.recipientConfirmed ? "✓ Signed" : "⏳ Pending"}
+            <span className={barter.recipientConfirmed || hasInitiatedTrade ? "text-emerald-600 font-bold" : "text-amber-600"}>
+              {barter.recipientConfirmed || hasInitiatedTrade ? "✓ Signed" : "⏳ Pending"}
             </span>
           </div>
         </div>
 
         {/* Handshake & Start Trade Buttons */}
         <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
-          {!isGiver && !barter.handshakeComplete && (
+          {!isGiver && !isTradeComplete && (
+            hasInitiatedTrade ? (
+              <button
+                type="button"
+                onClick={() => onInitiateTrade(barter, selectedSafeSpot || undefined)}
+                className="w-full sm:w-1/2 py-2 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white text-[10px] font-mono font-bold uppercase rounded-xl shadow-xs border border-amber-400/50 transition-all active:scale-95 cursor-pointer flex items-center justify-center space-x-1"
+                title="You have already initiated a trade for this item. Click to review status, counter-offers, or complete handshake."
+              >
+                <Clock className="w-3.5 h-3.5 text-amber-200 animate-pulse" />
+                <span>⏳ Trade Initiated</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onInitiateTrade(barter, selectedSafeSpot || undefined)}
+                className="w-full sm:w-1/2 py-2 bg-[#B87333] hover:bg-[#A85138] text-white text-[10px] font-mono font-bold uppercase rounded-xl shadow-xs hover:shadow transition-all active:scale-95 cursor-pointer flex items-center justify-center space-x-1"
+              >
+                <span>🤝 Initiate Trade</span>
+              </button>
+            )
+          )}
+
+          {!isGiver && isTradeComplete && (
             <button
+              type="button"
               onClick={() => onInitiateTrade(barter, selectedSafeSpot || undefined)}
-              className="w-full sm:w-1/2 py-1.5 bg-[#B87333] hover:bg-[#A85138] text-white text-[10px] font-mono font-bold uppercase rounded-xl shadow-xs hover:shadow transition-all active:scale-95 cursor-pointer flex items-center justify-center space-x-1"
+              className="w-full sm:w-1/2 py-2 bg-emerald-950 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-900 text-[10px] font-mono font-bold uppercase rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center space-x-1"
             >
-              <span>🤝 Initiate Trade</span>
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>🏆 Handshake Done (+5)</span>
             </button>
           )}
 
@@ -289,7 +385,7 @@ export default function BarterCardInteractive(props: BarterCardInteractiveProps)
             className="text-[11px] font-mono font-bold text-[#B87333] hover:text-[#A85138] flex items-center space-x-1.5 cursor-pointer"
           >
             <MessageSquare className="w-3.5 h-3.5" />
-            <span>Community Q&amp;A &amp; Sister Notes ({postComments.length})</span>
+            <span>Community Q&amp;A &amp; Member Notes ({postComments.length})</span>
           </button>
 
           <button
@@ -304,7 +400,7 @@ export default function BarterCardInteractive(props: BarterCardInteractiveProps)
         {/* 1-Tap Quick Inquiries Pill Bar (Always visible for fast interaction) */}
         {!isGiver && (
           <div className="space-y-1">
-            <span className="text-[8px] font-mono text-soft-sage uppercase tracking-wider block font-bold">1-Tap Safe Sister Inquiries:</span>
+            <span className="text-[8px] font-mono text-soft-sage uppercase tracking-wider block font-bold">1-Tap Quick Inquiries:</span>
             <div className="flex flex-wrap gap-1">
               {QUICK_INQUIRY_PROMPTS.slice(0, 3).map((prompt, i) => (
                 <button
@@ -328,7 +424,7 @@ export default function BarterCardInteractive(props: BarterCardInteractiveProps)
             <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
               {postComments.length === 0 ? (
                 <p className="text-[10px] text-soft-sage italic text-center py-2">
-                  No questions asked yet. Be the first sister to ask or send a 1-tap inquiry above!
+                  No questions asked yet. Be the first to ask or send a 1-tap inquiry above!
                 </p>
               ) : (
                 postComments.map((c) => (

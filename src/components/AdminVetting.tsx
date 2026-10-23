@@ -58,7 +58,8 @@ import {
   Heart,
   Droplets,
   FolderLock,
-  Lock
+  Lock,
+  Cpu
 } from 'lucide-react';
 import AdminApothecaryManager from './admin/AdminApothecaryManager';
 import AdminCarePodsManager from './admin/AdminCarePodsManager';
@@ -66,6 +67,8 @@ import AdminCovenantVault from './admin/AdminCovenantVault';
 import AdminMemberDirectory from './admin/AdminMemberDirectory';
 import AdminModerationQueue from './admin/AdminModerationQueue';
 import AdminKinshipNestBright from './admin/AdminKinshipNestBright';
+import AdminRecentLoginsCard from './admin/AdminRecentLoginsCard';
+import AdminAutomationHub from './admin/AdminAutomationHub';
 import { 
   Applicant, 
   BarterOffer,
@@ -176,6 +179,7 @@ export default function AdminVetting({
 }: AdminVettingProps) {
   // Navigation Tabs for Admin Command Center
   const [adminTab, setAdminTab] = useState<
+    'overview' |
     'inquiries' | 
     'business_ads' |
     'spotlights' | 
@@ -192,8 +196,9 @@ export default function AdminVetting({
     'member_directory' |
     'moderation' |
     'kinship_vault' |
-    'aistudio_vault'
-  >('inquiries');
+    'aistudio_vault' |
+    'automation_hub'
+  >('overview');
 
   // Business Advertising Submissions State
   const [businessAds, setBusinessAds] = useState<BusinessAdSubmission[]>(() => {
@@ -420,6 +425,9 @@ export default function AdminVetting({
       })
       .catch((err) => console.error('Error fetching admin barter snapshot:', err));
   }, [propBarterOffers]);
+
+  // Navigation Drawer State
+  const [isNavDrawerOpen, setIsNavDrawerOpen] = useState(false);
 
   // 2. Spotlight Manager States
   const [spotlightHubFilter, setSpotlightHubFilter] = useState<string>('all');
@@ -763,7 +771,7 @@ export default function AdminVetting({
   const handleCreateHearth = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newHearthData.title || !newHearthData.topic || !newHearthData.meetingLink) {
-      alert('Please fill out the hearth title, topic, and meeting link.');
+      alert('Please fill out the gathering title, topic, and meeting link.');
       return;
     }
     const newH: HearthGatheringSession = {
@@ -931,7 +939,7 @@ export default function AdminVetting({
   const handleCopyNewsletterSnippet = (poll: VillagePoll) => {
     const totalVotes = poll.options.reduce((sum, opt) => sum + opt.votes, 0);
     const optionsText = poll.options.map((opt, i) => `  ${i + 1}. ${opt.text} (${opt.votes} votes)`).join('\n');
-    const snippet = `🌿 [THE COPPER CIRCLE HEARTH POLL] 🗳️\n\nTopic: ${poll.title}\nCategory: ${poll.category === 'casual-corner' ? 'Casual Corner Talk' : poll.category === 'crowdfunded-class' ? 'Crowdfunded Sister Class' : 'Village Governance'}\nCloses: ${poll.closesAt}\n\nCurrent Community Options:\n${optionsText}\n\n👉 Cast your vote directly in the Hearth Polls Hub!\nTogether We Grow and Learn in Sisterhood.`;
+    const snippet = `🌿 [THE COPPER CIRCLE SISTERHOOD POLL] 🗳️\n\nTopic: ${poll.title}\nCategory: ${poll.category === 'casual-corner' ? 'Casual Corner Talk' : poll.category === 'crowdfunded-class' ? 'Crowdfunded Sister Class' : 'Village Governance'}\nCloses: ${poll.closesAt}\n\nCurrent Community Options:\n${optionsText}\n\n👉 Cast your vote directly in the Community Polls Hub!\nTogether We Grow and Learn in Sisterhood.`;
     navigator.clipboard.writeText(snippet);
     setCopiedPollSnippetId(poll.id);
     setTimeout(() => setCopiedPollSnippetId(null), 3000);
@@ -940,415 +948,358 @@ export default function AdminVetting({
   return (
     <div className="max-w-7xl mx-auto my-3 space-y-6">
       
-      {/* 1. Admin Header & Sovereign Command Banner */}
-      <div className="bg-gradient-to-r from-[#1F140E] via-[#2A1D16] to-[#140F0B] text-[#FAF5EE] border-2 border-[#D4AF37]/50 rounded-3xl p-6 shadow-2xl space-y-5">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-[#D4AF37]/20 pb-5">
+      {/* Sleek, Modern, Lightweight Admin Header */}
+      <div className="bg-gradient-to-r from-[#1F140E] via-[#2A1D16] to-[#140F0B] text-[#FAF5EE] border border-[#D4AF37]/40 rounded-2xl px-6 py-4 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-xl bg-[#D4AF37]/20 border border-[#D4AF37]/40 flex items-center justify-center text-[#D4AF37] shrink-0">
+            <ShieldAlert className="w-5 h-5 animate-pulse" />
+          </div>
           <div>
-            <div className="flex items-center space-x-2.5 text-[#D4AF37] mb-1">
-              <ShieldAlert className="w-5 h-5 text-[#D4AF37] animate-pulse" />
-              <span className="font-mono text-xs uppercase tracking-widest font-extrabold">
-                Grandmother Council Sanctuary &amp; Matriarch Command Desk
-              </span>
+            <div className="flex items-center space-x-2 text-[10px] font-mono uppercase tracking-widest text-[#D4AF37] font-bold">
+              <span>Matriarch Command Desk</span>
+              <span>•</span>
+              <span className="text-emerald-400">Sovereign Active</span>
             </div>
-            <h2 className="font-serif text-2xl sm:text-3xl font-extrabold text-[#FAF5EE] tracking-tight">
-              Backend Command Center &amp; Sovereign Hub
+            <h2 className="font-serif text-xl sm:text-2xl font-black text-[#FAF5EE] tracking-tight">
+              Admin Office &amp; Sovereign Hub
             </h2>
-            <p className="text-xs sm:text-sm text-[#FAF5EE]/80 max-w-3xl mt-1 leading-relaxed">
-              1-Click Vendor Spotlight Manager, Global Broadcast Bulletin engine, Lineage Arbitrator, and Sovereign Time-Credit ledger controls.
-            </p>
-          </div>
-
-          <div className="flex items-center space-x-3 shrink-0">
-            <span className="bg-[#D4AF37]/20 border border-[#D4AF37]/50 text-[#D4AF37] text-xs font-mono font-bold px-3 py-1.5 rounded-xl flex items-center space-x-1.5">
-              <Zap className="w-3.5 h-3.5" />
-              <span>Sovereign Ledger Active</span>
-            </span>
           </div>
         </div>
 
-        {/* Executive Quick Snapshot Statistics */}
-        <div id="admin-summary-statistics" className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1 pb-1">
-          {/* Card 1: Total Approved Mothers */}
-          <div 
-            id="stat-approved-mothers"
-            onClick={() => {
-              setAdminTab('inquiries');
-              setStatusFilter('approved');
-            }}
-            className="group relative bg-[#180E08]/90 hover:bg-[#1E120A] border-2 border-emerald-500/40 hover:border-emerald-400 rounded-2xl p-4 sm:p-5 shadow-lg transition-all duration-300 cursor-pointer hover:-translate-y-0.5 select-none"
-            title="Click to filter Inquiries by Approved Mothers"
+        {/* Right side: Quick stats pill buttons & Menu toggle */}
+        <div className="flex items-center space-x-2.5 flex-wrap justify-end">
+          <button 
+            onClick={() => { setAdminTab('inquiries'); setStatusFilter('approved'); }}
+            className="bg-[#180E08] hover:bg-[#251710] border border-emerald-500/40 px-3 py-1.5 rounded-xl text-xs font-mono flex items-center space-x-2 cursor-pointer transition-all"
+            title="Approved Mothers"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2.5">
-                <div className="w-10 h-10 rounded-xl bg-emerald-950/90 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shadow-inner shrink-0">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="text-xs font-mono uppercase tracking-wider text-emerald-300 font-bold block">
-                    Approved Mothers
-                  </span>
-                  <span className="text-[10px] font-mono text-[#FAF5EE]/60 block">
-                    Verified Matriarchs
-                  </span>
-                </div>
-              </div>
-              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded-full border border-emerald-500/30 font-bold">
-                Lineage Vetted
-              </span>
-            </div>
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-emerald-300 font-bold">{approvedMothers.length} Approved</span>
+          </button>
 
-            <div className="mt-4 flex items-baseline justify-between">
-              <div className="font-serif text-3xl sm:text-4xl font-black text-[#FAF5EE] tracking-tight">
-                {approvedMothers.length}
-              </div>
-              <div className="text-right">
-                <span className="text-xs font-mono text-[#D4AF37] font-bold block">
-                  {spearheads.length} Spearheads
-                </span>
-                <span className="text-[10px] font-mono text-[#FAF5EE]/65 block">
-                  {activeStatesRepresented} Active States
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-[11px] text-[#FAF5EE]/75">
-              <span>Sacred covenant confirmed</span>
-              <span className="text-emerald-400 font-mono text-[10px] font-bold flex items-center space-x-1 group-hover:translate-x-0.5 transition-transform">
-                <span>View Roster</span>
-                <ArrowRight className="w-3 h-3" />
-              </span>
-            </div>
-          </div>
-
-          {/* Card 2: Pending Applications */}
-          <div 
-            id="stat-pending-applications"
-            onClick={() => {
-              setAdminTab('inquiries');
-              setStatusFilter('pending');
-            }}
-            className="group relative bg-[#180E08]/90 hover:bg-[#1E120A] border-2 border-amber-500/40 hover:border-amber-400 rounded-2xl p-4 sm:p-5 shadow-lg transition-all duration-300 cursor-pointer hover:-translate-y-0.5 select-none"
-            title="Click to filter Inquiries by Pending Applications"
+          <button 
+            onClick={() => { setAdminTab('inquiries'); setStatusFilter('pending'); }}
+            className="bg-[#180E08] hover:bg-[#251710] border border-amber-500/40 px-3 py-1.5 rounded-xl text-xs font-mono flex items-center space-x-2 cursor-pointer transition-all"
+            title="Pending Queue"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2.5">
-                <div className="w-10 h-10 rounded-xl bg-amber-950/90 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-inner shrink-0">
-                  <Clock className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="text-xs font-mono uppercase tracking-wider text-amber-300 font-bold block">
-                    Pending Applications
-                  </span>
-                  <span className="text-[10px] font-mono text-[#FAF5EE]/60 block">
-                    Awaiting Council Review
-                  </span>
-                </div>
-              </div>
-              {pendingApplications.length > 0 ? (
-                <span className="text-[10px] font-mono text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded-full border border-amber-500/40 font-bold animate-pulse">
-                  Action Needed
-                </span>
-              ) : (
-                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded-full border border-emerald-500/30 font-bold">
-                  All Clear
-                </span>
-              )}
-            </div>
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <span className="text-amber-300 font-bold">{pendingApplications.length} Pending</span>
+          </button>
 
-            <div className="mt-4 flex items-baseline justify-between">
-              <div className="font-serif text-3xl sm:text-4xl font-black text-[#FAF5EE] tracking-tight">
-                {pendingApplications.length}
-              </div>
-              <div className="text-right">
-                <span className="text-xs font-mono text-amber-300 font-bold block">
-                  {deniedApplications.length} Denied / Archived
-                </span>
-                <span className="text-[10px] font-mono text-[#FAF5EE]/65 block">
-                  {applicants.length} Total Submissions
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-[11px] text-[#FAF5EE]/75">
-              <span>{pendingApplications.length > 0 ? `${pendingApplications.length} sisters in queue` : 'No pending reviews'}</span>
-              <span className="text-amber-400 font-mono text-[10px] font-bold flex items-center space-x-1 group-hover:translate-x-0.5 transition-transform">
-                <span>Process Queue</span>
-                <ArrowRight className="w-3 h-3" />
-              </span>
-            </div>
-          </div>
-
-          {/* Card 3: Total Barter Volume */}
-          <div 
-            id="stat-barter-volume"
+          <button 
             onClick={() => setAdminTab('disputes')}
-            className="group relative bg-[#180E08]/90 hover:bg-[#1E120A] border-2 border-[#B87333]/50 hover:border-[#D4AF37] rounded-2xl p-4 sm:p-5 shadow-lg transition-all duration-300 cursor-pointer hover:-translate-y-0.5 select-none"
-            title="Click to view Sovereign Ledger & Trade Arbitrator"
+            className="bg-[#180E08] hover:bg-[#251710] border border-[#B87333]/40 px-3 py-1.5 rounded-xl text-xs font-mono flex items-center space-x-2 cursor-pointer transition-all hidden sm:flex"
+            title="Barter Volume"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2.5">
-                <div className="w-10 h-10 rounded-xl bg-[#B87333]/20 border border-[#B87333]/40 flex items-center justify-center text-[#D4AF37] shadow-inner shrink-0">
-                  <Coins className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="text-xs font-mono uppercase tracking-wider text-[#E6C594] font-bold block">
-                    Total Barter Volume
-                  </span>
-                  <span className="text-[10px] font-mono text-[#FAF5EE]/60 block">
-                    Mutual Aid &amp; Trades
-                  </span>
-                </div>
-              </div>
-              <span className="text-[10px] font-mono text-[#D4AF37] bg-[#D4AF37]/15 px-2 py-0.5 rounded-full border border-[#D4AF37]/40 font-bold">
-                Time Credits
-              </span>
-            </div>
-
-            <div className="mt-4 flex items-baseline justify-between">
-              <div>
-                <div className="font-serif text-3xl sm:text-4xl font-black text-[#FAF5EE] tracking-tight">
-                  {totalBarterCount} <span className="text-sm font-sans font-normal text-[#FAF5EE]/70">Listings</span>
-                </div>
-                <span className="text-xs font-mono text-[#D4AF37] font-bold block mt-0.5">
-                  {totalBarterPoints} Circulating Points/Hrs
-                </span>
-              </div>
-              <div className="text-right">
-                <span className="text-xs font-mono text-emerald-400 font-bold block">
-                  {completedHandshakesCount} Handshakes
-                </span>
-                <span className="text-[10px] font-mono text-[#FAF5EE]/65 block">
-                  {giftBarterCount} Free Gifts
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-[11px] text-[#FAF5EE]/75">
-              <span>Cooperative time exchange</span>
-              <span className="text-[#D4AF37] font-mono text-[10px] font-bold flex items-center space-x-1 group-hover:translate-x-0.5 transition-transform">
-                <span>Arbitrate Ledger</span>
-                <ArrowRight className="w-3 h-3" />
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Top Command Tabs */}
-        <div className="flex flex-wrap gap-2 pt-1 overflow-x-auto pb-1">
-          <button
-            onClick={() => setAdminTab('inquiries')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
-              adminTab === 'inquiries' 
-                ? 'bg-[#D4AF37] text-[#1F140E] shadow-lg font-black' 
-                : 'bg-white/10 text-white/90 hover:bg-white/20 border border-white/10'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>Lineage &amp; Roles ({applicants.length})</span>
+            <Coins className="w-3.5 h-3.5 text-[#D4AF37]" />
+            <span className="text-[#E6C594] font-bold">{totalBarterCount} Barters</span>
           </button>
 
+          {/* Slide-out Navigation Drawer Toggle */}
           <button
-            id="admin-tab-business-ads-btn"
-            onClick={() => setAdminTab('business_ads')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
-              adminTab === 'business_ads' 
-                ? 'bg-gradient-to-r from-[#D4AF37] to-[#B87333] text-[#1F140E] shadow-xl font-black ring-2 ring-white/30' 
-                : 'bg-white/10 text-white/90 hover:bg-white/20 border border-white/10'
-            }`}
+            onClick={() => setIsNavDrawerOpen(true)}
+            className="bg-[#D4AF37] hover:bg-[#C29B2E] text-[#1F140E] font-mono text-xs font-black px-4 py-2 rounded-xl shadow-lg flex items-center space-x-2 cursor-pointer transition-all transform hover:scale-105"
           >
-            <Building2 className="w-4 h-4 text-[#D4AF37]" />
-            <span>🛍️ Business Ads &amp; Sponsors ({businessAds.length})</span>
-          </button>
-
-          <button
-            onClick={() => setAdminTab('spotlights')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
-              adminTab === 'spotlights' 
-                ? 'bg-[#D4AF37] text-[#1F140E] shadow-lg font-black' 
-                : 'bg-white/10 text-white/90 hover:bg-white/20 border border-white/10'
-            }`}
-          >
-            <Megaphone className="w-4 h-4" />
-            <span>1-Click Spotlights ({spotlightBanners.length})</span>
-          </button>
-
-          <button
-            onClick={() => setAdminTab('bulletins')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
-              adminTab === 'bulletins' 
-                ? 'bg-[#D4AF37] text-[#1F140E] shadow-lg font-black' 
-                : 'bg-white/10 text-white/90 hover:bg-white/20 border border-white/10'
-            }`}
-          >
-            <Radio className="w-4 h-4" />
-            <span>Broadcast Bulletins ({activeBulletins.filter(b => b.active).length} Active)</span>
-          </button>
-
-          <button
-            id="admin-tab-polls-btn"
-            onClick={() => setAdminTab('polls')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
-              adminTab === 'polls' 
-                ? 'bg-[#D4AF37] text-[#1F140E] shadow-lg font-black' 
-                : 'bg-white/10 text-white/90 hover:bg-white/20 border border-white/10'
-            }`}
-          >
-            <Award className="w-4 h-4" />
-            <span>Hearth Polls &amp; Voting ({activePolls.length})</span>
-          </button>
-
-          <button
-            onClick={() => setAdminTab('disputes')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
-              adminTab === 'disputes' 
-                ? 'bg-[#D4AF37] text-[#1F140E] shadow-lg font-black' 
-                : 'bg-white/10 text-white/90 hover:bg-white/20 border border-white/10'
-            }`}
-          >
-            <Scale className="w-4 h-4" />
-            <span>Sovereign Ledger &amp; Disputes ({activeDisputes.filter(d => d.status.includes('Open') || d.status.includes('Review')).length})</span>
-          </button>
-
-          <button
-            onClick={() => setAdminTab('hearths')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
-              adminTab === 'hearths' 
-                ? 'bg-[#D4AF37] text-[#1F140E] shadow-lg font-black' 
-                : 'bg-white/10 text-white/90 hover:bg-white/20 border border-white/10'
-            }`}
-          >
-            <Video className="w-4 h-4" />
-            <span>Casual Corner Live Studio ({activeHearths.length})</span>
-          </button>
-
-          <button
-            onClick={() => setAdminTab('podcasts')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
-              adminTab === 'podcasts' 
-                ? 'bg-[#D4AF37] text-[#1F140E] shadow-lg font-black' 
-                : 'bg-white/10 text-white/90 hover:bg-white/20 border border-white/10'
-            }`}
-          >
-            <Headphones className="w-4 h-4" />
-            <span>Podcast &amp; Audio Publisher ({activeAudioTracks.length})</span>
-          </button>
-
-          <button
-            onClick={() => setAdminTab('scholarships')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
-              adminTab === 'scholarships' 
-                ? 'bg-[#D4AF37] text-[#1F140E] shadow-lg font-black' 
-                : 'bg-white/10 text-white/90 hover:bg-white/20 border border-white/10'
-            }`}
-          >
-            <Gift className="w-4 h-4" />
-            <span>NestBright Contest ({scholarshipEntries.length})</span>
-          </button>
-
-          <button
-            onClick={() => setAdminTab('treasury')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
-              adminTab === 'treasury' 
-                ? 'bg-[#D4AF37] text-[#1F140E] shadow-lg font-black' 
-                : 'bg-white/10 text-white/90 hover:bg-white/20 border border-white/10'
-            }`}
-          >
-            <Coins className="w-4 h-4" />
-            <span>Treasury &amp; Classifieds Back Office</span>
-          </button>
-
-          <button
-            onClick={() => setAdminTab('apothecary')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
-              adminTab === 'apothecary' 
-                ? 'bg-emerald-500 text-[#1F140E] shadow-lg font-black' 
-                : 'bg-white/10 text-white/90 hover:bg-white/20 border border-white/10'
-            }`}
-          >
-            <Droplets className="w-4 h-4 text-emerald-300" />
-            <span>🌿 Apothecary &amp; Dispensary</span>
-          </button>
-
-          <button
-            onClick={() => setAdminTab('care_pods')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
-              adminTab === 'care_pods' 
-                ? 'bg-rose-500 text-white shadow-lg font-black' 
-                : 'bg-white/10 text-white/90 hover:bg-white/20 border border-white/10'
-            }`}
-          >
-            <Heart className="w-4 h-4 text-rose-300 fill-rose-300" />
-            <span>🍲 Care Pods &amp; Meal Trains</span>
-          </button>
-
-          <button
-            onClick={() => setAdminTab('covenant_vault')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
-              adminTab === 'covenant_vault' 
-                ? 'bg-indigo-500 text-white shadow-lg font-black' 
-                : 'bg-white/10 text-white/90 hover:bg-white/20 border border-white/10'
-            }`}
-          >
-            <FolderLock className="w-4 h-4 text-indigo-300" />
-            <span>⚖️ 508 Trust &amp; Signed Covenants</span>
-          </button>
-
-          <button
-            onClick={() => setAdminTab('member_directory')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
-              adminTab === 'member_directory' 
-                ? 'bg-amber-500 text-[#1F140E] shadow-lg font-black' 
-                : 'bg-white/10 text-white/90 hover:bg-white/20 border border-white/10'
-            }`}
-          >
-            <Users className="w-4 h-4 text-amber-300" />
-            <span>👥 Member Directory &amp; Spearheads</span>
-          </button>
-
-          <button
-            onClick={() => setAdminTab('moderation')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
-              adminTab === 'moderation' 
-                ? 'bg-red-500 text-white shadow-lg font-black' 
-                : 'bg-white/10 text-white/90 hover:bg-white/20 border border-white/10'
-            }`}
-          >
-            <ShieldAlert className="w-4 h-4 text-red-300" />
-            <span>🛡️ Content Moderation &amp; Push</span>
-          </button>
-
-          <button
-            onClick={() => setAdminTab('kinship_vault')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
-              adminTab === 'kinship_vault' 
-                ? 'bg-teal-500 text-[#1F140E] shadow-lg font-black' 
-                : 'bg-white/10 text-white/90 hover:bg-white/20 border border-white/10'
-            }`}
-          >
-            <BookOpen className="w-4 h-4 text-teal-300" />
-            <span>📚 NestBright Promo &amp; Vault Library</span>
-          </button>
-
-          <button
-            id="admin-tab-aistudio-vault-btn"
-            onClick={() => setAdminTab('aistudio_vault')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-bold uppercase transition-all flex items-center space-x-2 cursor-pointer ${
-              adminTab === 'aistudio_vault' 
-                ? 'bg-gradient-to-r from-[#D4AF37] via-amber-400 to-[#B87333] text-[#1F140E] shadow-xl font-black ring-2 ring-white/30' 
-                : 'bg-[#D4AF37]/15 text-[#D4AF37] hover:bg-[#D4AF37]/30 border border-[#D4AF37]/40'
-            }`}
-          >
-            <Sparkles className="w-4 h-4 text-[#D4AF37] animate-pulse" />
-            <span>⚡ AI Studio Admin Portal (Vault Applet)</span>
+            <Layers className="w-4 h-4" />
+            <span>☰ Admin Hubs Menu</span>
           </button>
         </div>
       </div>
+
+      {/* Slide-out Navigation Side Panel / Drawer */}
+      {isNavDrawerOpen && (
+        <div className="fixed inset-0 z-50 flex">
+          {/* Backdrop overlay */}
+          <div 
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity" 
+            onClick={() => setIsNavDrawerOpen(false)}
+          />
+
+          {/* Slide-out panel */}
+          <div className="relative w-80 sm:w-96 bg-[#1F140E] border-r-2 border-[#D4AF37]/50 shadow-2xl h-full flex flex-col z-10 overflow-y-auto p-6 text-[#FAF5EE]">
+            <div className="flex items-center justify-between pb-4 border-b border-[#D4AF37]/30 mb-4">
+              <div className="flex items-center space-x-2 text-[#D4AF37]">
+                <ShieldAlert className="w-5 h-5" />
+                <span className="font-serif font-extrabold text-lg tracking-tight">Admin Office Navigation</span>
+              </div>
+              <button 
+                onClick={() => setIsNavDrawerOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/80 hover:text-white cursor-pointer transition-colors"
+                title="Close Menu"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-white/70 mb-5 leading-relaxed font-sans">
+              Select any administrative hub or section below to instantly switch views with smooth transitions.
+            </p>
+
+            {/* Navigation Sections in Drawer */}
+            <div className="space-y-4 font-mono text-xs">
+              {/* Overview */}
+              <button
+                onClick={() => { setAdminTab('overview'); setIsNavDrawerOpen(false); }}
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl transition-all flex items-center space-x-2.5 cursor-pointer font-bold ${
+                  adminTab === 'overview' ? 'bg-[#D4AF37] text-[#1F140E] shadow-md font-black' : 'bg-white/5 text-white/90 hover:bg-white/10'
+                }`}
+              >
+                <Sparkles className="w-4 h-4 text-[#D4AF37]" />
+                <span>🏛️ Command Center Overview</span>
+              </button>
+
+              {/* Membership & Lineage */}
+              <div className="space-y-1 bg-white/5 p-3 rounded-xl border border-white/10">
+                <span className="text-[#D4AF37] font-bold text-[10px] uppercase tracking-wider block mb-1">🏛️ Membership &amp; Lineage</span>
+                <div className="space-y-1 pl-1">
+                  <button onClick={() => { setAdminTab('inquiries'); setIsNavDrawerOpen(false); }} className={`w-full text-left px-3 py-2 rounded-lg transition-all cursor-pointer font-bold ${adminTab === 'inquiries' ? 'bg-[#D4AF37] text-[#1F140E]' : 'text-white/80 hover:bg-white/10'}`}>
+                    👥 Lineage &amp; Roles ({applicants.length})
+                  </button>
+                  <button onClick={() => { setAdminTab('member_directory'); setIsNavDrawerOpen(false); }} className={`w-full text-left px-3 py-2 rounded-lg transition-all cursor-pointer font-bold ${adminTab === 'member_directory' ? 'bg-[#D4AF37] text-[#1F140E]' : 'text-white/80 hover:bg-white/10'}`}>
+                    📁 Member Rolodex
+                  </button>
+                </div>
+              </div>
+
+              {/* Commerce & Ads */}
+              <div className="space-y-1 bg-white/5 p-3 rounded-xl border border-white/10">
+                <span className="text-[#D4AF37] font-bold text-[10px] uppercase tracking-wider block mb-1">🛍️ Commerce &amp; Sponsors</span>
+                <div className="space-y-1 pl-1">
+                  <button onClick={() => { setAdminTab('business_ads'); setIsNavDrawerOpen(false); }} className={`w-full text-left px-3 py-2 rounded-lg transition-all cursor-pointer font-bold ${adminTab === 'business_ads' ? 'bg-[#D4AF37] text-[#1F140E]' : 'text-white/80 hover:bg-white/10'}`}>
+                    🛍️ Business Ads ({businessAds.length})
+                  </button>
+                  <button onClick={() => { setAdminTab('spotlights'); setIsNavDrawerOpen(false); }} className={`w-full text-left px-3 py-2 rounded-lg transition-all cursor-pointer font-bold ${adminTab === 'spotlights' ? 'bg-[#D4AF37] text-[#1F140E]' : 'text-white/80 hover:bg-white/10'}`}>
+                    📢 Spotlights &amp; Banners
+                  </button>
+                  <button onClick={() => { setAdminTab('apothecary'); setIsNavDrawerOpen(false); }} className={`w-full text-left px-3 py-2 rounded-lg transition-all cursor-pointer font-bold ${adminTab === 'apothecary' || adminTab === 'care_pods' ? 'bg-[#D4AF37] text-[#1F140E]' : 'text-white/80 hover:bg-white/10'}`}>
+                    🌿 Apothecary &amp; Pods
+                  </button>
+                </div>
+              </div>
+
+              {/* Treasury & Trades */}
+              <div className="space-y-1 bg-white/5 p-3 rounded-xl border border-white/10">
+                <span className="text-[#D4AF37] font-bold text-[10px] uppercase tracking-wider block mb-1">🪙 Treasury &amp; Trades</span>
+                <div className="space-y-1 pl-1">
+                  <button onClick={() => { setAdminTab('treasury'); setIsNavDrawerOpen(false); }} className={`w-full text-left px-3 py-2 rounded-lg transition-all cursor-pointer font-bold ${adminTab === 'treasury' ? 'bg-[#D4AF37] text-[#1F140E]' : 'text-white/80 hover:bg-white/10'}`}>
+                    🪙 Sovereign Treasury
+                  </button>
+                  <button onClick={() => { setAdminTab('disputes'); setIsNavDrawerOpen(false); }} className={`w-full text-left px-3 py-2 rounded-lg transition-all cursor-pointer font-bold ${adminTab === 'disputes' ? 'bg-[#D4AF37] text-[#1F140E]' : 'text-white/80 hover:bg-white/10'}`}>
+                    ⚖️ Trade Disputes
+                  </button>
+                  <button onClick={() => { setAdminTab('scholarships'); setIsNavDrawerOpen(false); }} className={`w-full text-left px-3 py-2 rounded-lg transition-all cursor-pointer font-bold ${adminTab === 'scholarships' ? 'bg-[#D4AF37] text-[#1F140E]' : 'text-white/80 hover:bg-white/10'}`}>
+                    🎁 Giveaways &amp; Draws
+                  </button>
+                </div>
+              </div>
+
+              {/* Sanctuary Programming */}
+              <div className="space-y-1 bg-white/5 p-3 rounded-xl border border-white/10">
+                <span className="text-[#D4AF37] font-bold text-[10px] uppercase tracking-wider block mb-1">📢 Sanctuary Programming</span>
+                <div className="space-y-1 pl-1">
+                  <button onClick={() => { setAdminTab('bulletins'); setIsNavDrawerOpen(false); }} className={`w-full text-left px-3 py-2 rounded-lg transition-all cursor-pointer font-bold ${adminTab === 'bulletins' ? 'bg-[#D4AF37] text-[#1F140E]' : 'text-white/80 hover:bg-white/10'}`}>
+                    📻 Broadcast Bulletins
+                  </button>
+                  <button onClick={() => { setAdminTab('polls'); setIsNavDrawerOpen(false); }} className={`w-full text-left px-3 py-2 rounded-lg transition-all cursor-pointer font-bold ${adminTab === 'polls' ? 'bg-[#D4AF37] text-[#1F140E]' : 'text-white/80 hover:bg-white/10'}`}>
+                    🗳️ Ballots &amp; Polls
+                  </button>
+                  <button onClick={() => { setAdminTab('hearths'); setIsNavDrawerOpen(false); }} className={`w-full text-left px-3 py-2 rounded-lg transition-all cursor-pointer font-bold ${adminTab === 'hearths' || adminTab === 'podcasts' || adminTab === 'kinship_vault' ? 'bg-[#D4AF37] text-[#1F140E]' : 'text-white/80 hover:bg-white/10'}`}>
+                    🔥 Hearths &amp; Podcasts
+                  </button>
+                </div>
+              </div>
+
+              {/* Operations & Security */}
+              <div className="space-y-1 bg-emerald-950/40 p-3 rounded-xl border border-emerald-500/30">
+                <span className="text-emerald-400 font-bold text-[10px] uppercase tracking-wider block mb-1">⚙️ Operations &amp; Security</span>
+                <div className="space-y-1 pl-1">
+                  <button onClick={() => { setAdminTab('moderation'); setIsNavDrawerOpen(false); }} className={`w-full text-left px-3 py-2 rounded-lg transition-all cursor-pointer font-bold ${adminTab === 'moderation' ? 'bg-emerald-400 text-[#1F140E]' : 'text-white/80 hover:bg-white/10'}`}>
+                    🛡️ Moderation Queue
+                  </button>
+                  <button onClick={() => { setAdminTab('automation_hub'); setIsNavDrawerOpen(false); }} className={`w-full text-left px-3 py-2 rounded-lg transition-all cursor-pointer font-bold ${adminTab === 'automation_hub' ? 'bg-emerald-400 text-[#1F140E]' : 'text-emerald-300 hover:bg-emerald-500/20'}`}>
+                    🤖 Automation Hub
+                  </button>
+                  <button onClick={() => { setAdminTab('aistudio_vault'); setIsNavDrawerOpen(false); }} className={`w-full text-left px-3 py-2 rounded-lg transition-all cursor-pointer font-bold ${adminTab === 'aistudio_vault' || adminTab === 'covenant_vault' ? 'bg-[#D4AF37] text-[#1F140E]' : 'text-white/80 hover:bg-white/10'}`}>
+                    ⚡ Vault &amp; Covenants
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* OVERVIEW & COMMAND CENTER HOME VIEW                                       */}
+      {/* ========================================================================= */}
+      {adminTab === 'overview' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Welcome Card */}
+          <div className="bg-gradient-to-r from-[#180E08] via-[#2A1D16] to-[#120A05] text-[#FAF5EE] p-6 sm:p-8 rounded-3xl border-2 border-[#D4AF37]/50 shadow-2xl relative overflow-hidden space-y-4">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-[#D4AF37]/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative z-10 space-y-2">
+              <span className="text-[10px] font-mono uppercase tracking-widest font-extrabold text-[#D4AF37] bg-[#D4AF37]/15 px-3 py-1 rounded-full border border-[#D4AF37]/30 inline-block">
+                Copper Mommies Back-Office Command Center
+              </span>
+              <h2 className="font-serif text-3xl sm:text-4xl font-extrabold text-[#FAF5EE]">
+                Welcome back, Sovereign Administrator 🏛️
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-300 max-w-3xl leading-relaxed">
+                Your sovereign community back office is organized into 5 logical domains below. Select any domain card to manage membership vetting, sponsor ads, treasury ledgers, sanctuary programming, and automated security workflows instantly.
+              </p>
+            </div>
+          </div>
+
+          {/* 5 Logical Domain Navigation Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            
+            {/* Domain 1: Membership & Lineage */}
+            <div 
+              onClick={() => setAdminTab('inquiries')}
+              className="bg-white border-2 border-[#B87333]/30 hover:border-[#D4AF37] rounded-3xl p-6 shadow-md hover:shadow-xl transition-all cursor-pointer space-y-4 group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="p-3 bg-[#B87333]/15 text-[#B87333] rounded-2xl border border-[#B87333]/30 group-hover:scale-110 transition-transform">
+                  <Users className="w-6 h-6 text-[#B87333]" />
+                </span>
+                <span className="text-xs font-mono font-bold text-[#B87333] bg-[#FAF5EE] px-2.5 py-1 rounded-lg border border-[#B87333]/20">
+                  {applicants.length} Total Inquiries
+                </span>
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-serif font-extrabold text-xl text-[#1F1813] group-hover:text-[#B87333] transition-colors">
+                  1. Membership &amp; Lineage
+                </h3>
+                <p className="text-xs text-[#1F1813]/75 leading-relaxed">
+                  Manage mother vetting applications, review sacred covenant agreements, update leadership roles, and audit member directory profiles.
+                </p>
+              </div>
+              <div className="pt-3 border-t border-copper-penny/10 flex items-center justify-between text-xs font-mono font-bold text-[#B87333]">
+                <span>Manage Lineage &amp; Roles</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+
+            {/* Domain 2: Commerce & Sponsor Hub */}
+            <div 
+              onClick={() => setAdminTab('business_ads')}
+              className="bg-white border-2 border-[#B87333]/30 hover:border-[#D4AF37] rounded-3xl p-6 shadow-md hover:shadow-xl transition-all cursor-pointer space-y-4 group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="p-3 bg-[#D4AF37]/15 text-[#B87333] rounded-2xl border border-[#D4AF37]/30 group-hover:scale-110 transition-transform">
+                  <Building2 className="w-6 h-6 text-[#D4AF37]" />
+                </span>
+                <span className="text-xs font-mono font-bold text-[#D4AF37] bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                  {businessAds.length} Sponsor Ads
+                </span>
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-serif font-extrabold text-xl text-[#1F1813] group-hover:text-[#B87333] transition-colors">
+                  2. Commerce &amp; Sponsor Hub
+                </h3>
+                <p className="text-xs text-[#1F1813]/75 leading-relaxed">
+                  Approve sister business ad submissions, manage 1-click sponsor spotlight banner rotations, and curate apothecary &amp; care pod ventures.
+                </p>
+              </div>
+              <div className="pt-3 border-t border-copper-penny/10 flex items-center justify-between text-xs font-mono font-bold text-[#B87333]">
+                <span>Manage Commerce &amp; Ads</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+
+            {/* Domain 3: Treasury & Resource Exchange */}
+            <div 
+              onClick={() => setAdminTab('treasury')}
+              className="bg-white border-2 border-[#B87333]/30 hover:border-[#D4AF37] rounded-3xl p-6 shadow-md hover:shadow-xl transition-all cursor-pointer space-y-4 group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="p-3 bg-emerald-500/15 text-emerald-700 rounded-2xl border border-emerald-500/30 group-hover:scale-110 transition-transform">
+                  <Coins className="w-6 h-6 text-emerald-700" />
+                </span>
+                <span className="text-xs font-mono font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                  {totalBarterPoints} Points
+                </span>
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-serif font-extrabold text-xl text-[#1F1813] group-hover:text-[#B87333] transition-colors">
+                  3. Treasury &amp; Exchange
+                </h3>
+                <p className="text-xs text-[#1F1813]/75 leading-relaxed">
+                  Monitor time-credit ledgers, arbitrate cooperative trade disputes, adjust member hours, and draw random scholarship giveaway winners.
+                </p>
+              </div>
+              <div className="pt-3 border-t border-copper-penny/10 flex items-center justify-between text-xs font-mono font-bold text-[#B87333]">
+                <span>Manage Treasury &amp; Trades</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+
+            {/* Domain 4: Sanctuary Programming */}
+            <div 
+              onClick={() => setAdminTab('bulletins')}
+              className="bg-white border-2 border-[#B87333]/30 hover:border-[#D4AF37] rounded-3xl p-6 shadow-md hover:shadow-xl transition-all cursor-pointer space-y-4 group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="p-3 bg-[#1F1813]/10 text-[#1F1813] rounded-2xl border border-[#1F1813]/20 group-hover:scale-110 transition-transform">
+                  <Radio className="w-6 h-6 text-[#1F1813]" />
+                </span>
+                <span className="text-xs font-mono font-bold text-[#1F1813] bg-stone-100 px-2.5 py-1 rounded-lg border border-stone-200">
+                  Broadcasts &amp; Polls
+                </span>
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-serif font-extrabold text-xl text-[#1F1813] group-hover:text-[#B87333] transition-colors">
+                  4. Sanctuary Programming
+                </h3>
+                <p className="text-xs text-[#1F1813]/75 leading-relaxed">
+                  Publish global broadcast push bulletins, create community voting ballots, schedule live hearth gatherings, and upload audio podcasts.
+                </p>
+              </div>
+              <div className="pt-3 border-t border-copper-penny/10 flex items-center justify-between text-xs font-mono font-bold text-[#B87333]">
+                <span>Manage Programming</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+
+            {/* Domain 5: Moderation & Sovereign Operations */}
+            <div 
+              onClick={() => setAdminTab('moderation')}
+              className="bg-white border-2 border-[#B87333]/30 hover:border-[#D4AF37] rounded-3xl p-6 shadow-md hover:shadow-xl transition-all cursor-pointer space-y-4 group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="p-3 bg-amber-500/15 text-amber-800 rounded-2xl border border-amber-500/30 group-hover:scale-110 transition-transform">
+                  <Cpu className="w-6 h-6 text-amber-800" />
+                </span>
+                <span className="text-xs font-mono font-bold text-amber-900 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                  Automation Hub
+                </span>
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-serif font-extrabold text-xl text-[#1F1813] group-hover:text-[#B87333] transition-colors">
+                  5. Moderation &amp; Operations
+                </h3>
+                <p className="text-xs text-[#1F1813]/75 leading-relaxed">
+                  Review Grandmother Council flagged posts, manage autonomous workflow pipelines, run database backups, and access AI Studio vaults.
+                </p>
+              </div>
+              <div className="pt-3 border-t border-copper-penny/10 flex items-center justify-between text-xs font-mono font-bold text-[#B87333]">
+                <span>Manage Security &amp; Workflows</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* TAB 1: LINEAGE INQUIRIES & ROLE ARBITRATOR                                */}
       {/* ========================================================================= */}
       {adminTab === 'inquiries' && (
         <div className="space-y-6 animate-fade-in">
+          {/* Real-time Verified Member Login Activity & Engagement Pulse Card */}
+          <AdminRecentLoginsCard />
+
           {/* 50-State Sovereignty Network Card */}
           <div className="bg-gradient-to-br from-[#1F1813] to-[#2D221A] text-[#FAF5EE] border border-copper-penny/25 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-copper-penny/20 pb-3">
@@ -2565,7 +2516,7 @@ export default function AdminVetting({
                   </span>
                 </div>
                 <h3 className="font-serif font-extrabold text-2xl text-[#FAF5EE]">
-                  Hearth Polls &amp; Community Topic Ballots
+                  Sisterhood Polls &amp; Community Topic Ballots
                 </h3>
                 <p className="text-xs text-[#FAF5EE]/80 mt-1 max-w-2xl leading-relaxed">
                   Empower verified sisters to shape upcoming Casual Corner Talk episodes, prioritize crowdfunded masterclasses, and vote on community initiatives directly on-platform.
@@ -2838,7 +2789,7 @@ export default function AdminVetting({
                 <div className="flex items-center justify-between border-b border-copper-penny/15 pb-3">
                   <div className="flex items-center space-x-2">
                     <Award className="w-5 h-5 text-[#B87333]" />
-                    <h4 className="font-serif font-extrabold text-lg text-[#1F1813]">Create New Hearth Ballot</h4>
+                    <h4 className="font-serif font-extrabold text-lg text-[#1F1813]">Create New Sisterhood Ballot</h4>
                   </div>
                   <button
                     onClick={() => setShowAddPollModal(false)}
@@ -4140,6 +4091,13 @@ export default function AdminVetting({
           </div>
 
         </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 17: ADMIN AUTOMATION & WORKFLOW CONTROL CENTER                        */}
+      {/* ========================================================================= */}
+      {adminTab === 'automation_hub' && (
+        <AdminAutomationHub />
       )}
 
     </div>

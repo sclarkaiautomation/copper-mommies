@@ -37,7 +37,8 @@ import {
   User,
   Bookmark,
   Settings,
-  X
+  X,
+  Menu
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -73,14 +74,18 @@ import MemberProfileHub from './components/MemberProfileHub';
 import BusinessAdvertisingPortal from './components/BusinessAdvertisingPortal';
 import SpotlightBanner from './components/SpotlightBanner';
 import BroadcastPushBar from './components/BroadcastPushBar';
-import HearthMoodToggle, { HEARTH_MOODS } from './components/HearthMoodToggle';
-import PWAInstallPrompt from './components/PWAInstallPrompt';
-import AudioPlayerFloating from './components/AudioPlayerFloating';
+import { HEARTH_MOODS } from './components/HearthMoodToggle';
+import SidebarAudioPlayer from './components/audio/SidebarAudioPlayer';
+import MiniStickyAudioPlayer from './components/audio/MiniStickyAudioPlayer';
+import SidePanelAppInstallCard from './components/pwa/SidePanelAppInstallCard';
 import AudioSanctuaryLounge from './components/AudioSanctuaryLounge';
 import SovereignTreasuryHub from './components/SovereignTreasuryHub';
 import MothersAcademyHub from './components/MothersAcademyHub';
 import ScrollToTopButton from './components/ScrollToTopButton';
 import BottomFloatingChatDock from './components/BottomFloatingChatDock';
+import GlobalSearchModal from './components/GlobalSearchModal';
+import { LeftNavDrawer } from './components/LeftNavDrawer';
+import { getHashtagDestination } from './data/globalHashtagData';
 import { SavedCommonsItem, DirectChatThread, ChatMember, DirectChatMessage } from './types';
 import { INITIAL_DIRECT_CHAT_THREADS, INITIAL_CHAT_MEMBERS } from './data/initialDirectChats';
 import { 
@@ -114,14 +119,69 @@ const POPULAR_STATES = [
   { code: 'PA', name: 'Pennsylvania (Philadelphia Circle)' }
 ];
 
+export const HUB_NAME_MAP: Record<string, string> = {
+  landing: 'Home / Sanctuary Overview',
+  commons: 'Village Commons',
+  academy: 'Mothers Academy',
+  economy: 'Cooperative Economy & Barter',
+  commerce: 'Sister Enterprises & Micro-Grants',
+  healing: 'Apothecary & Healing Sanctum',
+  village: 'Education & Village Care Hub',
+  gathering: 'The Copper Circle & Gatherings',
+  audio: 'Audio Sanctuary Lounge',
+  kinship: 'Kinship Vault & Lineage Archives',
+  treasury: 'Sovereign Treasury Hub',
+  advertise: 'Sponsor Advertising Portal',
+  profile: 'Member Profile Hub',
+  vetting: 'Sisterhood Vetting Portal',
+  admin: 'Founder Admin Office'
+};
+
 export default function App() {
   // Navigation State
   const [activeTab, setActiveTab] = useState<'landing' | 'vetting' | 'commons' | 'profile' | 'village' | 'healing' | 'economy' | 'commerce' | 'gathering' | 'kinship' | 'audio' | 'treasury' | 'admin' | 'advertise' | 'academy'>('landing');
-  const [commonsSubTab, setCommonsSubTab] = useState<'feed' | 'exchange' | 'housing' | 'businesses' | 'events' | 'map'>('feed');
+  const [commonsSubTab, setCommonsSubTab] = useState<'feed' | 'gigs' | 'exchange' | 'housing' | 'businesses' | 'events' | 'map'>('feed');
   const [commonsSelectedTopic, setCommonsSelectedTopic] = useState<string>('all');
   const [showMobilePostSheet, setShowMobilePostSheet] = useState<boolean>(false);
   const [createPostTriggerType, setCreatePostTriggerType] = useState<'feed' | 'exchange' | 'housing' | null>(null);
   const [showGlobalSupportModal, setShowGlobalSupportModal] = useState(false);
+  const [isGlobalSearchModalOpen, setIsGlobalSearchModalOpen] = useState(false);
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
+
+  const handleExecuteGlobalSearch = (query: string) => {
+    const cleanTag = (query || '').trim();
+    // Direct destination check: If the hashtag maps to a specific course, listing, or section, take the member directly there!
+    if (cleanTag) {
+      const dest = getHashtagDestination(cleanTag);
+      if (dest) {
+        setActiveTab(dest.linkTab as any);
+        if (dest.targetSubTab && dest.linkTab === 'commons') {
+          setCommonsSubTab(dest.targetSubTab as any);
+        }
+        if (dest.targetItemId && dest.linkTab === 'academy') {
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('copper_open_academy_course', { detail: { courseId: dest.targetItemId } }));
+          }, 60);
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+    }
+
+    // Otherwise, if general unmapped query or sitewide search requested, open the Sitewide Global Search Modal
+    setGlobalSearchQuery(cleanTag);
+    setIsGlobalSearchModalOpen(true);
+  };
+
+  // Listen for global search events dispatched across any hub
+  useEffect(() => {
+    const handleGlobalSearchEvent = (e: any) => {
+      const q = e.detail?.query || '';
+      handleExecuteGlobalSearch(q);
+    };
+    window.addEventListener('copper_open_global_search', handleGlobalSearchEvent);
+    return () => window.removeEventListener('copper_open_global_search', handleGlobalSearchEvent);
+  }, []);
   
   // App Config & Personalization State
   const [selectedState, setSelectedState] = useState<string>('GA');
@@ -238,6 +298,7 @@ export default function App() {
   const [showAdminLoginModal, setShowAdminLoginModal] = useState(false);
   const [showMemberLoginModal, setShowMemberLoginModal] = useState(false);
   const [showSisterProfileMenu, setShowSisterProfileMenu] = useState(false);
+  const [isLeftNavDrawerOpen, setIsLeftNavDrawerOpen] = useState(false);
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
   const [adminLoginError, setAdminLoginError] = useState('');
   const [memberEmailInput, setMemberEmailInput] = useState('shantrecetogetherwewin@gmail.com');
@@ -249,8 +310,32 @@ export default function App() {
     }
   });
 
-  // Navigation History State for Return Breadcrumbs
+  // Navigation History State for Return Breadcrumbs & Back Buttons
   const [lastVisitedTab, setLastVisitedTab] = useState<string | null>(null);
+  const [navigationHistory, setNavigationHistory] = useState<string[]>([]);
+
+  const handleNavigateToTab = (newTab: 'landing' | 'vetting' | 'commons' | 'profile' | 'village' | 'healing' | 'economy' | 'commerce' | 'gathering' | 'kinship' | 'audio' | 'treasury' | 'admin' | 'advertise' | 'academy') => {
+    if (newTab === activeTab) return;
+    setNavigationHistory(prev => {
+      if (prev.length > 0 && prev[prev.length - 1] === activeTab) {
+        return prev;
+      }
+      return [...prev, activeTab];
+    });
+    setLastVisitedTab(activeTab);
+    setActiveTab(newTab);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleGoBack = () => {
+    if (navigationHistory.length === 0) return;
+    const previousTab = navigationHistory[navigationHistory.length - 1];
+    const newHistory = navigationHistory.slice(0, -1);
+    setNavigationHistory(newHistory);
+    setLastVisitedTab(newHistory.length > 0 ? newHistory[newHistory.length - 1] : null);
+    setActiveTab(previousTab as typeof activeTab);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
   const [profileInitialTab, setProfileInitialTab] = useState<'overview' | 'chats' | 'bookmarks' | 'posts' | 'events' | 'faves' | 'groups' | 'ledger'>('overview');
   const [barterList, setBarterList] = useState<BarterOffer[]>([]);
   const [eventsList, setEventsList] = useState<CoopEvent[]>([]);
@@ -266,7 +351,12 @@ export default function App() {
   });
   const [chatMembers] = useState<ChatMember[]>(INITIAL_CHAT_MEMBERS);
 
-  const handleSendDirectMessage = (threadId: string, text: string, replyTo?: { id: string; text: string; senderName: string }) => {
+  // Unified Floating Messenger Dock Open & Thread States
+  const [isChatDockOpen, setIsChatDockOpen] = useState(false);
+  const [dockActiveThreadId, setDockActiveThreadId] = useState<string | null>('chat-reginald');
+
+  const handleSendDirectMessage = (threadId: string, text: string, replyTo?: any) => {
+    if (!text.trim()) return;
     const newMsg: DirectChatMessage = {
       id: `msg-${Date.now()}`,
       senderId: 'me',
@@ -424,7 +514,15 @@ export default function App() {
     });
   };
 
-  const handleOpenDirectChatWithContext = (recipientName: string, contextTitle: string, initialNote?: string) => {
+  const handleOpenDirectChatWithContext = (
+    recipientName: string, 
+    contextTitle: string, 
+    initialNote?: string,
+    category: 'dm' | 'housing' | 'exchange' | 'jobs' | 'business' | 'academy' = 'dm',
+    originListingId?: string,
+    originListingImage?: string,
+    originListingSummary?: string
+  ) => {
     let targetMember = chatMembers.find(m => m.name.toLowerCase() === recipientName.toLowerCase());
     if (!targetMember) {
       targetMember = {
@@ -436,37 +534,63 @@ export default function App() {
       };
     }
 
-    const newThread: DirectChatThread = {
-      id: `chat-${Date.now()}`,
-      participantId: targetMember.id,
-      participantName: targetMember.name,
-      participantAvatar: targetMember.avatar,
-      participantNeighborhood: targetMember.neighborhood,
-      category: 'housing',
-      originSectionLabel: contextTitle,
-      lastMessage: initialNote?.trim() ? `You: ${initialNote.trim()}` : `Inquiry regarding ${contextTitle}`,
-      lastMessageTime: 'Just now',
-      unreadCount: 0,
-      messages: initialNote?.trim() ? [
-        {
-          id: `m-${Date.now()}`,
-          senderId: 'me',
-          senderName: userName || 'Shantrece Clark',
-          senderAvatar: '/coppermommies-selflove1-cmc.jpg',
-          text: initialNote.trim(),
-          timestamp: 'Just now',
-          isMe: true
-        }
-      ] : []
-    };
+    // Find existing thread with this sister matching context or category
+    const existingThread = chatThreads.find(t => 
+      t.participantName.toLowerCase() === recipientName.toLowerCase() &&
+      (t.originSectionLabel === contextTitle || t.category === category)
+    );
 
-    setChatThreads(prev => {
-      const updated = [newThread, ...prev.filter(t => t.participantName !== recipientName)];
-      try {
-        localStorage.setItem('copper_mommies_chat_threads', JSON.stringify(updated));
-      } catch (e) {}
-      return updated;
-    });
+    let targetThreadId = existingThread?.id;
+
+    if (existingThread) {
+      if (initialNote?.trim()) {
+        handleSendDirectMessage(existingThread.id, initialNote.trim());
+      }
+    } else {
+      const newThread: DirectChatThread = {
+        id: `chat-${Date.now()}`,
+        participantId: targetMember.id,
+        participantName: targetMember.name,
+        participantAvatar: targetMember.avatar,
+        participantNeighborhood: targetMember.neighborhood,
+        category,
+        originSectionLabel: contextTitle,
+        originListingId,
+        originListingImage,
+        originListingSummary,
+        tradeStatus: category === 'exchange' ? 'proposed' : undefined,
+        lastMessage: initialNote?.trim() ? `You: ${initialNote.trim()}` : `Inquiry regarding ${contextTitle}`,
+        lastMessageTime: 'Just now',
+        unreadCount: 0,
+        messages: initialNote?.trim() ? [
+          {
+            id: `m-${Date.now()}`,
+            senderId: 'me',
+            senderName: userName || 'Shantrece Clark',
+            senderAvatar: '/coppermommies-selflove1-cmc.jpg',
+            text: initialNote.trim(),
+            timestamp: 'Just now',
+            isMe: true
+          }
+        ] : []
+      };
+
+      targetThreadId = newThread.id;
+
+      setChatThreads(prev => {
+        const updated = [newThread, ...prev.filter(t => t.id !== newThread.id)];
+        try {
+          localStorage.setItem('copper_mommies_chat_threads', JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+    }
+
+    // Auto-focus and open the bottom floating messenger dock
+    if (targetThreadId) {
+      setDockActiveThreadId(targetThreadId);
+    }
+    setIsChatDockOpen(true);
   };
   
   // Form States inside App
@@ -1265,14 +1389,15 @@ export default function App() {
     return () => clearInterval(timer);
   }, [aiLoading]);
 
-  // Handle Right Slide-Out Profile Drawer keyboard escape and scroll lock
+  // Handle Slide-Out Drawers (Left Nav & Right Profile) keyboard escape and scroll lock
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && showSisterProfileMenu) {
-        setShowSisterProfileMenu(false);
+      if (e.key === 'Escape') {
+        if (showSisterProfileMenu) setShowSisterProfileMenu(false);
+        if (isLeftNavDrawerOpen) setIsLeftNavDrawerOpen(false);
       }
     };
-    if (showSisterProfileMenu) {
+    if (showSisterProfileMenu || isLeftNavDrawerOpen) {
       document.addEventListener('keydown', handleKeyDown);
       const prevOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
@@ -1281,7 +1406,7 @@ export default function App() {
         document.body.style.overflow = prevOverflow;
       };
     }
-  }, [showSisterProfileMenu]);
+  }, [showSisterProfileMenu, isLeftNavDrawerOpen]);
 
   const fetchCompliance = async () => {
     try {
@@ -1520,6 +1645,38 @@ export default function App() {
       <div className={`absolute top-0 left-1/4 w-[450px] h-[450px] ${activeHearth.orb1Class} rounded-full blur-[120px] pointer-events-none transition-all duration-700`} />
       <div className={`absolute bottom-1/4 right-1/4 w-[550px] h-[550px] ${activeHearth.orb2Class} rounded-full blur-[150px] pointer-events-none transition-all duration-700`} />
 
+      {/* Palette Accent Control Bar (Mauve, Copper & Gold Harmonized Palette) */}
+      <div className="bg-gradient-to-r from-[#1F140E] via-[#3B2229] via-[#482932] to-[#1F140E] text-[#FAF2EE] border-b border-[#B2838E]/50 px-3 sm:px-6 py-2 text-xs font-mono flex items-center justify-between shadow-md z-50">
+        <div className="flex items-center space-x-2 min-w-0">
+          <span className="text-[#D4AF37]">✨</span>
+          <span className="font-extrabold uppercase tracking-wider text-[#E5C158] shrink-0">Harmonized Palette:</span>
+          <span className="hidden sm:inline text-white/90 truncate">Copper, Warm Gold, Deep Charcoal &amp; Dusty Mauve Accents</span>
+        </div>
+
+        <div className="flex items-center space-x-2 shrink-0">
+          <span className="hidden md:inline px-2.5 py-0.5 rounded-full bg-[#8A5863]/30 text-[#E8C2CA] border border-[#B2838E]/50 text-[10px] font-bold">
+            Dusty Mauve Integrated
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              if (hearthMood === 'mauve') {
+                handleSelectHearthMood('reflection');
+              } else {
+                handleSelectHearthMood('mauve');
+              }
+            }}
+            className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer border ${
+              hearthMood === 'mauve'
+                ? 'bg-[#8A5863] text-white border-[#B2838E] font-black shadow-xs'
+                : 'bg-[#8A5863]/20 hover:bg-[#8A5863]/40 text-[#FAF2EE] border-[#B2838E]/40'
+            }`}
+          >
+            {hearthMood === 'mauve' ? '✓ Mauve Canvas Active' : '✨ Toggle Mauve Canvas'}
+          </button>
+        </div>
+      </div>
+
       {/* Global Community Broadcast Bulletin Push Bar — VISIBLE TO LOGGED-IN MEMBERS ONLY */}
       {simulatedRole !== 'applicant' && (
         <BroadcastPushBar
@@ -1587,34 +1744,49 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-18 sm:h-20">
             
-            {/* Logo and Brand Name */}
-            <div 
-              id="logo-container"
-              className="flex items-center space-x-3 cursor-pointer group"
-              onClick={() => setActiveTab('landing')}
-            >
-              <div className="relative w-11 h-11 sm:w-12 sm:h-12 bg-transparent flex items-center justify-center text-copper-penny group-hover:scale-105 duration-300 transition-all shrink-0">
-                <img 
-                  src="/Copper_Mommies_w_NoBG4.png" 
-                  alt="Copper Mommies Co. Logo" 
-                  className="w-full h-full object-contain"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-              <div>
-                <h1 className="font-serif font-bold text-lg sm:text-2xl tracking-tight text-[#1F1813] group-hover:text-copper-penny transition-colors leading-tight">
-                  Copper Mommies <span className="text-[#D4AF37]">Co.</span>
-                </h1>
-                <p className="text-[8px] sm:text-[9px] font-mono text-soft-sage uppercase tracking-widest font-extrabold leading-tight">American Motherhood Cooperative</p>
+            {/* Left Hamburger Button & Logo Brand */}
+            <div className="flex items-center space-x-2 sm:space-x-3.5 min-w-0">
+              {/* Left-Side Hamburger Menu Button (Accessible on Mobile, Tablet & Desktop) */}
+              <button
+                id="header-hamburger-nav-btn"
+                type="button"
+                onClick={() => setIsLeftNavDrawerOpen(true)}
+                className="p-2 sm:p-2.5 rounded-2xl bg-[#FAF5EE] hover:bg-[#F3EADF] text-[#1F140E] border border-copper-penny/30 shadow-xs transition-all cursor-pointer flex items-center space-x-1.5 group active:scale-95 shrink-0"
+                title="Open Sanctuary Navigation Menu (All Hubs)"
+                aria-label="Open Navigation Menu"
+              >
+                <Menu className="w-5 h-5 text-[#B87333] group-hover:text-[#1F140E] transition-colors" />
+                <span className="hidden sm:inline font-mono text-[11px] font-bold uppercase tracking-wider text-[#1F140E]">Menu</span>
+              </button>
+
+              {/* Logo and Brand Name */}
+              <div 
+                id="logo-container"
+                className="flex items-center space-x-2.5 sm:space-x-3 cursor-pointer group min-w-0"
+                onClick={() => handleNavigateToTab('landing')}
+              >
+                <div className="relative w-10 h-10 sm:w-12 sm:h-12 bg-transparent flex items-center justify-center text-copper-penny group-hover:scale-105 duration-300 transition-all shrink-0">
+                  <img 
+                    src="/Copper_Mommies_w_NoBG4.png" 
+                    alt="Copper Mommies Co. Logo" 
+                    className="w-full h-full object-contain"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <h1 className="font-serif font-bold text-base sm:text-2xl tracking-tight text-[#1F1813] group-hover:text-copper-penny transition-colors leading-tight truncate">
+                    Copper Mommies <span className="text-[#D4AF37]">Co.</span>
+                  </h1>
+                  <p className="text-[7.5px] xs:text-[8px] sm:text-[9px] font-mono text-soft-sage uppercase tracking-widest font-extrabold leading-tight truncate">
+                    American Motherhood Cooperative
+                  </p>
+                </div>
               </div>
             </div>
 
             {/* Streamlined Utility Controls */}
             <div className="flex items-center space-x-2 sm:space-x-3">
               
-              {/* Sanctuary Atmosphere Toggle */}
-              <HearthMoodToggle currentMood={hearthMood} onSelectMood={handleSelectHearthMood} />
-
               {/* State Circle Selector */}
               <div className="relative hidden xs:flex items-center space-x-1.5 bg-[#FAF5EE] border border-copper-penny/25 px-2.5 sm:px-3 py-1.5 rounded-xl">
                 <MapPin className="w-3.5 h-3.5 text-[#B87333]" />
@@ -1632,28 +1804,20 @@ export default function App() {
                 </select>
               </div>
 
-              {/* Audio Sanctuary Mini Live Player (Logged-in members) */}
-              {simulatedRole !== 'applicant' && (
-                <button
-                  onClick={() => setActiveTab('audio')}
-                  className={`text-xs font-bold px-2.5 sm:px-3 py-1.5 rounded-xl flex items-center space-x-1.5 transition-all cursor-pointer shadow-2xs active:scale-95 border ${
-                    activeTab === 'audio'
-                      ? 'bg-[#D4AF37] text-[#1F140E] border-[#D4AF37]'
-                      : isAudioPlaying
-                      ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/50'
-                      : 'bg-[#FAF5EE] text-[#1F1813] border-copper-penny/25 hover:border-copper-penny/50'
-                  }`}
-                  title="Open Audio Sanctuary & Podcast Radio"
-                >
-                  <span>{isAudioPlaying ? '📻' : '🎙️'}</span>
-                  <span className="hidden lg:inline font-mono">
-                    {isAudioPlaying ? 'Radio Live' : 'Audio Lounge'}
-                  </span>
-                  {isAudioPlaying && (
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                  )}
-                </button>
-              )}
+              {/* Sitewide Ecosystem & Hashtag Search Button */}
+              <button
+                type="button"
+                id="header-sitewide-search-btn"
+                onClick={() => {
+                  setGlobalSearchQuery('');
+                  setIsGlobalSearchModalOpen(true);
+                }}
+                className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-[#FAF5EE] hover:bg-[#F3EADF] text-[#1F1813] border border-copper-penny/30 text-xs font-mono font-bold transition-all cursor-pointer shadow-2xs hover:scale-102 active:scale-95"
+                title="Search courses, barter trades, care pillars, & regional tags sitewide"
+              >
+                <Search className="w-3.5 h-3.5 text-[#B87333]" />
+                <span className="hidden sm:inline">Search</span>
+              </button>
 
               {/* Support Co-op Button */}
               <button
@@ -1718,14 +1882,51 @@ export default function App() {
           </div>
         </div>
 
-        {/* 2. Streamlined Primary Navigation Pillars */}
-        <div className="border-t border-copper-penny/10 bg-[#140F0B]/95 backdrop-blur-md">
+        {/* Mobile & Tablet Compact Active Hub Indicator (< lg) */}
+        <div className="lg:hidden border-t border-copper-penny/10 bg-[#140F0B] px-3 sm:px-6 py-2 flex items-center justify-between text-xs font-mono">
+          <button
+            type="button"
+            onClick={() => setIsLeftNavDrawerOpen(true)}
+            className="flex items-center space-x-2 text-[#D4AF37] hover:text-white transition-colors cursor-pointer min-w-0 group"
+            title="Browse All Sanctuary Hubs in Menu"
+          >
+            <Menu className="w-3.5 h-3.5 shrink-0 text-[#D4AF37] group-hover:text-white" />
+            <span className="text-[10px] sm:text-[11px] uppercase tracking-wider font-extrabold text-[#D4AF37]/80 shrink-0">Hub:</span>
+            <span className="text-white font-sans text-xs font-bold truncate underline decoration-[#D4AF37]/50 underline-offset-2">
+              {activeTab === 'landing' && '🌍 Home'}
+              {activeTab === 'commons' && '🏡 The Village Commons'}
+              {activeTab === 'academy' && '🎓 Mothers Academy'}
+              {activeTab === 'economy' && '🤝 Cooperative Economy'}
+              {activeTab === 'commerce' && '🤝 Co-op Commerce'}
+              {activeTab === 'healing' && '🌿 Earth & Apothecary'}
+              {activeTab === 'gathering' && '✨ Copper Circle'}
+              {activeTab === 'audio' && '✨ Audio Sanctuary'}
+              {activeTab === 'kinship' && '🗝️ Kinship & Homeschool'}
+              {activeTab === 'treasury' && '🗝️ Private Treasury'}
+              {activeTab === 'advertise' && '✨ Sponsor Ads'}
+              {activeTab === 'admin' && '👵 Admin Office'}
+              {activeTab === 'vetting' && '🔒 Join Community'}
+              {activeTab === 'profile' && '👤 Sister Profile'}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsLeftNavDrawerOpen(true)}
+            className="px-2.5 py-1 rounded-xl bg-[#D4AF37]/20 border border-[#D4AF37]/40 text-[#D4AF37] text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-wider hover:bg-[#D4AF37]/30 transition-all cursor-pointer shrink-0 ml-2"
+          >
+            All Hubs ▾
+          </button>
+        </div>
+
+        {/* 2. Desktop Primary Navigation Pillars (Preserved for Laptop & Desktop Users) */}
+        <div className="hidden lg:block border-t border-[#B2838E]/30 bg-gradient-to-r from-[#140F0B] via-[#2A181F]/95 to-[#140F0B] backdrop-blur-md">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <nav className="flex items-center space-x-1 py-2.5 overflow-x-auto scrollbar-none">
               
               {/* Pillar 1: Home */}
               <button 
-                onClick={() => setActiveTab('landing')}
+                onClick={() => handleNavigateToTab('landing')}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider shrink-0 ${
                   activeTab === 'landing' 
                     ? 'bg-[#D4AF37]/25 text-[#D4AF37] border border-[#D4AF37]/40 shadow-sm' 
@@ -1739,7 +1940,7 @@ export default function App() {
               {/* For Seeking Sisters (Applicants): Join Our Community */}
               {simulatedRole === 'applicant' && (
                 <button 
-                  onClick={() => setActiveTab('vetting')}
+                  onClick={() => handleNavigateToTab('vetting')}
                   className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider shrink-0 ${
                     activeTab === 'vetting' 
                       ? 'bg-red-700/30 text-[#D4AF37] border border-red-500/50 shadow-sm' 
@@ -1757,7 +1958,7 @@ export default function App() {
                   {/* Pillar 1: Village Commons (1st Community Hub) */}
                   <button 
                     id="nav-tab-commons"
-                    onClick={() => setActiveTab('commons')}
+                    onClick={() => handleNavigateToTab('commons')}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider shrink-0 ${
                       activeTab === 'commons' 
                         ? 'bg-[#D4AF37]/25 text-[#D4AF37] border border-[#D4AF37]/40 shadow-sm font-black' 
@@ -1771,7 +1972,7 @@ export default function App() {
                   {/* Pillar 2: Mothers Academy & Her-Story Sanctuary (Skool Adult Learning Hub) */}
                   <button 
                     id="nav-tab-academy"
-                    onClick={() => setActiveTab('academy')}
+                    onClick={() => handleNavigateToTab('academy')}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider shrink-0 ${
                       activeTab === 'academy' 
                         ? 'bg-[#D4AF37]/25 text-[#D4AF37] border border-[#D4AF37]/40 shadow-sm font-black' 
@@ -1787,7 +1988,7 @@ export default function App() {
                     id="nav-tab-economy-pillar"
                     onClick={() => {
                       if (activeTab !== 'economy' && activeTab !== 'commerce') {
-                        setActiveTab('economy');
+                        handleNavigateToTab('economy');
                       }
                     }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider shrink-0 ${
@@ -1802,7 +2003,7 @@ export default function App() {
 
                   {/* Pillar 4: Earth & Healing */}
                   <button 
-                    onClick={() => setActiveTab('healing')}
+                    onClick={() => handleNavigateToTab('healing')}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider shrink-0 ${
                       activeTab === 'healing' 
                         ? 'bg-[#D4AF37]/25 text-[#D4AF37] border border-[#D4AF37]/40 shadow-sm' 
@@ -1818,7 +2019,7 @@ export default function App() {
                     id="nav-tab-circle-pillar"
                     onClick={() => {
                       if (activeTab !== 'gathering' && activeTab !== 'audio') {
-                        setActiveTab('gathering');
+                        handleNavigateToTab('gathering');
                       }
                     }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider shrink-0 ${
@@ -1826,12 +2027,9 @@ export default function App() {
                         ? 'bg-[#D4AF37]/25 text-[#D4AF37] border border-[#D4AF37]/40 shadow-sm' 
                         : 'text-[#D4AF37]/80 hover:bg-white/10 hover:text-[#D4AF37]'
                     }`}
-                    title="The Copper Circle & Audio Community Lounge"
+                    title="The Copper Circle Gatherings &amp; Sisterhood Polls"
                   >
-                    <span>🎙️ Sanctuary Audio</span>
-                    {isAudioPlaying && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping ml-1" />
-                    )}
+                    <span>✨ Copper Circle</span>
                   </button>
 
                   {/* Pillar 6: Kinship, Homeschool & Treasury */}
@@ -1839,7 +2037,7 @@ export default function App() {
                     id="nav-tab-kinship-pillar"
                     onClick={() => {
                       if (activeTab !== 'kinship' && activeTab !== 'treasury') {
-                        setActiveTab('kinship');
+                        handleNavigateToTab('kinship');
                       }
                     }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider shrink-0 ${
@@ -1858,8 +2056,7 @@ export default function App() {
               <button
                 id="nav-tab-advertise"
                 onClick={() => {
-                  setActiveTab('advertise');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  handleNavigateToTab('advertise');
                 }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider shrink-0 ${
                   activeTab === 'advertise'
@@ -1875,7 +2072,7 @@ export default function App() {
               {simulatedRole === 'admin' ? (
                 <button 
                   id="nav-tab-admin-active"
-                  onClick={() => setActiveTab('admin')}
+                  onClick={() => handleNavigateToTab('admin')}
                   className={`ml-auto px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 font-mono uppercase tracking-wider shrink-0 ${
                     activeTab === 'admin' 
                       ? 'bg-[#D4AF37] text-[#1F140E] shadow-md ring-2 ring-[#D4AF37]/50 font-black' 
@@ -1901,7 +2098,7 @@ export default function App() {
 
           {/* 3. Contextual Sub-Navigation Strip */}
           {(activeTab === 'economy' || activeTab === 'commerce') && (
-            <div className="bg-[#1C140E] border-t border-[#B87333]/30 px-4 py-2 flex items-center justify-center space-x-2 text-xs font-mono animate-fade-in">
+            <div className="bg-gradient-to-r from-[#1C140E] via-[#352027] to-[#1C140E] border-t border-[#B2838E]/40 px-4 py-2 flex items-center justify-center space-x-2 text-xs font-mono animate-fade-in">
               <span className="text-[#D4AF37]/70 text-[10px] uppercase font-bold mr-2 hidden sm:inline">Economy Hubs:</span>
               <button 
                 onClick={() => setActiveTab('economy')} 
@@ -1927,7 +2124,7 @@ export default function App() {
           )}
 
           {(activeTab === 'gathering' || activeTab === 'audio') && (
-            <div className="bg-[#1C140E] border-t border-[#B87333]/30 px-4 py-2 flex items-center justify-center space-x-2 text-xs font-mono animate-fade-in">
+            <div className="bg-gradient-to-r from-[#1C140E] via-[#352027] to-[#1C140E] border-t border-[#B2838E]/40 px-4 py-2 flex items-center justify-center space-x-2 text-xs font-mono animate-fade-in">
               <span className="text-[#D4AF37]/70 text-[10px] uppercase font-bold mr-2 hidden sm:inline">Circle Hubs:</span>
               <button 
                 onClick={() => setActiveTab('gathering')} 
@@ -1954,7 +2151,7 @@ export default function App() {
           )}
 
           {(activeTab === 'kinship' || activeTab === 'treasury') && (
-            <div className="bg-[#1C140E] border-t border-[#B87333]/30 px-4 py-2 flex items-center justify-center space-x-2 text-xs font-mono animate-fade-in">
+            <div className="bg-gradient-to-r from-[#1C140E] via-[#352027] to-[#1C140E] border-t border-[#B2838E]/40 px-4 py-2 flex items-center justify-center space-x-2 text-xs font-mono animate-fade-in">
               <span className="text-[#D4AF37]/70 text-[10px] uppercase font-bold mr-2 hidden sm:inline">Wisdom &amp; Trust:</span>
               <button 
                 onClick={() => setActiveTab('kinship')} 
@@ -2002,8 +2199,8 @@ export default function App() {
                 referrerPolicy="no-referrer"
               />
             </div>
-            {/* Subtle, dark-bronze gradient overlay (starting from bottom, fading to transparent toward the top) */}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#1F140E] via-[#2A1D16]/85 to-transparent z-0" />
+            {/* Subtle, dark-bronze to mauve gradient overlay (starting from bottom, fading to transparent toward the top) */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#1F140E] via-[#362128]/85 via-[#2A1D16]/85 to-transparent z-0" />
             
             {/* Soft dark-bronze vignette overlay to keep focal point of mothers clear while maintaining text readability */}
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_45%,_rgba(31,20,14,0.8)_100%)] z-0" />
@@ -2031,8 +2228,8 @@ export default function App() {
                 An Illustrious Cooperative <span className="text-[#D4AF37]">Ecosystem</span>
               </h2>
 
-              {/* Mission Statement (in clean white/gold font) with ultra see-through premium bronze-tinted frosted glass backing */}
-              <div className="max-w-2xl mx-auto bg-[#1F140E]/30 backdrop-blur-md p-6 sm:p-8 rounded-2xl border border-[#D4AF37]/35 shadow-[0_8px_32px_rgba(31,20,14,0.25)]">
+              {/* Mission Statement (in clean white/gold font) with ultra see-through premium bronze & mauve-tinted frosted glass backing */}
+              <div className="max-w-2xl mx-auto bg-gradient-to-r from-[#1F140E]/85 via-[#382229]/80 to-[#1F140E]/85 backdrop-blur-md p-6 sm:p-8 rounded-2xl border border-[#B2838E]/45 shadow-[0_8px_32px_rgba(31,20,14,0.35)]">
                 <p className="text-[#FAF5EE] text-sm sm:text-base md:text-lg leading-relaxed font-sans font-medium">
                   <span className="text-[#D4AF37] font-serif font-bold">Copper Mommies Co.</span> is a cooperative community hub for American melanated mothers born of the original copper-colored Matriarchs of America. We unite to <span className="text-amber-300 font-semibold">Co-care</span>, <span className="text-amber-300 font-semibold">Co-create</span>, and <span className="text-amber-300 font-semibold">Co-thrive</span>, facilitating the exchange of traditional knowledge and resources, nurturing our families to build a sustainable legacy.
                 </p>
@@ -2066,6 +2263,40 @@ export default function App() {
 
       {/* 2. Main Work Area Container */}
       <main id="app-main" className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-3 md:py-4">
+        
+        {/* Sleek, Elegant Back Button Bar across all Hubs & Sections */}
+        {navigationHistory.length > 0 && activeTab !== 'landing' && (
+          <div className="mb-3.5 flex items-center justify-between font-mono text-xs animate-fade-in py-1 px-1">
+            <div className="flex items-center space-x-2.5 min-w-0">
+              <button
+                id="global-back-to-hub-btn"
+                type="button"
+                onClick={handleGoBack}
+                className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-[#1F140E]/95 hover:bg-[#2A1D16] text-[#FAF5EE] hover:text-[#D4AF37] border border-[#B2838E]/60 hover:border-[#D4AF37] shadow-xs font-mono text-xs font-extrabold uppercase tracking-wider transition-all cursor-pointer active:scale-95 group shrink-0"
+                title={`Return to ${HUB_NAME_MAP[navigationHistory[navigationHistory.length - 1]] || 'Previous Section'}`}
+              >
+                <ArrowRight className="w-3.5 h-3.5 stroke-[2.5] rotate-180 text-[#D4AF37] group-hover:-translate-x-0.5 transition-transform" />
+                <span>↩ Back to {HUB_NAME_MAP[navigationHistory[navigationHistory.length - 1]] || 'Previous Hub'}</span>
+              </button>
+
+              <span className="hidden md:inline-block text-[11px] font-mono text-soft-sage truncate">
+                Current: <strong className="text-[#1F1813] font-serif font-bold">{HUB_NAME_MAP[activeTab] || activeTab}</strong>
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setNavigationHistory([]);
+                setLastVisitedTab(null);
+              }}
+              className="text-[10px] font-mono text-soft-sage hover:text-[#B87333] transition-colors px-2 py-0.5 rounded-md cursor-pointer"
+              title="Clear navigation stack"
+            >
+              Clear Stack ({navigationHistory.length})
+            </button>
+          </div>
+        )}
         <AnimatePresence mode="wait">
           
           {/* A. LANDING VIEW */}
@@ -2142,11 +2373,10 @@ export default function App() {
                   <div 
                     onClick={() => {
                       if (simulatedRole === 'applicant') {
-                        setActiveTab('vetting');
+                        handleNavigateToTab('vetting');
                       } else {
-                        setActiveTab('commons');
+                        handleNavigateToTab('commons');
                       }
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                     className="group bg-gradient-to-br from-white to-[#FAF5EE] border-2 border-[#D4AF37]/50 hover:border-[#D4AF37] rounded-2xl p-5 sm:p-6 cursor-pointer hover:shadow-xl transition-all duration-300 relative overflow-hidden space-y-2.5 sm:col-span-2 lg:col-span-3"
                   >
@@ -2443,21 +2673,19 @@ export default function App() {
                 createPostTriggerType={createPostTriggerType}
                 onClearPostTrigger={() => setCreatePostTriggerType(null)}
                 onNavigateToTab={(tab) => {
-                  setActiveTab(tab as any);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  handleNavigateToTab(tab as any);
                 }}
                 onOpenAdminOffice={() => {
                   setSimulatedRole('admin');
-                  setActiveTab('admin');
+                  handleNavigateToTab('admin');
                 }}
                 allSpotlightBanners={spotlightBanners.filter(b => b.active)}
                 onOpenDirectChat={(recipientName, contextTitle, initialNote) => {
-                  setLastVisitedTab('village');
                   setProfileInitialTab('chats');
                   handleOpenDirectChatWithContext(recipientName, contextTitle, initialNote);
-                  setActiveTab('profile');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  handleNavigateToTab('profile');
                 }}
+                onExecuteGlobalSearch={handleExecuteGlobalSearch}
               />
             </motion.div>
           )}
@@ -2482,29 +2710,20 @@ export default function App() {
                 chatThreads={chatThreads}
                 chatMembers={chatMembers}
                 initialProfileTab={profileInitialTab}
-                lastVisitedTab={lastVisitedTab}
-                onReturnToLastVisitedTab={() => {
-                  if (lastVisitedTab) {
-                    setActiveTab(lastVisitedTab as any);
-                  } else {
-                    setActiveTab('village');
-                  }
-                  setLastVisitedTab(null);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
+                lastVisitedTab={navigationHistory.length > 0 ? navigationHistory[navigationHistory.length - 1] : lastVisitedTab}
+                onReturnToLastVisitedTab={handleGoBack}
                 onSendMessage={handleSendDirectMessage}
                 onCreateNewChat={handleCreateNewChat}
                 onRemoveSavedItem={handleRemoveSavedItem}
                 onSelectSavedItem={(item) => {
                   if (item.type === 'exchange' || item.type === 'housing' || item.type === 'business') {
-                    setActiveTab('commons');
+                    handleNavigateToTab('commons');
                   } else {
-                    setActiveTab('village');
+                    handleNavigateToTab('village');
                   }
                 }}
                 onNavigateToTab={(tab) => {
-                  setActiveTab(tab as any);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  handleNavigateToTab(tab as any);
                 }}
                 onUpdateProfileName={(name) => setUserName(name)}
                 onAddLedgerLog={handleAddLedgerLog}
@@ -2599,6 +2818,18 @@ export default function App() {
                 userName={userName}
                 onNavigateToCircle={() => setActiveTab('gathering')}
                 onNavigateToTreasury={() => setActiveTab('treasury')}
+                onNavigateToCommons={(subTab) => {
+                  if (subTab) setCommonsSubTab(subTab);
+                  setActiveTab('commons');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                onOpenDirectChat={(recipientName, contextTitle, initialNote) => {
+                  setLastVisitedTab('commerce');
+                  setProfileInitialTab('chats');
+                  handleOpenDirectChatWithContext(recipientName, contextTitle, initialNote);
+                  setActiveTab('profile');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
                 spotlightBanner={getBannerForPage('commerce')}
                 banners={getBannersForPage('commerce')}
                 onEnterContest={handleAddScholarshipEntry}
@@ -3390,28 +3621,19 @@ export default function App() {
         }}
       />
 
-      {/* Persistent Floating Audio Sanctuary Player (Verified Members Only) */}
-      {simulatedRole !== 'applicant' && (
-        <AudioPlayerFloating
+      {/* Persistent Mini Sticky Audio Player when Side Bar is Closed & Audio Active */}
+      {simulatedRole !== 'applicant' && !showSisterProfileMenu && (isAudioPlaying || (currentAudioTrack && audioCurrentTime > 0)) && (
+        <MiniStickyAudioPlayer
           currentTrack={currentAudioTrack}
           isPlaying={isAudioPlaying}
           currentTime={audioCurrentTime}
           duration={audioDuration}
-          playbackRate={audioPlaybackRate}
-          volume={audioVolume}
           onPlayPause={handleTogglePlayPause}
-          onSeek={handleSeekAudio}
-          onSkip={handleSkipTrack}
-          onPlaybackRateChange={handleChangePlaybackRate}
-          onVolumeChange={handleChangeVolume}
+          onRewind15={() => handleSeekAudio(Math.max(0, audioCurrentTime - 15))}
+          onForward15={() => handleSeekAudio(Math.min(audioDuration, audioCurrentTime + 15))}
           onClose={handleCloseAudioPlayer}
-          onOpenLounge={() => setActiveTab('audio')}
+          onOpenSidebar={() => setShowSisterProfileMenu(true)}
         />
-      )}
-
-      {/* PWA Direct Installation Prompt & Mobile iOS/Android Guide (Verified Members Only) */}
-      {simulatedRole !== 'applicant' && (
-        <PWAInstallPrompt />
       )}
 
       {/* Floating Collapsible Direct Chat Window (Dock) */}
@@ -3420,11 +3642,41 @@ export default function App() {
           threads={chatThreads}
           members={chatMembers}
           currentUserName={userName}
+          isOpen={isChatDockOpen}
+          onToggleOpen={setIsChatDockOpen}
+          activeThreadId={dockActiveThreadId}
+          onSelectThreadId={setDockActiveThreadId}
           onSendMessage={handleSendDirectMessage}
           onCreateNewChat={handleCreateNewChat}
           onNavigateToProfileChats={() => {
             setActiveTab('profile');
+            setProfileInitialTab('chats');
             window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onNavigateToTab={(tab) => {
+            setActiveTab(tab as any);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onConfirmTradeHandshake={(threadId) => {
+            setChatThreads(prev => prev.map(t => {
+              if (t.id === threadId) {
+                const confirmedMsg: DirectChatMessage = {
+                  id: `m-handshake-${Date.now()}`,
+                  senderId: 'me',
+                  senderName: userName || 'Shantrece Clark',
+                  senderAvatar: '/coppermommies-selflove1-cmc.jpg',
+                  text: '🤝 Sisterhood barter handshake confirmed! Trade agreement locked in Cooperative Economy.',
+                  timestamp: 'Just now',
+                  isMe: true
+                };
+                return {
+                  ...t,
+                  tradeStatus: 'accepted',
+                  messages: [...t.messages, confirmedMsg]
+                };
+              }
+              return t;
+            }));
           }}
           onEditMessage={handleEditDirectMessage}
           onDeleteMessage={handleDeleteDirectMessage}
@@ -3450,7 +3702,7 @@ export default function App() {
             <span>Home</span>
           </button>
 
-          {/* 2. The Hearth */}
+          {/* 2. Village Stream */}
           <button
             onClick={() => {
               setActiveTab('commons');
@@ -3461,8 +3713,8 @@ export default function App() {
               activeTab === 'commons' && commonsSubTab === 'feed' ? 'text-[#D4AF37] font-bold' : 'text-[#FAF5EE]/70 hover:text-white'
             }`}
           >
-            <span className="text-base">🏡</span>
-            <span>The Hearth</span>
+            <span className="text-base">🌿</span>
+            <span>Village Stream</span>
           </button>
 
           {/* 3. The Exchange */}
@@ -3549,7 +3801,7 @@ export default function App() {
                 <div className="flex items-center space-x-3">
                   <span className="text-xl">🌿</span>
                   <div>
-                    <div className="font-serif font-bold text-xs text-[#1F140E]">Share to The Hearth Stream</div>
+                    <div className="font-serif font-bold text-xs text-[#1F140E]">Share to The Village Stream</div>
                     <div className="text-[10px] text-gray-500 font-sans">Encouragement, questions, recipes &amp; remedy wisdom</div>
                   </div>
                 </div>
@@ -3618,6 +3870,24 @@ export default function App() {
         </div>,
         document.body
       )}
+
+      {/* ROOT PORTAL: LEFT SLIDE-OUT SANCTUARY NAVIGATION DRAWER */}
+      <LeftNavDrawer
+        isOpen={isLeftNavDrawerOpen}
+        onClose={() => setIsLeftNavDrawerOpen(false)}
+        activeTab={activeTab}
+        setActiveTab={handleNavigateToTab}
+        commonsSubTab={commonsSubTab}
+        setCommonsSubTab={setCommonsSubTab}
+        simulatedRole={simulatedRole}
+        userName={userName}
+        selectedState={selectedState}
+        setSelectedState={setSelectedState}
+        onOpenAdminLogin={() => setShowAdminLoginModal(true)}
+        onOpenMemberLogin={() => setShowMemberLoginModal(true)}
+        onOpenSupportModal={() => setShowGlobalSupportModal(true)}
+        onOpenSisterProfile={() => setShowSisterProfileMenu(true)}
+      />
 
       {/* ROOT PORTAL: RIGHT SLIDE-OUT SISTER PROFILE & ACCOUNT DRAWER */}
       {showSisterProfileMenu && typeof document !== 'undefined' && createPortal(
@@ -3697,18 +3967,62 @@ export default function App() {
                 </span>
               </div>
 
+              {/* Sister Support & Help Desk (Right Above Go to My Profile Hub) */}
+              <button
+                id="drawer-sister-support-btn"
+                onClick={() => {
+                  setShowGlobalSupportModal(true);
+                  setShowSisterProfileMenu(false);
+                }}
+                className="w-full py-2.5 px-3.5 bg-gradient-to-r from-[#D4AF37]/25 via-amber-100 to-[#B87333]/20 hover:from-[#D4AF37]/35 hover:to-[#B87333]/30 text-[#1F140E] rounded-2xl font-bold font-sans text-xs flex items-center justify-between shadow-2xs border border-[#D4AF37]/50 cursor-pointer transition-all active:scale-95"
+                title="Open Sister Support & Co-op Care Desk"
+              >
+                <span className="flex items-center space-x-2">
+                  <span className="text-base">💝</span>
+                  <span className="font-serif font-black text-xs">Sister Support &amp; Help Desk</span>
+                </span>
+                <span className="text-[10px] font-mono font-bold bg-white/90 text-[#B87333] px-2 py-0.5 rounded-full border border-[#D4AF37]/40">
+                  Assistance →
+                </span>
+              </button>
+
               {/* Direct Primary Action: Go to My Profile Hub */}
               <button
                 onClick={() => {
-                  setActiveTab('profile');
+                  handleNavigateToTab('profile');
                   setShowSisterProfileMenu(false);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
                 className="w-full py-3 bg-[#1F1813] hover:bg-[#2A221B] text-[#FAF5EE] rounded-2xl font-bold font-sans text-xs flex items-center justify-center space-x-2 shadow-md cursor-pointer transition-all active:scale-95 border border-[#D4AF37]/30"
               >
                 <User className="w-4 h-4 text-[#D4AF37]" />
                 <span>Go to My Profile Hub</span>
               </button>
+
+              {/* Download / Install Copper Mommie Mobile App Card */}
+              <SidePanelAppInstallCard />
+
+              {/* Sanctuary Audio & Radio Player (Side Right Panel) */}
+              <SidebarAudioPlayer
+                currentTrack={currentAudioTrack}
+                isPlaying={isAudioPlaying}
+                currentTime={audioCurrentTime}
+                duration={audioDuration}
+                playbackRate={audioPlaybackRate}
+                volume={audioVolume}
+                allTracks={audioTracks}
+                onPlayPause={handleTogglePlayPause}
+                onSeek={handleSeekAudio}
+                onRewind15={() => handleSeekAudio(Math.max(0, audioCurrentTime - 15))}
+                onForward15={() => handleSeekAudio(Math.min(audioDuration, audioCurrentTime + 15))}
+                onSkip={handleSkipTrack}
+                onSelectTrack={handlePlayTrack}
+                onPlaybackRateChange={handleChangePlaybackRate}
+                onVolumeChange={handleChangeVolume}
+                onOpenLounge={() => {
+                  setActiveTab('audio');
+                  setShowSisterProfileMenu(false);
+                }}
+              />
 
               {/* Real-Time Cooperative Metrics: Generosity, Trade Balance, Time Bank */}
               <div className="space-y-1.5">
@@ -3753,7 +4067,7 @@ export default function App() {
                   <span className="text-[9px] font-mono text-soft-sage">All Portals</span>
                 </div>
 
-                {/* Village Commons & The Hearth */}
+                {/* Village Commons & Stream */}
                 <button
                   onClick={() => {
                     setActiveTab('commons');
@@ -3764,7 +4078,7 @@ export default function App() {
                 >
                   <span className="flex items-center space-x-2.5">
                     <span className="text-base">🏡</span>
-                    <span>Village Commons &amp; The Hearth</span>
+                    <span>Village Commons &amp; Stream</span>
                   </span>
                   <span className="text-[9px] font-mono font-bold bg-[#FAF5EE] text-[#B87333] px-2 py-0.5 rounded-md border border-copper-penny/20">
                     Commons
@@ -3891,130 +4205,62 @@ export default function App() {
                 </button>
               </div>
 
-              {/* 2. FORUMS & TOPIC SANCTUMS DYNAMIC ACCESS */}
+              {/* 2. THE VILLAGE STREAM OPEN COMMUNITY ACCESS */}
               <div className="space-y-2 pt-2 border-t border-copper-penny/20">
                 <div className="flex items-center justify-between px-1">
                   <span className="text-[10px] font-mono uppercase font-bold text-gray-500">
-                    🌿 Forums &amp; Sacred Sanctums
+                    🌿 The Village Stream
                   </span>
-                  <span className="text-[9px] font-mono text-soft-sage">Direct Filters</span>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-1.5 font-mono text-[10px]">
-                  <button
-                    onClick={() => {
-                      setActiveTab('commons');
-                      setCommonsSubTab('feed');
-                      setCommonsSelectedTopic('daily-uplift');
-                      setShowSisterProfileMenu(false);
-                      window.scrollTo({ top: 350, behavior: 'smooth' });
-                    }}
-                    className="p-2 rounded-xl bg-white hover:bg-neutral-50 border border-copper-penny/20 text-left cursor-pointer transition-all flex items-center space-x-1.5"
-                  >
-                    <span>🕊️</span>
-                    <span className="truncate">Daily Uplift</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setActiveTab('commons');
-                      setCommonsSubTab('feed');
-                      setCommonsSelectedTopic('herbal-remedies');
-                      setShowSisterProfileMenu(false);
-                      window.scrollTo({ top: 350, behavior: 'smooth' });
-                    }}
-                    className="p-2 rounded-xl bg-white hover:bg-neutral-50 border border-copper-penny/20 text-left cursor-pointer transition-all flex items-center space-x-1.5"
-                  >
-                    <span>🌱</span>
-                    <span className="truncate">Herbal Remedies</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setActiveTab('commons');
-                      setCommonsSubTab('feed');
-                      setCommonsSelectedTopic('birth-postpartum');
-                      setShowSisterProfileMenu(false);
-                      window.scrollTo({ top: 350, behavior: 'smooth' });
-                    }}
-                    className="p-2 rounded-xl bg-white hover:bg-neutral-50 border border-copper-penny/20 text-left cursor-pointer transition-all flex items-center space-x-1.5"
-                  >
-                    <span>👶</span>
-                    <span className="truncate">Birth &amp; Family</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setActiveTab('commons');
-                      setCommonsSubTab('feed');
-                      setCommonsSelectedTopic('homeschool-nestbright');
-                      setShowSisterProfileMenu(false);
-                      window.scrollTo({ top: 350, behavior: 'smooth' });
-                    }}
-                    className="p-2 rounded-xl bg-white hover:bg-neutral-50 border border-copper-penny/20 text-left cursor-pointer transition-all flex items-center space-x-1.5"
-                  >
-                    <span>📚</span>
-                    <span className="truncate">Homeschool Pod</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setActiveTab('commons');
-                      setCommonsSubTab('feed');
-                      setCommonsSelectedTopic('homestead-seeds');
-                      setShowSisterProfileMenu(false);
-                      window.scrollTo({ top: 350, behavior: 'smooth' });
-                    }}
-                    className="p-2 rounded-xl bg-white hover:bg-neutral-50 border border-copper-penny/20 text-left cursor-pointer transition-all flex items-center space-x-1.5"
-                  >
-                    <span>🌾</span>
-                    <span className="truncate">Homestead Seeds</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setActiveTab('commons');
-                      setCommonsSubTab('feed');
-                      setCommonsSelectedTopic('wealth-strategies');
-                      setShowSisterProfileMenu(false);
-                      window.scrollTo({ top: 350, behavior: 'smooth' });
-                    }}
-                    className="p-2 rounded-xl bg-white hover:bg-neutral-50 border border-copper-penny/20 text-left cursor-pointer transition-all flex items-center space-x-1.5"
-                  >
-                    <span>💰</span>
-                    <span className="truncate">Co-op Wealth</span>
-                  </button>
+                  <span className="text-[9px] font-mono text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    Open Community Feed
+                  </span>
                 </div>
 
-                <button
-                  onClick={() => {
-                    setActiveTab('commons');
-                    setCommonsSubTab('feed');
-                    setCommonsSelectedTopic('all');
-                    setShowSisterProfileMenu(false);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className="w-full py-1 text-center text-[10px] font-mono text-[#B87333] hover:underline font-bold block"
-                >
-                  🌿 View All Topics in The Hearth Stream →
-                </button>
+                <div className="p-3 bg-white rounded-2xl border border-copper-penny/20 shadow-2xs space-y-2.5 text-xs">
+                  <div className="flex items-center space-x-2.5">
+                    <span className="text-xl">🌊</span>
+                    <div>
+                      <div className="font-serif font-bold text-xs text-[#1F140E]">Unified Open Community Stream</div>
+                      <div className="text-[10px] text-gray-500 font-sans">Open for all mother reflections, remedies, homeschool tips, and life updates without category restrictions.</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1.5 border-t border-copper-penny/10 text-[10px] font-mono">
+                    <span className="text-soft-sage flex items-center space-x-1">
+                      <span>🛡️</span>
+                      <span>Internal Word Filter: Active</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('commons');
+                        setCommonsSubTab('feed');
+                        setShowSisterProfileMenu(false);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="text-[#B87333] hover:underline font-bold font-mono cursor-pointer"
+                    >
+                      Enter Stream →
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              {/* 3. SANCTUARY SETTINGS & COMMUNITY ENERGY SECTION */}
+              {/* 3. ANCESTRAL ROOTS & SANCTUARY SETTINGS */}
               <div className="p-3.5 bg-white rounded-2xl border border-copper-penny/20 shadow-2xs space-y-3">
                 <div className="flex items-center space-x-2 border-b border-copper-penny/10 pb-2">
                   <Settings className="w-4 h-4 text-copper-penny" />
                   <span className="font-serif font-black text-xs text-[#1F1813]">
-                    Sanctuary Settings &amp; Atmosphere
+                    Ancestral Roots &amp; Atmosphere
                   </span>
                 </div>
 
-                {/* Community Energy Selector (Hearth Moods) */}
+                {/* Ancestral Roots & Community Energy Selector */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between font-mono text-[10px]">
                     <span className="font-bold text-gray-500 uppercase flex items-center space-x-1">
-                      <span>☀️</span>
-                      <span>Community Energy:</span>
+                      <span>🪵</span>
+                      <span>Atmosphere &amp; Roots:</span>
                     </span>
                     <span className="text-[#B87333] font-bold">{activeHearth.name}</span>
                   </div>
@@ -4035,6 +4281,9 @@ export default function App() {
                           <span>{mood.emoji}</span>
                           <div className="min-w-0 flex-1">
                             <div className="truncate font-sans font-bold text-[10px]">{mood.name}</div>
+                            {mood.id === 'ancestral' && (
+                              <span className="text-[8px] text-[#B87333] block font-mono">Heritage</span>
+                            )}
                           </div>
                         </button>
                       );
@@ -4211,6 +4460,18 @@ export default function App() {
         </div>,
         document.body
       )}
+
+      {/* Global Sitewide Hashtag & Ecosystem Search Modal */}
+      <GlobalSearchModal
+        isOpen={isGlobalSearchModalOpen}
+        onClose={() => setIsGlobalSearchModalOpen(false)}
+        initialQuery={globalSearchQuery}
+        onNavigateTab={(tab, subTab) => {
+          if (subTab) setCommonsSubTab(subTab as any);
+          setActiveTab(tab);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+      />
 
       {/* Floating Dark Bronze Back to Top Button */}
       <ScrollToTopButton />

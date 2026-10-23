@@ -46,6 +46,7 @@ import {
 } from '../types';
 import SpotlightBanner from './SpotlightBanner';
 import HearthPollsCard from './HearthPollsCard';
+import CircleMapInteractive from './CircleMapInteractive';
 
 interface GatheringHubProps {
   chatMessages: Message[];
@@ -92,7 +93,7 @@ export default function GatheringHub({
   onSuggestPoll
 }: GatheringHubProps) {
   // Navigation within the Copper Circle
-  const [activeCircleTab, setActiveCircleTab] = useState<'casual-corner' | 'hearth-polls' | 'offline-village' | 'intergenerational' | 'covenant' | 'chat'>('casual-corner');
+  const [activeCircleTab, setActiveCircleTab] = useState<'casual-corner' | 'hearth-polls' | 'offline-village' | 'intergenerational' | 'covenant' | 'chat' | 'sister-circles'>('casual-corner');
 
   // Casual Corner Talk State
   const [hasRsvp, setHasRsvp] = useState(false);
@@ -451,6 +452,18 @@ export default function GatheringHub({
               {polls.filter(p => p.active !== false && p.isOpen !== false).length}
             </span>
           )}
+        </button>
+
+        <button
+          onClick={() => setActiveCircleTab('sister-circles')}
+          className={`flex-1 min-w-[140px] px-3.5 py-2.5 rounded-xl text-xs font-serif font-bold transition-all flex items-center justify-center space-x-2 cursor-pointer ${
+            activeCircleTab === 'sister-circles'
+              ? 'bg-[#B87333] text-white shadow-md'
+              : 'text-[#1F1813] hover:bg-white/80'
+          }`}
+        >
+          <Compass className="w-4 h-4" />
+          <span>Sister Circles</span>
         </button>
 
         <button
@@ -1100,6 +1113,34 @@ export default function GatheringHub({
             </div>
 
           </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB: SISTER CIRCLES (INTERACTIVE MAP) */}
+      {/* ========================================================================= */}
+      {activeCircleTab === 'sister-circles' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="bg-[#FAF5EE] border-2 border-[#D4AF37]/50 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
+            <div className="flex items-center space-x-3">
+              <span className="p-3 rounded-2xl bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40 text-2xl">
+                🧭
+              </span>
+              <div>
+                <h3 className="font-serif font-black text-xl sm:text-2xl text-[#1F1813]">
+                  Sister Circles Map &amp; Network
+                </h3>
+                <p className="text-xs font-mono text-[#B87333]">
+                  Explore active regional circles, mutual aid spots, seed banks, and local homestead networks across America.
+                </p>
+              </div>
+            </div>
+            <p className="text-xs sm:text-sm text-[#2A221B]/85 font-sans leading-relaxed max-w-3xl">
+              Connect with mother circles in your state, discover organic garden plots, tool libraries, and local sister meetups. Click any pin on the interactive map to view coordinates, circle leads, and direct contact details.
+            </p>
+          </div>
+
+          <CircleMapInteractive selectedState={selectedState} />
         </div>
       )}
 

@@ -36,7 +36,11 @@ export interface BarterOffer {
   handshakeComplete?: boolean;
   recipientName?: string;
   
-  // Copper Mommies Market Matchmaker fields
+  // Copper Mommies Market Matchmaker & Commons Exchange Integration fields
+  imageUrl?: string;
+  hybridSplitOption?: string; // e.g. "2 dozen heirloom eggs for 1 hr garden help OR baby clothes"
+  timeCreditHours?: number; // Equivalent time credit value
+  crossPostedFromCommons?: boolean;
   requestType?: 'Barter/Trade' | 'Gift/Need' | 'Skill Swap' | 'Mobility/Ride';
   valuePoints?: number; // Proposed point value
   intentTag?: 'I have' | 'I need';
@@ -298,12 +302,14 @@ export interface IncubatorResource {
 // Spotlight & Featured Announcements for Member Brands, Classes, Events
 export interface PageSpotlightBanner {
   id: string;
-  pageId: 'village' | 'healing' | 'economy' | 'commerce' | 'gathering' | 'kinship' | 'all';
+  pageId?: 'village' | 'healing' | 'economy' | 'commerce' | 'gathering' | 'kinship' | 'all';
   active: boolean;
-  categoryBadge: string; // e.g. "Featured Homeschool Partner", "Artisan Brand Spotlight", "Cooperative Initiative"
+  categoryBadge?: string; // e.g. "Featured Homeschool Partner", "Artisan Brand Spotlight", "Cooperative Initiative"
+  badge?: string;
   title: string;
   subtitle?: string;
   bannerImage?: string; // Image path or URL
+  thumbnailImage?: string;
   externalLink?: string; // Direct link (e.g. nestbrightacademy.com)
   linkText?: string;
   buttonText?: string;
@@ -313,6 +319,7 @@ export interface PageSpotlightBanner {
   promoCode?: string;
   promoHeadline?: string;
   promoDetails?: string;
+  exclusiveOffer?: string;
   promoLink?: string;
   promoPrice?: string;
   regularPrice?: string;
@@ -614,7 +621,7 @@ export interface HearthGatheringSession {
 }
 
 // Hearth Moods: Sanctuary Atmosphere & Aesthetic Customization
-export type HearthMoodId = 'reflection' | 'community' | 'study' | 'ancestral';
+export type HearthMoodId = 'reflection' | 'community' | 'study' | 'ancestral' | 'mauve';
 
 export interface HearthMoodConfig {
   id: HearthMoodId;
@@ -838,7 +845,9 @@ export type CommonsForumTopic =
   | 'homeschool-nestbright' 
   | 'homestead-seeds' 
   | 'wealth-strategies' 
-  | 'daily-uplift';
+  | 'daily-uplift'
+  | 'open-stream'
+  | 'general';
 
 export interface CommonsPostComment {
   id: string;
@@ -857,6 +866,7 @@ export interface CommonsPost {
   authorCity: string;
   authorAvatar?: string;
   topic: CommonsForumTopic;
+  postType?: 'giveaway' | 'barter' | 'announcement' | 'discussion';
   title?: string;
   content: string;
   imageUrl?: string;
@@ -866,6 +876,15 @@ export interface CommonsPost {
   createdAt: string;
   isFlagged?: boolean;
   reportCount?: number;
+  reportedBy?: string[];
+  reportReason?: string;
+  reportNotes?: string;
+  reportedAt?: string;
+  isRemovedByAdmin?: boolean;
+  isAutoFlaggedByFilter?: boolean;
+  filterTriggerWords?: string[];
+  filterTriggerCategory?: string;
+  filterSeverity?: 'low' | 'medium' | 'high' | 'critical';
 }
 
 export interface CommonsExchangeItem {
@@ -983,6 +1002,8 @@ export interface DirectChatMessage {
   imageUrl?: string;
 }
 
+export type ChatCategory = 'all' | 'dm' | 'housing' | 'exchange' | 'jobs' | 'business' | 'academy';
+
 export interface DirectChatThread {
   id: string;
   participantId: string;
@@ -990,9 +1011,12 @@ export interface DirectChatThread {
   participantAvatar?: string;
   participantNeighborhood: string;
   participantRole?: string;
-  category: 'dm' | 'housing' | 'exchange' | 'business';
-  originSectionLabel?: string; // e.g., 'Housing Haven: Garden Cottage', 'For Sale & Free'
+  category: 'dm' | 'housing' | 'exchange' | 'jobs' | 'business' | 'academy';
+  originSectionLabel?: string; // e.g., 'Housing Haven: Garden Cottage', 'Heirloom Seed Barter', 'Homeschool Pod Gig'
   originListingId?: string;
+  originListingImage?: string;
+  originListingSummary?: string; // e.g., 'Offering 2 dozen heirloom eggs for seed collection'
+  tradeStatus?: 'inquiring' | 'proposed' | 'accepted' | 'completed';
   lastMessage: string;
   lastMessageTime: string;
   unreadCount: number;
@@ -1009,8 +1033,20 @@ export interface ChatMember {
   role: string;
 }
 
-
-
-
-
-
+export const POPULAR_STATES = [
+  { code: 'GA', name: 'Georgia (Atlanta Circle)' },
+  { code: 'CA', name: 'California (Oakland Circle)' },
+  { code: 'TX', name: 'Texas (Houston/Dallas Circle)' },
+  { code: 'NY', name: 'New York (Brooklyn Circle)' },
+  { code: 'MD', name: 'Maryland (Baltimore/Prince George\'s Circle)' },
+  { code: 'VA', name: 'Virginia (Richmond Circle)' },
+  { code: 'FL', name: 'Florida (Miami Circle)' },
+  { code: 'NC', name: 'North Carolina (Charlotte Circle)' },
+  { code: 'SC', name: 'South Carolina (Charleston Circle)' },
+  { code: 'AL', name: 'Alabama (Birmingham Circle)' },
+  { code: 'LA', name: 'Louisiana (New Orleans Circle)' },
+  { code: 'IL', name: 'Illinois (Chicago Circle)' },
+  { code: 'MI', name: 'Michigan (Detroit Circle)' },
+  { code: 'OH', name: 'Ohio (Cleveland Circle)' },
+  { code: 'PA', name: 'Pennsylvania (Philadelphia Circle)' }
+];

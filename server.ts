@@ -9,6 +9,7 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import { BarterOffer, CoopEvent, Message, StateComplianceConfig, KinshipPledge, ExpertProfile, NotificationEngineEvent, KinshipResourceNode, VillagePoll } from './src/types.js';
+import { DEFAULT_TRIGGER_RULES, scanContentForTriggers, ModerationTriggerRule } from './src/data/moderationFilter.js';
 
 dotenv.config();
 
@@ -16,6 +17,59 @@ const app = express();
 const PORT = 3000;
 
 app.use(express.json());
+
+// In-memory moderation rules and flagged queue for automated backend filtering
+let backendModerationRules: ModerationTriggerRule[] = [...DEFAULT_TRIGGER_RULES];
+
+interface BackendFlaggedItem {
+  id: string;
+  postId?: string;
+  itemType: 'forum_post' | 'comment' | 'barter_listing' | 'classified_ad';
+  itemTitle: string;
+  posterName: string;
+  posterState: string;
+  reportedBy: string;
+  reason: string;
+  matchedTriggers?: string[];
+  triggerCategory?: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  dateReported: string;
+  itemSnippet: string;
+  status: 'pending_review' | 'dismissed' | 'removed';
+  autoFlagged?: boolean;
+}
+
+const backendFlaggedQueue: BackendFlaggedItem[] = [
+  {
+    id: 'rep-01',
+    itemType: 'barter_listing',
+    itemTitle: 'Commercial Pre-packaged Multivitamin Bottles (Bulk)',
+    posterName: 'Sister Candace M.',
+    posterState: 'TX',
+    reportedBy: 'Sister Maya (CA)',
+    reason: 'Commercial wholesale reselling rather than sovereign handmade herbal crafting or personal trade.',
+    severity: 'medium',
+    dateReported: '2026-09-24',
+    itemSnippet: 'Offering 12 unopened bottles of commercial store-bought prenatal gummies for 15 barter hours.',
+    status: 'pending_review'
+  },
+  {
+    id: 'rep-02',
+    itemType: 'forum_post',
+    itemTitle: 'Third-party Crypto Investment Link in Gathering Chat',
+    posterName: 'Guest Sister Applicant #49',
+    posterState: 'FL',
+    reportedBy: 'Internal Guardian Filter (Auto)',
+    reason: 'Auto-detected prohibited crypto/financial scheme keyword.',
+    matchedTriggers: ['crypto', 'savings pool'],
+    triggerCategory: 'scam_crypto',
+    severity: 'critical',
+    dateReported: '2026-09-25',
+    itemSnippet: 'Join this high-yield automated savings pool for sovereign mothers...',
+    status: 'pending_review',
+    autoFlagged: true
+  }
+];
 
 // In-memory Database for user profiles, tracking Generosity Score, Trade Balance, Trust Score, Grace Score, and Barter Balance
 interface UserStat {
@@ -48,6 +102,10 @@ const barterOffers: BarterOffer[] = [
     city: 'Atlanta',
     cityZip: 'Atlanta, GA (30331)',
     tradeFor: 'Fresh collard greens, sweet potatoes, or reading tutoring',
+    hybridSplitOption: '2 dozen heirloom eggs for either 1 hour garden help OR baby clothes',
+    timeCreditHours: 2.0,
+    crossPostedFromCommons: true,
+    imageUrl: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=800&q=80',
     createdAt: new Date().toISOString(),
     active: true,
     giverConfirmed: true,
@@ -69,6 +127,10 @@ const barterOffers: BarterOffer[] = [
     city: 'Baltimore',
     cityZip: 'Baltimore, MD (21201)',
     tradeFor: 'Graphic design services for labeling, or local soil compost',
+    hybridSplitOption: '2x 8oz Jars for either 1.5 Time Credits OR heirloom herb cuttings',
+    timeCreditHours: 1.5,
+    crossPostedFromCommons: true,
+    imageUrl: 'https://images.unsplash.com/photo-1608248597359-0097c2e88a0e?auto=format&fit=crop&w=800&q=80',
     createdAt: new Date().toISOString(),
     active: true,
     giverConfirmed: false,
@@ -90,6 +152,10 @@ const barterOffers: BarterOffer[] = [
     city: 'Houston',
     cityZip: 'Houston, TX (77001)',
     tradeFor: 'Handmade winter children clothes or holistic soap-making kit',
+    hybridSplitOption: '2 tutoring lessons for 2 hours sewing assistance OR winter quilt',
+    timeCreditHours: 2.0,
+    crossPostedFromCommons: false,
+    imageUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80',
     createdAt: new Date().toISOString(),
     active: true,
     giverConfirmed: false,
@@ -111,6 +177,10 @@ const barterOffers: BarterOffer[] = [
     city: 'Oakland',
     cityZip: 'Oakland, CA (94601)',
     tradeFor: 'Social media automation templates or copyediting services',
+    hybridSplitOption: 'Full garden blueprint for 3 hours tech setup OR 1 bushel fresh produce',
+    timeCreditHours: 3.0,
+    crossPostedFromCommons: true,
+    imageUrl: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=800&q=80',
     createdAt: new Date().toISOString(),
     active: true,
     giverConfirmed: true,
@@ -133,6 +203,10 @@ const barterOffers: BarterOffer[] = [
     city: 'Atlanta',
     cityZip: 'Atlanta, GA (30310)',
     tradeFor: 'Equal time contribution on alternative weekends',
+    hybridSplitOption: 'Saturday childcare for Sunday circle hosting OR homeschool carpool',
+    timeCreditHours: 4.0,
+    crossPostedFromCommons: true,
+    imageUrl: 'https://images.unsplash.com/photo-1543332164-6e82f355badc?auto=format&fit=crop&w=800&q=80',
     createdAt: new Date().toISOString(),
     active: true,
     giverConfirmed: false,
@@ -154,6 +228,10 @@ const barterOffers: BarterOffer[] = [
     city: 'Savannah',
     cityZip: 'Savannah, GA (31401)',
     tradeFor: 'Gift / Generosity Act',
+    hybridSplitOption: 'Free gift giveaway OR open swap for sweet potato slips',
+    timeCreditHours: 0,
+    crossPostedFromCommons: true,
+    imageUrl: 'https://images.unsplash.com/photo-1592417817098-8f3d69106093?auto=format&fit=crop&w=800&q=80',
     createdAt: new Date().toISOString(),
     active: true,
     giverConfirmed: true,
@@ -175,6 +253,10 @@ const barterOffers: BarterOffer[] = [
     city: 'San Francisco',
     cityZip: 'San Francisco, CA (94102)',
     tradeFor: '10 Copper Credits or 2 hours homeschool reading support',
+    hybridSplitOption: 'Heritage pot for 2 Time Credits OR 1 week sourdough provision',
+    timeCreditHours: 2.0,
+    crossPostedFromCommons: true,
+    imageUrl: 'https://images.unsplash.com/photo-1584990347449-39906f33d719?auto=format&fit=crop&w=800&q=80',
     createdAt: new Date().toISOString(),
     active: true,
     giverConfirmed: false,
@@ -195,14 +277,18 @@ const barterOffers: BarterOffer[] = [
     locationState: 'GA',
     city: 'Decatur',
     cityZip: 'Decatur, GA (30030)',
-    tradeFor: 'Local honey or handmade herbal salves',
+    tradeFor: 'Organic soil compost or herbal salve swap',
+    hybridSplitOption: '10lb seed potatoes for 1 hr soil prep OR 2 jars elderberry syrup',
+    timeCreditHours: 1.0,
+    crossPostedFromCommons: true,
+    imageUrl: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=800&q=80',
     createdAt: new Date().toISOString(),
     active: true,
     giverConfirmed: false,
     recipientConfirmed: false,
     handshakeComplete: false,
     requestType: 'Barter/Trade',
-    valuePoints: 8,
+    valuePoints: 7,
     intentTag: 'I have',
     isGift: false
   },
@@ -217,6 +303,10 @@ const barterOffers: BarterOffer[] = [
     city: 'Dallas',
     cityZip: 'Dallas, TX (75201)',
     tradeFor: 'Garden pruning tools or elderberry syrup',
+    hybridSplitOption: 'Sourdough starter for 1 hr garden pruning OR 1 jar honey',
+    timeCreditHours: 1.0,
+    crossPostedFromCommons: true,
+    imageUrl: 'https://images.unsplash.com/photo-1589367920969-ab8e050bbb04?auto=format&fit=crop&w=800&q=80',
     createdAt: new Date().toISOString(),
     active: true,
     giverConfirmed: false,
@@ -788,6 +878,143 @@ app.post('/api/barter/handshake', (req, res) => {
   res.json({
     barter,
     userStats: userStats[userName] || { generosityScore: 10, tradeBalance: 0, trustScore: 85, graceScore: 1, barterBalance: 0 }
+  });
+});
+
+// Multi-Stage Trade Handshake & Time Bank Escrow API Endpoints
+interface ServerMultiStageTrade {
+  id: string;
+  listingId: string;
+  listingTitle: string;
+  categoryType: string;
+  initiatorName: string;
+  initiatorLocation: string;
+  recipientName: string;
+  recipientLocation: string;
+  currentStage: 'inquiry' | 'counter_offer' | 'agreed' | 'completed' | 'cancelled';
+  initialProposal: string;
+  currentTerms: string;
+  timeCreditHours?: number;
+  cashAmount?: string;
+  counterOfferNote?: string;
+  counterOfferedBy?: string;
+  agreedAt?: string;
+  completedAt?: string;
+  updatedAt: string;
+  digitalReceiptHash?: string;
+}
+
+const serverTrades: ServerMultiStageTrade[] = [
+  {
+    id: 'trade-demo-1',
+    listingId: 'b1',
+    listingTitle: 'Homeschooling Curriculum Swap (Grades K-3)',
+    categoryType: 'barter',
+    initiatorName: 'Mama Shantrece',
+    initiatorLocation: 'GA Circle',
+    recipientName: 'Mama Jamila',
+    recipientLocation: 'Atlanta, GA',
+    currentStage: 'inquiry',
+    initialProposal: 'Offering 2 dozen farm-fresh heirloom eggs and organic basil cuttings for the mathematics curriculum workbook.',
+    currentTerms: 'Offering 2 dozen farm-fresh heirloom eggs and organic basil cuttings for the mathematics curriculum workbook.',
+    timeCreditHours: 2.0,
+    updatedAt: 'Today'
+  }
+];
+
+// GET /api/trades
+app.get('/api/trades', (req, res) => {
+  const { userName } = req.query;
+  if (userName) {
+    const userTrades = serverTrades.filter(
+      t => t.initiatorName === userName || t.recipientName === userName
+    );
+    return res.json(userTrades);
+  }
+  res.json(serverTrades);
+});
+
+// POST /api/trades/initiate
+app.post('/api/trades/initiate', (req, res) => {
+  const { listingId, listingTitle, categoryType, initiatorName, initiatorLocation, recipientName, recipientLocation, proposalNote, timeCreditHours, cashAmount } = req.body;
+  
+  const newTrade: ServerMultiStageTrade = {
+    id: `trade-${Date.now()}`,
+    listingId: listingId || 'listing-gen',
+    listingTitle: listingTitle || 'Exchange Listing',
+    categoryType: categoryType || 'barter',
+    initiatorName: initiatorName || 'Sister',
+    initiatorLocation: initiatorLocation || 'Local Circle',
+    recipientName: recipientName || 'Sister',
+    recipientLocation: recipientLocation || 'Local Circle',
+    currentStage: 'inquiry',
+    initialProposal: proposalNote || 'Trade proposal',
+    currentTerms: proposalNote || 'Trade proposal',
+    timeCreditHours: Number(timeCreditHours) || 2,
+    cashAmount,
+    updatedAt: 'Just now'
+  };
+
+  serverTrades.unshift(newTrade);
+  res.status(201).json(newTrade);
+});
+
+// POST /api/trades/counter
+app.post('/api/trades/counter', (req, res) => {
+  const { tradeId, counterOfferNote, counterOfferedBy, timeCreditHours } = req.body;
+  const trade = serverTrades.find(t => t.id === tradeId);
+  if (!trade) return res.status(404).json({ error: 'Trade not found' });
+
+  trade.currentStage = 'counter_offer';
+  trade.counterOfferNote = counterOfferNote;
+  trade.counterOfferedBy = counterOfferedBy;
+  trade.currentTerms = counterOfferNote;
+  if (timeCreditHours !== undefined) trade.timeCreditHours = Number(timeCreditHours);
+  trade.updatedAt = 'Just now';
+
+  res.json(trade);
+});
+
+// POST /api/trades/accept
+app.post('/api/trades/accept', (req, res) => {
+  const { tradeId } = req.body;
+  const trade = serverTrades.find(t => t.id === tradeId);
+  if (!trade) return res.status(404).json({ error: 'Trade not found' });
+
+  trade.currentStage = 'agreed';
+  trade.agreedAt = new Date().toLocaleDateString('en-US');
+  trade.updatedAt = 'Just now';
+
+  res.json(trade);
+});
+
+// POST /api/trades/complete
+app.post('/api/trades/complete', (req, res) => {
+  const { tradeId } = req.body;
+  const trade = serverTrades.find(t => t.id === tradeId);
+  if (!trade) return res.status(404).json({ error: 'Trade not found' });
+
+  trade.currentStage = 'completed';
+  trade.completedAt = new Date().toLocaleDateString('en-US');
+  trade.updatedAt = 'Just now';
+  trade.digitalReceiptHash = `0xCOPPER_${Date.now().toString(16).toUpperCase()}_VERIFIED`;
+
+  // Award +5 generosityScore and +2 trustScore to both sisters
+  if (!userStats[trade.initiatorName]) {
+    userStats[trade.initiatorName] = { generosityScore: 10, tradeBalance: 0, trustScore: 85, graceScore: 1, barterBalance: 0 };
+  }
+  if (!userStats[trade.recipientName]) {
+    userStats[trade.recipientName] = { generosityScore: 10, tradeBalance: 0, trustScore: 85, graceScore: 1, barterBalance: 0 };
+  }
+  userStats[trade.initiatorName].generosityScore += 5;
+  userStats[trade.initiatorName].trustScore += 2;
+  userStats[trade.recipientName].generosityScore += 5;
+  userStats[trade.recipientName].trustScore += 2;
+
+  res.json({
+    trade,
+    receiptHash: trade.digitalReceiptHash,
+    updatedStats: userStats[trade.initiatorName]
   });
 });
 
@@ -1740,6 +1967,130 @@ app.get('/api/notifications/emails', (req, res) => {
     total: dispatchedEmails.length,
     emails: dispatchedEmails
   });
+});
+
+// =========================================================================
+// INTERNAL BACKEND FILTERING & MODERATION API
+// =========================================================================
+
+// POST /api/moderation/scan - Scan text against backend trigger words & community rules
+app.post('/api/moderation/scan', (req, res) => {
+  try {
+    const { content = '', title = '', author = '' } = req.body;
+    const scanResult = scanContentForTriggers(content, title, backendModerationRules);
+    res.json({
+      success: true,
+      ...scanResult
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message || 'Moderation scan failed' });
+  }
+});
+
+// GET /api/moderation/rules - Fetch all active trigger word rules
+app.get('/api/moderation/rules', (req, res) => {
+  res.json({
+    success: true,
+    rules: backendModerationRules
+  });
+});
+
+// POST /api/moderation/rules - Add custom trigger word rule (Mama Shantrece / Admin)
+app.post('/api/moderation/rules', (req, res) => {
+  try {
+    const { pattern, category = 'vulgarity_slurs', categoryLabel = 'Custom Trigger Word', severity = 'high', action = 'flag_for_review', reason = 'Custom internal trigger rule' } = req.body;
+    if (!pattern || typeof pattern !== 'string') {
+      return res.status(400).json({ success: false, error: 'Pattern is required.' });
+    }
+    const newRule: ModerationTriggerRule = {
+      id: `rule-${Date.now()}`,
+      pattern: pattern.trim(),
+      category,
+      categoryLabel,
+      severity,
+      action,
+      reason,
+      isCustom: true
+    };
+    backendModerationRules.unshift(newRule);
+    res.json({ success: true, rule: newRule, totalRules: backendModerationRules.length });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /api/moderation/rules/:id - Remove rule
+app.delete('/api/moderation/rules/:id', (req, res) => {
+  const { id } = req.params;
+  backendModerationRules = backendModerationRules.filter(r => r.id !== id);
+  res.json({ success: true, remaining: backendModerationRules.length });
+});
+
+// GET /api/moderation/flagged-queue - List all reports and auto-flagged items
+app.get('/api/moderation/flagged-queue', (req, res) => {
+  res.json({
+    success: true,
+    total: backendFlaggedQueue.length,
+    pending: backendFlaggedQueue.filter(i => i.status === 'pending_review').length,
+    items: backendFlaggedQueue
+  });
+});
+
+// POST /api/moderation/flagged-queue - Record reported or auto-flagged item
+app.post('/api/moderation/flagged-queue', (req, res) => {
+  try {
+    const {
+      postId,
+      itemType = 'forum_post',
+      itemTitle,
+      posterName,
+      posterState = 'National',
+      reportedBy = 'Internal Safety Filter',
+      reason,
+      matchedTriggers = [],
+      triggerCategory,
+      severity = 'high',
+      itemSnippet = '',
+      autoFlagged = false
+    } = req.body;
+
+    const newItem: BackendFlaggedItem = {
+      id: `flag-${Date.now()}`,
+      postId,
+      itemType,
+      itemTitle: itemTitle || itemSnippet.slice(0, 40) + '...',
+      posterName: posterName || 'Anonymous Sister',
+      posterState,
+      reportedBy,
+      reason: reason || 'Flagged for moderation review',
+      matchedTriggers,
+      triggerCategory,
+      severity,
+      dateReported: new Date().toISOString().split('T')[0],
+      itemSnippet: itemSnippet.slice(0, 200),
+      status: 'pending_review',
+      autoFlagged
+    };
+
+    backendFlaggedQueue.unshift(newItem);
+    res.json({ success: true, item: newItem });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PATCH /api/moderation/flagged-queue/:id - Update review status (dismiss or remove)
+app.patch('/api/moderation/flagged-queue/:id', (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  const target = backendFlaggedQueue.find(i => i.id === id || i.postId === id);
+  if (!target) {
+    return res.status(404).json({ success: false, error: 'Item not found in moderation queue.' });
+  }
+  if (status) {
+    target.status = status;
+  }
+  res.json({ success: true, item: target });
 });
 
 // Serve frontend assets

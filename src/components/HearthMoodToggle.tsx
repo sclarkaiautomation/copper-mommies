@@ -9,13 +9,13 @@ export const HEARTH_MOODS: Record<HearthMoodId, HearthMoodConfig> = {
     subtitle: 'Evening Wind-Down & Mother Journaling',
     emoji: '🕯️',
     vibe: 'Serene & Grounding',
-    tagline: 'Gentle candlelight warmth for evening reflection, journaling, and deep unwinding.',
-    bgClass: 'bg-[#FAF7F2]',
-    meshStyle: 'radial-gradient(circle at 10% 10%, rgba(212, 175, 55, 0.07) 0%, transparent 45%), radial-gradient(circle at 90% 90%, rgba(184, 115, 51, 0.06) 0%, transparent 50%), #FAF7F2',
+    tagline: 'Gentle candlelight warmth with a smooth, soft gradient backdrop of dusty mauve and charcoal-brown.',
+    bgClass: 'bg-[#FAF5EE]',
+    meshStyle: 'radial-gradient(ellipse at 25% 0%, rgba(156, 107, 116, 0.12) 0%, transparent 60%), radial-gradient(ellipse at 85% 100%, rgba(31, 20, 14, 0.08) 0%, transparent 65%), linear-gradient(180deg, #FAF5EE 0%, #F5ECE5 50%, #FAF5EE 100%)',
     accentColor: '#D4AF37',
     headerBg: 'bg-[#FFFDF9]/95',
-    orb1Class: 'bg-[#D4AF37]/10',
-    orb2Class: 'bg-[#B87333]/8'
+    orb1Class: 'bg-[#9C6B74]/12',
+    orb2Class: 'bg-[#B87333]/10'
   },
   community: {
     id: 'community',
@@ -58,6 +58,20 @@ export const HEARTH_MOODS: Record<HearthMoodId, HearthMoodConfig> = {
     headerBg: 'bg-[#FDF8F4]/95',
     orb1Class: 'bg-[#A85138]/12',
     orb2Class: 'bg-[#B87333]/13'
+  },
+  mauve: {
+    id: 'mauve',
+    name: 'Mauve, Taupe & Gold',
+    subtitle: 'Soft Mauve & Charcoal Gradient Sanctuary',
+    emoji: '🌸',
+    vibe: 'Smooth Mauve & Charcoal Gradient',
+    tagline: 'A smooth, luxurious gradient backdrop transitioning soft mauve, rich charcoal brown, dusty taupe, and shimmering gold.',
+    bgClass: 'bg-[#F5EBE6]',
+    meshStyle: 'radial-gradient(ellipse at 20% 0%, rgba(156, 107, 116, 0.22) 0%, transparent 65%), radial-gradient(ellipse at 80% 100%, rgba(31, 20, 14, 0.16) 0%, transparent 70%), linear-gradient(135deg, #F8EFEA 0%, #EFE1D9 50%, #F5EAE4 100%)',
+    accentColor: '#9C6B74',
+    headerBg: 'bg-[#25181C]/95',
+    orb1Class: 'bg-[#9C6B74]/22',
+    orb2Class: 'bg-[#1F140E]/18'
   }
 };
 

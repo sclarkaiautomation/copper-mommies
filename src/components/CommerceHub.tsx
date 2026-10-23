@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Building2, 
   Briefcase, 
@@ -25,18 +25,35 @@ import {
   ChevronRight,
   ShieldCheck,
   Check,
-  Zap
+  Zap,
+  Handshake,
+  Image as ImageIcon,
+  Eye,
+  Plus,
+  Repeat
 } from 'lucide-react';
 import { MommieBusiness, OpportunityJob, CommerceWorkshop, IncubatorResource, PageSpotlightBanner, ScholarshipEntry } from '../types';
 import SpotlightBanner from './SpotlightBanner';
 import SCAutomatedPortal from './SCAutomatedPortal';
 import { US_STATES_DATA, getStateCities } from '../data/usStatesData';
+import CreateUnifiedListingModal from './CreateUnifiedListingModal';
+import TradeHandshakeModal from './TradeHandshakeModal';
+import { 
+  getStoredUnifiedListings, 
+  UnifiedListing, 
+  MarketplaceCategoryType, 
+  MultiStageTrade,
+  getStoredTrades,
+  completeTradeHandshake
+} from '../data/unifiedMarketplaceStore';
 
 interface CommerceHubProps {
   selectedState: string;
   userName: string;
   onNavigateToCircle?: () => void;
   onNavigateToTreasury?: () => void;
+  onNavigateToCommons?: (subTab?: 'feed' | 'gigs' | 'exchange' | 'housing' | 'businesses' | 'events' | 'map') => void;
+  onOpenDirectChat?: (recipientName: string, contextTitle: string, initialNote?: string) => void;
   spotlightBanner?: PageSpotlightBanner;
   banners?: PageSpotlightBanner[];
   onEnterContest?: (entry: ScholarshipEntry) => void;
@@ -47,6 +64,8 @@ export default function CommerceHub({
   userName, 
   onNavigateToCircle, 
   onNavigateToTreasury,
+  onNavigateToCommons,
+  onOpenDirectChat,
   spotlightBanner, 
   banners 
 }: CommerceHubProps) {
@@ -58,6 +77,37 @@ export default function CommerceHub({
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // ----------------------------------------------------
+  // UNIFIED MARKETPLACE DUAL-SYNC STATE (JOBS, GIGS, WORKSHOPS, BUSINESSES)
+  // ----------------------------------------------------
+  const [unifiedListings, setUnifiedListings] = useState<UnifiedListing[]>(() => getStoredUnifiedListings());
+  const [isUnifiedCreateModalOpen, setIsUnifiedCreateModalOpen] = useState(false);
+  const [unifiedModalCategory, setUnifiedModalCategory] = useState<MarketplaceCategoryType>('job');
+  const [activeTradeListing, setActiveTradeListing] = useState<UnifiedListing | null>(null);
+  const [activeTradeRecord, setActiveTradeRecord] = useState<MultiStageTrade | null>(null);
+  const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
+  const [selectedPhotoIndexMap, setSelectedPhotoIndexMap] = useState<Record<string, number>>({});
+  const [photoLightboxUrl, setPhotoLightboxUrl] = useState<string | null>(null);
+  const [showTradesLedgerModal, setShowTradesLedgerModal] = useState(false);
+  const [allTrades, setAllTrades] = useState<MultiStageTrade[]>(() => getStoredTrades());
+
+  useEffect(() => {
+    const handleSync = () => {
+      setUnifiedListings(getStoredUnifiedListings());
+      setAllTrades(getStoredTrades());
+    };
+    window.addEventListener('copper_marketplace_sync', handleSync);
+    return () => window.removeEventListener('copper_marketplace_sync', handleSync);
+  }, []);
+
+  const handleOpenTradeForListing = (listing: UnifiedListing) => {
+    const currentTrades = getStoredTrades();
+    const existing = currentTrades.find(t => t.listingId === listing.id);
+    setActiveTradeListing(listing);
+    setActiveTradeRecord(existing || null);
+    setIsTradeModalOpen(true);
   };
 
   // ----------------------------------------------------
@@ -453,6 +503,289 @@ export default function CommerceHub({
       return matchesSearch && matchesType && matchesCategory && matchesRemote;
     });
   }, [jobs, jobSearch, jobTypeFilter, jobCategoryFilter, jobRemoteOnly]);
+
+  // Dual-Synced Unified Gigs & Opportunities Memo
+  const filteredUnifiedGigs = useMemo(() => {
+    return unifiedListings
+      .filter(l => l.categoryType === 'job' || l.categoryType === 'gig')
+      .filter(l => {
+        const matchesSearch = 
+          !jobSearch.trim() ||
+          l.title.toLowerCase().includes(jobSearch.toLowerCase()) ||
+          l.description.toLowerCase().includes(jobSearch.toLowerCase()) ||
+          l.authorName.toLowerCase().includes(jobSearch.toLowerCase());
+        const matchesType = jobTypeFilter === 'all' || 
+          (l.details.employmentType && l.details.employmentType.toLowerCase().includes(jobTypeFilter.toLowerCase())) ||
+          (jobTypeFilter === 'Gig Work' && l.categoryType === 'gig') ||
+          (jobTypeFilter === 'Trade Exchange' && l.details.compensationType === 'time_credit');
+        const matchesRemote = !jobRemoteOnly || l.details.remoteOrInPerson === 'Remote';
+        return matchesSearch && matchesType && matchesRemote;
+      });
+  }, [unifiedListings, jobSearch, jobTypeFilter, jobRemoteOnly]);
+
+  const filteredUnifiedWorkshops = useMemo(() => {
+    return unifiedListings.filter(l => l.categoryType === 'event');
+  }, [unifiedListings]);
+
+  const filteredUnifiedBusinesses = useMemo(() => {
+    return unifiedListings.filter(l => l.categoryType === 'business');
+  }, [unifiedListings]);
+
+  // Render Card with Multi-Photo Gallery & Handshake Actions
+  const renderUnifiedCard = (listing: UnifiedListing, targetContext: 'jobs' | 'workshops' | 'directory') => {
+    const photos = listing.photos && listing.photos.length > 0 ? listing.photos : (listing.primaryCoverImage ? [listing.primaryCoverImage] : []);
+    const activePhotoIndex = selectedPhotoIndexMap[listing.id] ?? 0;
+    const currentPhoto = photos[activePhotoIndex] || photos[0] || 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=800&q=80';
+    const isJobOrGig = listing.categoryType === 'gig';
+    const isEvent = listing.categoryType === 'event';
+    const isBusiness = listing.categoryType === 'business';
+
+    return (
+      <div 
+        key={listing.id}
+        className="bg-white border-2 border-[#B87333]/25 hover:border-[#D4AF37] rounded-3xl p-5 shadow-xs hover:shadow-lg transition-all space-y-4"
+      >
+        {/* Top Header Row */}
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-copper-penny/10 pb-3">
+          <div className="flex items-start space-x-3">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#B87333] to-[#D4AF37] text-white flex items-center justify-center font-serif font-black text-xl shadow-xs shrink-0">
+              {listing.authorAvatar || (isJobOrGig ? '💼' : isEvent ? '📅' : '⭐')}
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h4 className="font-serif font-bold text-base text-[#1F1813] hover:text-[#B87333] transition-colors">
+                  {listing.authorName}
+                </h4>
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-[#FAF5EE] text-[#B87333] border border-copper-penny/25">
+                  {listing.authorRole}
+                </span>
+                <span className="px-2 py-0.5 rounded-md text-[9px] font-mono font-bold bg-amber-50 text-amber-900 border border-amber-200 flex items-center space-x-1">
+                  <Sparkles className="w-3 h-3 text-[#D4AF37]" />
+                  <span>Dual-Synced with Village Commons</span>
+                </span>
+              </div>
+              <p className="text-[11px] font-mono text-soft-sage flex items-center space-x-1.5 mt-0.5">
+                <MapPin className="w-3 h-3 text-[#B87333]" />
+                <span>{listing.authorCity ? `${listing.authorCity}, ` : ''}{listing.authorState} Circle</span>
+                <span>•</span>
+                <span>Posted {listing.createdAt}</span>
+              </p>
+            </div>
+          </div>
+
+          {/* Category Tag */}
+          <div className="flex items-center space-x-2">
+            <span className="px-3 py-1 bg-[#1F140E] text-[#D4AF37] text-[10px] font-mono font-extrabold uppercase rounded-xl tracking-wider">
+              {listing.categoryType === 'gig' ? 'Maternal Gig' : listing.categoryType === 'event' ? 'Workshop Circle' : listing.categoryType === 'business' ? 'Sister Business' : 'Community Listing'}
+            </span>
+          </div>
+        </div>
+
+        {/* Title & Core Headline */}
+        <div>
+          <h3 className="font-serif font-black text-xl text-[#1F1813] leading-snug">
+            {listing.title}
+          </h3>
+          <p className="text-xs text-[#2A221B]/90 mt-1 leading-relaxed">
+            {listing.description}
+          </p>
+        </div>
+
+        {/* Multi-Photo Gallery Preview (Upgraded Marketplace Pattern: Main Photo + Thumbnails) */}
+        {photos.length > 0 && (
+          <div className="space-y-2 bg-[#FAF5EE]/50 p-3 rounded-2xl border border-copper-penny/15">
+            <div className="relative h-60 sm:h-72 w-full rounded-xl overflow-hidden bg-stone-100 group">
+              <img 
+                src={currentPhoto} 
+                alt={listing.title} 
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102 cursor-pointer"
+                onClick={() => setPhotoLightboxUrl(currentPhoto)}
+              />
+              <button
+                type="button"
+                onClick={() => setPhotoLightboxUrl(currentPhoto)}
+                className="absolute bottom-2.5 right-2.5 px-2.5 py-1 bg-black/75 hover:bg-black text-white text-[10px] font-mono rounded-lg flex items-center space-x-1 backdrop-blur-xs transition-colors cursor-pointer"
+              >
+                <Eye className="w-3 h-3 text-[#D4AF37]" />
+                <span>Zoom Photo ({activePhotoIndex + 1}/{photos.length})</span>
+              </button>
+            </div>
+
+            {/* Thumbnail Strip */}
+            {photos.length > 1 && (
+              <div className="flex items-center space-x-2 overflow-x-auto pb-1 pt-1 scrollbar-thin">
+                {photos.map((ph, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setSelectedPhotoIndexMap(prev => ({ ...prev, [listing.id]: idx }))}
+                    className={`relative w-16 h-12 rounded-lg overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
+                      activePhotoIndex === idx 
+                        ? 'border-[#B87333] shadow-md scale-105 ring-2 ring-[#D4AF37]/50' 
+                        : 'border-transparent opacity-70 hover:opacity-100'
+                    }`}
+                  >
+                    <img src={ph} alt={`Thumb ${idx + 1}`} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Category-Specific Detailed Spec Badges & Attributes */}
+        {isJobOrGig && (
+          <div className="space-y-3 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div className="bg-[#FAF5EE] p-3 rounded-xl border border-copper-penny/15">
+                <span className="text-[10px] font-mono uppercase text-[#B87333] font-bold block">Compensation</span>
+                <span className="text-sm font-mono font-black text-[#1F1813]">{listing.details.compensation || 'Co-op Barter'}</span>
+              </div>
+              <div className="bg-[#FAF5EE] p-3 rounded-xl border border-copper-penny/15">
+                <span className="text-[10px] font-mono uppercase text-[#B87333] font-bold block">Type &amp; Arrangement</span>
+                <span className="text-xs font-mono font-bold text-[#1F1813]">
+                  {listing.details.employmentType || 'Contract'} • {listing.details.remoteOrInPerson || 'On-Site'}
+                </span>
+              </div>
+              <div className="bg-[#FAF5EE] p-3 rounded-xl border border-copper-penny/15">
+                <span className="text-[10px] font-mono uppercase text-[#B87333] font-bold block">Barter / Time Credits</span>
+                <span className="text-xs font-mono font-bold text-[#D4AF37]">
+                  {listing.details.compensationType === 'hybrid' ? 'Cash + Time Credit Split' : listing.details.compensationType === 'time_credit' ? '100% Sovereign Time Credits' : 'Direct Co-op Pay'}
+                </span>
+              </div>
+            </div>
+
+            {/* Duties and Requirements */}
+            {((listing.details.duties && listing.details.duties.length > 0) || (listing.details.requirements && listing.details.requirements.length > 0)) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs bg-stone-50 p-3.5 rounded-2xl border border-stone-200/70">
+                {listing.details.duties && listing.details.duties.length > 0 && (
+                  <div>
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#B87333] block mb-1">
+                      Scope of Work &amp; Duties:
+                    </span>
+                    <ul className="space-y-1 text-[#2A221B]/85">
+                      {listing.details.duties.map((d, i) => (
+                        <li key={i} className="flex items-start space-x-1.5">
+                          <span className="text-[#B87333] font-bold">•</span>
+                          <span>{d}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {listing.details.requirements && listing.details.requirements.length > 0 && (
+                  <div>
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#B87333] block mb-1">
+                      Requirements &amp; Maternal Fit:
+                    </span>
+                    <ul className="space-y-1 text-[#2A221B]/85">
+                      {listing.details.requirements.map((r, i) => (
+                        <li key={i} className="flex items-start space-x-1.5">
+                          <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                          <span>{r}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {isEvent && (
+          <div className="space-y-3 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div className="bg-[#FAF5EE] p-3 rounded-xl border border-copper-penny/15">
+                <span className="text-[10px] font-mono uppercase text-[#B87333] font-bold block">Date &amp; Schedule</span>
+                <span className="text-xs font-mono font-bold text-[#1F1813]">{listing.details.eventDate || 'Upcoming'} • {listing.details.eventTime || 'TBA'}</span>
+              </div>
+              <div className="bg-[#FAF5EE] p-3 rounded-xl border border-copper-penny/15">
+                <span className="text-[10px] font-mono uppercase text-[#B87333] font-bold block">Format &amp; Venue</span>
+                <span className="text-xs font-mono font-bold text-[#1F1813]">{listing.details.locationType === 'virtual' ? '🌐 Live Zoom Sanctuary' : listing.details.venueOrCity || 'In-Person Sanctuary'}</span>
+              </div>
+              <div className="bg-[#FAF5EE] p-3 rounded-xl border border-copper-penny/15">
+                <span className="text-[10px] font-mono uppercase text-[#B87333] font-bold block">Capacity &amp; Seats</span>
+                <span className="text-xs font-mono font-bold text-[#1F1813]">{listing.details.participantCap || 25} Mothers Maximum</span>
+              </div>
+            </div>
+
+            {listing.details.suppliesNeeded && listing.details.suppliesNeeded.length > 0 && (
+              <div className="bg-amber-50/60 p-3 rounded-xl border border-amber-200/70 text-xs">
+                <span className="font-mono text-[10px] font-bold uppercase text-[#B87333] block mb-1">
+                  🌿 Supplies &amp; Ingredients to Bring:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {listing.details.suppliesNeeded.map((s, i) => (
+                    <span key={i} className="px-2 py-0.5 bg-white border border-amber-300 rounded text-[10px] font-mono text-stone-800">
+                      ✓ {s}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {isBusiness && (
+          <div className="space-y-3 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="bg-[#FAF5EE] p-3 rounded-xl border border-copper-penny/15">
+                <span className="text-[10px] font-mono uppercase text-[#B87333] font-bold block">Industry &amp; Specialty</span>
+                <span className="text-xs font-mono font-bold text-[#1F1813]">{listing.details.industry || 'Artisan & Crafting'}</span>
+              </div>
+              <div className="bg-[#FAF5EE] p-3 rounded-xl border border-copper-penny/15">
+                <span className="text-[10px] font-mono uppercase text-[#B87333] font-bold block">Sisterhood Community Offer</span>
+                <span className="text-xs font-mono font-bold text-[#D4AF37]">{listing.details.communityOffer || 'Barter accepted for members'}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons Bar */}
+        <div className="pt-3 border-t border-copper-penny/10 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center space-x-2 text-xs font-mono text-[#1F1813]/60">
+            <ShieldCheck className="w-4 h-4 text-[#D4AF37]" />
+            <span>Vetted Member Protection • Direct Handshake Workflow</span>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            {onNavigateToCommons && (
+              <button
+                type="button"
+                onClick={() => onNavigateToCommons(isJobOrGig ? 'gigs' : isEvent ? 'events' : 'businesses')}
+                className="px-3 py-1.5 border border-copper-penny/25 hover:bg-[#FAF5EE] text-[#1F1813] rounded-xl text-xs font-mono font-bold transition-all cursor-pointer flex items-center space-x-1"
+                title="View dual-synced listing inside Village Commons"
+              >
+                <span>View in Commons</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#B87333]" />
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => handleOpenTradeForListing(listing)}
+              className="px-4 py-2 bg-[#D4AF37] hover:bg-[#B87333] hover:text-white text-[#1F1813] font-mono text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-xs cursor-pointer flex items-center space-x-1.5"
+            >
+              <Handshake className="w-3.5 h-3.5" />
+              <span>Initiate Handshake / Barter</span>
+            </button>
+
+            {onOpenDirectChat && (
+              <button
+                type="button"
+                onClick={() => onOpenDirectChat(listing.authorName, listing.title, `Peace Sister ${listing.authorName}, I am inquiring regarding your listing "${listing.title}".`)}
+                className="px-3 py-2 bg-[#1F140E] hover:bg-black text-[#D4AF37] font-mono text-xs font-bold rounded-xl transition-all cursor-pointer"
+                title="Send direct private message to Sister"
+              >
+                💬 Chat
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   // ----------------------------------------------------
   // 3. WORKSHOP & EVENT CALENDAR STATE
@@ -879,26 +1212,69 @@ export default function CommerceHub({
                   <span>Online / Shipped</span>
                 </label>
 
-                {/* Register New Business Trigger */}
+                {/* Register Business Triggers */}
+                <button
+                  id="btn-open-register-unified-biz"
+                  onClick={() => {
+                    setUnifiedModalCategory('business');
+                    setIsUnifiedCreateModalOpen(true);
+                  }}
+                  className="px-4 py-2 bg-[#D4AF37] hover:bg-[#B87333] hover:text-white text-[#1F1813] rounded-xl text-xs font-mono font-extrabold uppercase tracking-wider transition-all flex items-center space-x-1.5 shadow-sm cursor-pointer"
+                  title="Register business with multi-photo gallery, perks, and dual-sync with Village Commons"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Register Sister Business (with Photos)</span>
+                </button>
                 <button
                   id="btn-open-register-biz"
                   onClick={() => setIsRegisterModalOpen(true)}
-                  className="px-4 py-2 bg-[#D4AF37] hover:bg-[#B87333] hover:text-white text-[#1F1813] rounded-xl text-xs font-mono font-extrabold uppercase tracking-wider transition-all flex items-center space-x-1.5 shadow-sm cursor-pointer"
+                  className="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-[#1F1813] rounded-xl text-xs font-mono font-bold transition-all cursor-pointer"
+                  title="Quick text registration"
                 >
-                  <PlusCircle className="w-4 h-4" />
-                  <span>Register My Business</span>
+                  <span>Quick Form</span>
                 </button>
               </div>
             </div>
 
             <div className="flex items-center justify-between text-[11px] text-[#1F1813]/60 pt-1 border-t border-copper-penny/10 font-mono">
-              <span>Showing {filteredBusinesses.length} verified member ventures</span>
+              <span>Showing {filteredBusinesses.length + filteredUnifiedBusinesses.length} verified member ventures ({filteredUnifiedBusinesses.length} photo showcases)</span>
               <span>{savedBusinesses.length} saved to my rolodex</span>
             </div>
           </div>
 
+          {/* Featured Multi-Photo Sister Business Showcases (Dual-Synced with Commons) */}
+          {filteredUnifiedBusinesses.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-copper-penny/15 pb-2">
+                <div className="flex items-center space-x-2">
+                  <Sparkles className="w-4 h-4 text-[#D4AF37]" />
+                  <h4 className="font-serif font-black text-base text-[#1F1813]">
+                    ⭐ Featured Multi-Photo Sister Enterprises ({filteredUnifiedBusinesses.length})
+                  </h4>
+                </div>
+                {onNavigateToCommons && (
+                  <button
+                    type="button"
+                    onClick={() => onNavigateToCommons('businesses')}
+                    className="text-xs font-mono text-[#B87333] hover:underline flex items-center space-x-1 font-bold cursor-pointer"
+                  >
+                    <span>View in Village Commons</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {filteredUnifiedBusinesses.map(biz => renderUnifiedCard(biz, 'directory'))}
+              </div>
+            </div>
+          )}
+
           {/* Business Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="space-y-3">
+            <h4 className="font-serif font-bold text-sm text-[#1F1813] border-b border-copper-penny/10 pb-1">
+              Member Directory Rolodex ({filteredBusinesses.length})
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredBusinesses.map((biz) => {
               const isSaved = savedBusinesses.includes(biz.id);
               return (
@@ -997,6 +1373,7 @@ export default function CommerceHub({
               );
             })}
           </div>
+        </div>
 
           {filteredBusinesses.length === 0 && (
             <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-[#B87333]/30 p-8 space-y-3">
@@ -1778,6 +2155,70 @@ export default function CommerceHub({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: CREATE UNIFIED LISTING (GIG, EVENT, BUSINESS)                       */}
+      {/* ========================================================================= */}
+      <CreateUnifiedListingModal
+        isOpen={isUnifiedCreateModalOpen}
+        onClose={() => setIsUnifiedCreateModalOpen(false)}
+        userName={userName}
+        selectedState={selectedState}
+        initialCategory={unifiedModalCategory}
+        onListingCreated={(newListing) => {
+          setUnifiedListings(getStoredUnifiedListings());
+          showToast(`✨ Successfully published "${newListing.title}" across Village Commons & Commerce Hub!`);
+        }}
+        showToast={showToast}
+      />
+
+      {/* ========================================================================= */}
+      {/* MODAL: TRADE HANDSHAKE & BARTER WORKFLOW                                  */}
+      {/* ========================================================================= */}
+      {isTradeModalOpen && (
+        <TradeHandshakeModal
+          isOpen={isTradeModalOpen}
+          onClose={() => {
+            setIsTradeModalOpen(false);
+            setActiveTradeListing(null);
+            setActiveTradeRecord(null);
+          }}
+          listing={activeTradeListing}
+          existingTrade={activeTradeRecord}
+          userName={userName}
+          selectedState={selectedState}
+          onTradeUpdated={(trade) => {
+            setAllTrades(getStoredTrades());
+            showToast(`🤝 Trade handshake successfully updated for "${activeTradeListing?.title}"!`);
+          }}
+          showToast={showToast}
+        />
+      )}
+
+      {/* ========================================================================= */}
+      {/* PHOTO LIGHTBOX MODAL                                                      */}
+      {/* ========================================================================= */}
+      {photoLightboxUrl && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setPhotoLightboxUrl(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] w-full" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setPhotoLightboxUrl(null)}
+              className="absolute -top-12 right-0 p-2 text-white hover:text-[#D4AF37] bg-black/50 rounded-xl cursor-pointer"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <img 
+              src={photoLightboxUrl} 
+              alt="Enlarged Showcase View" 
+              className="w-full max-h-[85vh] object-contain rounded-2xl border-2 border-[#D4AF37]/50 shadow-2xl bg-black"
+            />
           </div>
         </div>
       )}

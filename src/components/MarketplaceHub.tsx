@@ -26,12 +26,15 @@ import {
   Check
 } from 'lucide-react';
 import { BarterOffer, PageSpotlightBanner, ScholarshipEntry, TimeCreditLog, BarterComment, ActiveTradeRecord, SafeMeetupSpot } from '../types';
+import { getStoredTrades } from '../data/unifiedMarketplaceStore';
 import SpotlightBanner from './SpotlightBanner';
 import BarterCardInteractive from './BarterCardInteractive';
 import ActiveTradesTracker from './ActiveTradesTracker';
 import WisdomProgression from './WisdomProgression';
 import SisterProfileModal from './SisterProfileModal';
 import UrgentCarePod from './UrgentCarePod';
+import TradeHandshakeModal from './TradeHandshakeModal';
+import { UnifiedListing, MultiStageTrade } from '../data/unifiedMarketplaceStore';
 import { 
   INITIAL_BARTER_COMMENTS, 
   INITIAL_ACTIVE_TRADES, 
@@ -136,6 +139,7 @@ export default function MarketplaceHub({
   const [filterCategory, setFilterCategory] = useState<string>('All');
   const [filterZip, setFilterZip] = useState<string>('');
   const [filterIntent, setFilterIntent] = useState<string>('All');
+  const [marketViewMode, setMarketViewMode] = useState<'grid' | 'table'>('grid');
 
   // Sync state selection
   useEffect(() => {
@@ -344,28 +348,13 @@ export default function MarketplaceHub({
     setCommunityComments(prev => [newComment, ...prev]);
   };
 
+  const [selectedBarterForHandshake, setSelectedBarterForHandshake] = useState<BarterOffer | null>(null);
+  const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
+  const [activeTradeRecordState, setActiveTradeRecordState] = useState<MultiStageTrade | null>(null);
+
   const handleInitiateTrade = (barter: BarterOffer, meetupSpot?: SafeMeetupSpot) => {
-    const newTrade: ActiveTradeRecord = {
-      id: `trade-${Date.now()}`,
-      barterId: barter.id,
-      listingTitle: barter.title,
-      listingCategory: barter.category,
-      role: 'recipient',
-      partnerName: barter.offerBy,
-      partnerContact: barter.contact || 'sister@coop.net',
-      status: 'Pending Negotiation',
-      offeredItemOrService: 'Agreed Co-op Exchange / Equivalent Credits',
-      requestedItemOrService: barter.tradeFor || barter.title,
-      pointsValue: barter.valuePoints || 5,
-      initiatedAt: 'Just now',
-      meetupLocation: meetupSpot ? `${meetupSpot.name} (${meetupSpot.cityState})` : 'Safe Public Foyer Scheduled',
-      scheduledDate: 'This Week',
-      giverHandshakeSigned: false,
-      recipientHandshakeSigned: true
-    };
-    setActiveTrades(prev => [newTrade, ...prev]);
-    setMarketSubTab('my-trades');
-    alert(`🕊️ Sisterhood trade initiated for "${barter.title}"! Tracked in your Active Trades dashboard.`);
+    setSelectedBarterForHandshake(barter);
+    setIsTradeModalOpen(true);
   };
 
   const handleConfirmTradeHandshake = (tradeId: string, role: 'giver' | 'recipient') => {
@@ -721,7 +710,14 @@ export default function MarketplaceHub({
           title="My Active Trades: track ongoing sister handshakes and exchanges"
         >
           <Clock className="w-4 h-4" />
-          <span>My Active Trades ({activeTrades.length})</span>
+          <span>My Active Trades</span>
+          <span className={`px-2 py-0.5 rounded-full text-[9.5px] font-mono font-black ${
+            activeTrades.filter(t => t.status !== 'Completed Exchange').length > 0
+              ? 'bg-[#D4AF37] text-[#1F140E] animate-pulse shadow-xs'
+              : 'bg-black/10 text-[#1F1813]'
+          }`}>
+            {activeTrades.length} Active
+          </span>
         </button>
 
         <button
@@ -759,6 +755,30 @@ export default function MarketplaceHub({
           onConfirmTradeHandshake={handleConfirmTradeHandshake}
           onCancelTrade={handleCancelTrade}
           onScheduleMeetup={handleScheduleMeetup}
+          onOpenTradeHandshake={(trade) => {
+            const matchingBarter = barterList.find(b => b.id === trade.barterId || b.title === trade.listingTitle);
+            if (matchingBarter) {
+              setSelectedBarterForHandshake(matchingBarter);
+            } else {
+              setSelectedBarterForHandshake({
+                id: trade.barterId,
+                title: trade.listingTitle,
+                description: trade.offeredItemOrService,
+                category: trade.listingCategory as any,
+                offerBy: trade.partnerName,
+                contact: trade.partnerContact,
+                locationState: selectedState,
+                tradeFor: trade.requestedItemOrService,
+                createdAt: trade.initiatedAt,
+                active: true,
+                handshakeComplete: trade.status === 'Completed Exchange'
+              });
+            }
+            const currentTrades = getStoredTrades();
+            const stored = currentTrades.find(t => t.id === trade.id || t.listingId === trade.barterId);
+            setActiveTradeRecordState(stored || null);
+            setIsTradeModalOpen(true);
+          }}
         />
       )}
 
@@ -1097,7 +1117,35 @@ export default function MarketplaceHub({
                   Showing {barterList.filter(matchesBarterFilters).length} active listings matching filter
                 </p>
               </div>
-              <span className="text-xs text-[#B87333] font-mono font-bold bg-[#B87333]/10 px-2.5 py-1 rounded-full">District 3 Loop</span>
+              
+              {/* Visual Style Toggle: Grid vs Compact Table (Commons Exchange Integration) */}
+              <div className="flex items-center space-x-2">
+                <div className="bg-[#FAF5EE] p-1 rounded-xl border border-copper-penny/30 flex items-center space-x-1">
+                  <button
+                    type="button"
+                    onClick={() => setMarketViewMode('grid')}
+                    className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                      marketViewMode === 'grid'
+                        ? 'bg-[#B87333] text-white shadow-xs'
+                        : 'text-[#1F1813] hover:bg-amber-100/50'
+                    }`}
+                  >
+                    🖼️ Image Grid
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMarketViewMode('table')}
+                    className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                      marketViewMode === 'table'
+                        ? 'bg-[#B87333] text-white shadow-xs'
+                        : 'text-[#1F1813] hover:bg-amber-100/50'
+                    }`}
+                  >
+                    📋 Compact Table
+                  </button>
+                </div>
+                <span className="text-xs text-[#B87333] font-mono font-bold bg-[#B87333]/10 px-2.5 py-1 rounded-full hidden sm:inline">District 3 Loop</span>
+              </div>
             </div>
 
             {barterList.filter(matchesBarterFilters).length === 0 ? (
@@ -1117,7 +1165,7 @@ export default function MarketplaceHub({
                   Clear search &amp; city filters
                 </button>
               </div>
-            ) : (
+            ) : marketViewMode === 'grid' ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {barterList.filter(matchesBarterFilters).map((barter) => (
                   <div key={barter.id}>
@@ -1132,9 +1180,91 @@ export default function MarketplaceHub({
                       onOpenProfile={(name) => setSelectedSisterProfile(name)}
                       onFindAIMatches={fetchReciprocalMatches}
                       isHandshaking={isHandshakingId === barter.id}
+                      activeTrade={activeTrades.find(t => t.barterId === barter.id || t.listingTitle === barter.title) || null}
                     />
                   </div>
                 ))}
+              </div>
+            ) : (
+              /* Compact Table / List View */
+              <div className="bg-white rounded-2xl border border-copper-penny/20 overflow-hidden shadow-xs">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-[#FAF5EE] border-b border-copper-penny/20 font-mono text-[10px] text-[#1F1813] uppercase tracking-wider">
+                      <th className="p-3 w-16">Item</th>
+                      <th className="p-3">Title / Trade Terms</th>
+                      <th className="p-3">Category</th>
+                      <th className="p-3">Intent</th>
+                      <th className="p-3">Location</th>
+                      <th className="p-3">Sister</th>
+                      <th className="p-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-copper-penny/10">
+                    {barterList.filter(matchesBarterFilters).map((barter) => (
+                      <tr key={`tbl-${barter.id}`} className="hover:bg-amber-50/50 transition-colors">
+                        <td className="p-3">
+                          <div className="w-12 h-12 rounded-xl overflow-hidden bg-neutral-100 border border-copper-penny/20 shrink-0">
+                            <img 
+                              src={barter.imageUrl || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=400&q=80'} 
+                              alt={barter.title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <div className="font-serif font-bold text-[#1F1813] text-sm">
+                            {barter.title}
+                          </div>
+                          <span className="block font-sans text-[11px] text-[#A85138] font-bold">
+                            Desired: {barter.tradeFor || 'Open Trade'}
+                          </span>
+                          {barter.hybridSplitOption && (
+                            <span className="inline-block mt-0.5 px-2 py-0.5 rounded bg-amber-50 border border-amber-300 text-[9.5px] font-mono text-[#1F1813]">
+                              ✨ Split: {barter.hybridSplitOption}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 font-mono text-[11px] text-copper-penny font-bold">{barter.category}</td>
+                        <td className="p-3 font-mono">
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                            barter.intentTag === 'I need' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'
+                          }`}>
+                            {barter.intentTag || 'I have'}
+                          </span>
+                        </td>
+                        <td className="p-3 font-mono text-soft-sage text-[11px]">{barter.city ? `${barter.city}, ${barter.locationState}` : barter.locationState}</td>
+                        <td className="p-3 font-mono text-xs font-bold text-[#1F1813]">{barter.offerBy}</td>
+                        <td className="p-3 text-right">
+                          {(() => {
+                            const tradeForBarter = activeTrades.find(t => t.barterId === barter.id || t.listingTitle === barter.title);
+                            if (tradeForBarter) {
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => handleInitiateTrade(barter)}
+                                  className="px-3 py-1 bg-amber-700 hover:bg-amber-600 text-white font-mono text-[10px] font-bold rounded-lg shadow-xs transition-all cursor-pointer whitespace-nowrap flex items-center space-x-1 ml-auto"
+                                >
+                                  <Clock className="w-3 h-3 text-amber-200 animate-pulse" />
+                                  <span>⏳ Trade In Review</span>
+                                </button>
+                              );
+                            }
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => handleInitiateTrade(barter)}
+                                className="px-3 py-1 bg-[#B87333] hover:bg-[#A85138] text-white font-mono text-[10px] font-bold rounded-lg shadow-xs transition-all cursor-pointer whitespace-nowrap"
+                              >
+                                Initiate Trade
+                              </button>
+                            );
+                          })()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
@@ -1822,6 +1952,94 @@ export default function MarketplaceHub({
           onBookConsultation={handleBookConsultation}
         />
       )}
+
+      {/* Interactive Trade Handshake Modal (Overlay on same screen) */}
+      <TradeHandshakeModal
+        isOpen={isTradeModalOpen}
+        onClose={() => {
+          setIsTradeModalOpen(false);
+          setSelectedBarterForHandshake(null);
+        }}
+        listing={selectedBarterForHandshake ? {
+          id: selectedBarterForHandshake.id,
+          categoryType: 'barter',
+          title: selectedBarterForHandshake.title,
+          description: selectedBarterForHandshake.description,
+          authorName: selectedBarterForHandshake.offerBy,
+          authorRole: 'Verified Sister',
+          authorState: selectedBarterForHandshake.locationState,
+          authorCity: selectedBarterForHandshake.city,
+          createdAt: selectedBarterForHandshake.createdAt || 'Recently',
+          status: selectedBarterForHandshake.handshakeComplete ? 'completed' : 'open',
+          photos: selectedBarterForHandshake.imageUrl ? [selectedBarterForHandshake.imageUrl] : [],
+          primaryCoverImage: selectedBarterForHandshake.imageUrl || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=800&q=80',
+          crossPostedToHub: true,
+          originHub: 'economy',
+          details: {
+            barterType: 'Item Swap',
+            tradeForWishlist: selectedBarterForHandshake.tradeFor,
+            itemCondition: 'Artisanal / Handmade',
+            estimatedValue: `${selectedBarterForHandshake.valuePoints || 5} Credits`,
+            deliveryOrPickup: selectedBarterForHandshake.contact || 'Pick-up or Sister Drop-off',
+            timeCreditEquivalent: selectedBarterForHandshake.timeCreditHours || 2
+          }
+        } : null}
+        existingTrade={activeTradeRecordState}
+        userName={userName}
+        selectedState={selectedState}
+        onTradeUpdated={(trade) => {
+          setActiveTradeRecordState(trade);
+          
+          // Flow trade directly to My Active Trades tab & live status badge
+          setActiveTrades(prev => {
+            const existingIndex = prev.findIndex(t => t.id === trade.id || t.barterId === trade.listingId);
+            const statusLabel = 
+              trade.currentStage === 'completed' ? 'Completed Exchange' :
+              trade.currentStage === 'agreed' ? 'Awaiting Safe Handshake' :
+              'Pending Negotiation';
+            
+            const updatedRecord: ActiveTradeRecord = {
+              id: trade.id,
+              barterId: trade.listingId,
+              listingTitle: trade.listingTitle,
+              listingCategory: trade.categoryType === 'gig' ? 'Gig / Vocation' : 'Barter / Goods',
+              role: trade.initiatorName === userName ? 'recipient' : 'giver',
+              partnerName: trade.initiatorName === userName ? trade.recipientName : trade.initiatorName,
+              partnerContact: 'sister@coop.net',
+              status: statusLabel,
+              offeredItemOrService: trade.initialProposal || 'Time-Credit & Care Swap',
+              requestedItemOrService: trade.currentTerms || trade.listingTitle,
+              pointsValue: Math.round((trade.timeCreditHours || 2) * 2.5),
+              initiatedAt: 'Today',
+              meetupLocation: 'Safe Daylight Foyer Scheduled',
+              scheduledDate: 'This Week',
+              giverHandshakeSigned: trade.currentStage === 'completed' || trade.currentStage === 'agreed',
+              recipientHandshakeSigned: true,
+              completedAt: trade.currentStage === 'completed' ? 'Today' : undefined,
+              digitalReceiptHash: trade.currentStage === 'completed' ? `0xCOPPER_${Date.now().toString(16).toUpperCase()}_VERIFIED` : undefined
+            };
+
+            if (existingIndex >= 0) {
+              const copy = [...prev];
+              copy[existingIndex] = { ...copy[existingIndex], ...updatedRecord };
+              return copy;
+            } else {
+              return [updatedRecord, ...prev];
+            }
+          });
+
+          if (trade.currentStage === 'completed') {
+            setLocalTimeBalance(b => b + (trade.timeCreditHours || 2));
+            loadProfileStats();
+          }
+
+          alert(`🤝 Trade handshake updated for "${trade.listingTitle}"! Synced with your My Active Trades dashboard.`);
+        }}
+        onAddLedgerLog={(log) => {
+          onAddLog(log.activity || log.notes, log.hours, 'earn', log.sisterName, userName, 'confirmed');
+        }}
+        showToast={(msg) => alert(msg)}
+      />
     </div>
   );
 }

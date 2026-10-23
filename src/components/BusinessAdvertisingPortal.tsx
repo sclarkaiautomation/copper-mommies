@@ -304,7 +304,7 @@ export default function BusinessAdvertisingPortal({
               <span>What Your Business Receives</span>
             </h3>
             <ul className="space-y-1.5 text-white/85 text-[11px] leading-relaxed">
-              <li>&bull; High-converting placement in the <strong>Top Header Feature Banner (1200 x 300)</strong> or <strong>Village Commons Sidebar (300 x 250)</strong>.</li>
+              <li>&bull; High-converting placement in the <strong>Top Header Feature Banner (1200 x 400 px / 1200 x 675 px)</strong> or <strong>Village Commons In-Feed Spotlight &amp; Sidebar (800 x 450 px / 300 x 250 px)</strong>.</li>
               <li>&bull; Dedicated <strong>Exclusive Community Discount Badge</strong> (e.g., 15% off) that encourages moms to purchase from you first.</li>
               <li>&bull; Direct click-through links sending verified mothers straight to your website, booking page, or online shop.</li>
               <li>&bull; Certified <strong>&ldquo;Melanated Woman-Owned Partner&rdquo;</strong> authenticity trust badge.</li>
@@ -388,7 +388,7 @@ export default function BusinessAdvertisingPortal({
               <h3 className="font-serif font-black text-sm text-[#1F1813]">Member Sidebar</h3>
               <p className="text-xl font-mono font-black text-emerald-700">$5 <span className="text-xs font-normal text-gray-500">/ month</span></p>
               <p className="text-[10px] text-gray-600 leading-snug pt-1">
-                Discounted sidebar spotlight for verified Copper Mommie members.
+                Discounted in-feed spotlight &amp; sidebar card (800 x 450 / 300 x 250 px).
               </p>
             </div>
             <div className="mt-3 pt-2 border-t border-gray-100 text-[9px] font-mono text-emerald-700 font-bold">
@@ -416,7 +416,7 @@ export default function BusinessAdvertisingPortal({
               <h3 className="font-serif font-black text-sm text-[#1F1813]">Member Header</h3>
               <p className="text-xl font-mono font-black text-emerald-700">$20 <span className="text-xs font-normal text-gray-500">/ month</span></p>
               <p className="text-[10px] text-gray-600 leading-snug pt-1">
-                Top hero banner placement (1200x300) discounted for members.
+                Top hero banner placement (1200 x 400 / 1200 x 675 px) for members.
               </p>
             </div>
             <div className="mt-3 pt-2 border-t border-gray-100 text-[9px] font-mono text-emerald-700 font-bold">
@@ -441,7 +441,7 @@ export default function BusinessAdvertisingPortal({
               <h3 className="font-serif font-black text-sm text-[#1F1813]">Partner Sidebar</h3>
               <p className="text-xl font-mono font-black text-[#B87333]">$25 <span className="text-xs font-normal text-gray-500">/ month</span></p>
               <p className="text-[10px] text-gray-600 leading-snug pt-1">
-                Right column visual ad card (300 x 250 px / 300 x 360 px).
+                In-feed spotlight &amp; right sidebar visual ad card (800 x 450 / 300 x 250 px).
               </p>
             </div>
             <div className="mt-3 pt-2 border-t border-gray-100 text-[9px] font-mono text-gray-500">
@@ -466,7 +466,7 @@ export default function BusinessAdvertisingPortal({
               <h3 className="font-serif font-black text-sm text-[#1F1813]">Omnipresent Pack</h3>
               <p className="text-xl font-mono font-black text-[#1F1813]">$65 <span className="text-xs font-normal text-gray-500">/ month</span></p>
               <p className="text-[10px] text-gray-600 leading-snug pt-1">
-                Both Header (1200 x 300) and Sidebar (300 x 250) combined.
+                Both Header (1200 x 400 / 1200 x 675 px) &amp; Spotlight/Sidebar (800 x 450 px) combined.
               </p>
             </div>
             <div className="mt-3 pt-2 border-t border-gray-100 text-[9px] font-mono text-gray-500">
@@ -474,6 +474,82 @@ export default function BusinessAdvertisingPortal({
             </div>
           </div>
 
+        </div>
+      </div>
+
+      {/* ADVERTISING TIER SPECIFICATIONS & CREATIVE GUIDELINES (PART 2A STANDARDIZATION) */}
+      <div className="bg-[#FAF5EE] rounded-3xl border-2 border-[#D4AF37]/50 p-5 sm:p-6 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#D4AF37]/20 pb-3">
+          <div className="flex items-center space-x-2 text-[#1F1813]">
+            <Layers className="w-5 h-5 text-[#B87333]" />
+            <h3 className="font-serif font-black text-base sm:text-lg">
+              Official Placement Specifications &amp; Content Limits
+            </h3>
+          </div>
+          <span className="text-[10px] font-mono font-bold bg-[#1F140E] text-[#D4AF37] px-3 py-1 rounded-full uppercase tracking-wider self-start sm:self-auto">
+            Standardized Across All Hubs
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-sans">
+          {/* Top Header Feature Banner Placement Specs */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#D4AF37]/30 shadow-2xs space-y-3">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+              <span className="font-serif font-extrabold text-[#1F140E] text-sm sm:text-base flex items-center space-x-1.5">
+                <span>🌟</span>
+                <span>Top Header Feature Banner</span>
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                Fixed 320px Height
+              </span>
+            </div>
+            <div className="space-y-2 font-mono text-[11px] text-[#2A221B]/90">
+              <div className="p-2 rounded-xl bg-[#FAF5EE] border border-gray-200">
+                <span className="text-[10px] uppercase font-bold text-gray-500 block">Image Dimensions</span>
+                <strong className="text-[#B87333] text-xs">1200 x 400 px (3:1)</strong> or <strong className="text-[#B87333] text-xs">1200 x 675 px (16:9) landscape</strong>
+              </div>
+              <div className="p-2 rounded-xl bg-[#FAF5EE] border border-gray-200">
+                <span className="text-[10px] uppercase font-bold text-gray-500 block">Content Character Limits</span>
+                <p className="text-[#1F140E] font-medium leading-relaxed">
+                  &bull; Title: <strong>Max 50 characters</strong><br />
+                  &bull; Subtitle / Tagline: <strong>Max 60 characters</strong><br />
+                  &bull; Body Description: <strong>Max 180 characters</strong>
+                </p>
+              </div>
+              <div className="p-2 rounded-xl bg-neutral-50 text-[10px] text-gray-600 font-sans">
+                <strong>Placement Sizing:</strong> Fixed Height 320px (Desktop: 1fr content / 380px action container) &bull; Tablet: 340px &bull; Mobile: Max 520px vertical stack.
+              </div>
+            </div>
+          </div>
+
+          {/* Village Commons Spotlight / Sidebar Placement Specs */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#D4AF37]/30 shadow-2xs space-y-3">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+              <span className="font-serif font-extrabold text-[#1F140E] text-sm sm:text-base flex items-center space-x-1.5">
+                <span>⭐</span>
+                <span>Village Commons Spotlight &amp; Sidebar</span>
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                16:9 &amp; 300x250 Card
+              </span>
+            </div>
+            <div className="space-y-2 font-mono text-[11px] text-[#2A221B]/90">
+              <div className="p-2 rounded-xl bg-[#FAF5EE] border border-gray-200">
+                <span className="text-[10px] uppercase font-bold text-gray-500 block">Image Dimensions</span>
+                <strong className="text-[#B87333] text-xs">800 x 450 px (16:9)</strong> or <strong className="text-[#B87333] text-xs">300 x 250 px (Card)</strong>
+              </div>
+              <div className="p-2 rounded-xl bg-[#FAF5EE] border border-gray-200">
+                <span className="text-[10px] uppercase font-bold text-gray-500 block">Content Character Limits</span>
+                <p className="text-[#1F140E] font-medium leading-relaxed">
+                  &bull; Headline: <strong>Max 35 characters</strong><br />
+                  &bull; Body Copy: <strong>Max 120 characters</strong>
+                </p>
+              </div>
+              <div className="p-2 rounded-xl bg-neutral-50 text-[10px] text-gray-600 font-sans">
+                <strong>Placement Sizing:</strong> Width 100% of feed card container with centered 16:9 media &amp; offer overlay; right sidebar widget 300 x 250 px.
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -572,32 +648,44 @@ export default function BusinessAdvertisingPortal({
               </div>
             </div>
 
-            {/* Headline, Tagline & Copy */}
+            {/* Headline, Tagline & Copy (with Real-time Content Character Limit Tracking) */}
             <div className="space-y-3 pt-2 border-t border-gray-100">
               <div className="space-y-1">
-                <label className="block text-[10px] uppercase font-mono font-bold text-gray-600">
-                  Advertisement Headline * (Catchy Main Title)
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-[10px] uppercase font-mono font-bold text-gray-600">
+                    Advertisement Headline / Title *
+                  </label>
+                  <span className={`text-[10px] font-mono font-bold ${headline.length > 45 ? 'text-amber-700' : 'text-gray-400'}`}>
+                    {headline.length}/50 chars (Max 50)
+                  </span>
+                </div>
                 <input
                   type="text"
                   required
+                  maxLength={50}
                   value={headline}
                   onChange={(e) => setHeadline(e.target.value)}
-                  placeholder="e.g. Highland Heritage — Ancestral Cold-Pressed Oxymels"
+                  placeholder="e.g. Highland Heritage — Ancestral Oxymels"
                   className="w-full bg-[#FAF5EE]/50 border border-gray-300 focus:border-[#B87333] rounded-xl px-3 py-2 text-xs text-[#1F1813] font-medium"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="block text-[10px] uppercase font-mono font-bold text-gray-600">
-                    Tagline / Subtitle
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[10px] uppercase font-mono font-bold text-gray-600">
+                      Subtitle / Tagline
+                    </label>
+                    <span className={`text-[10px] font-mono font-bold ${tagline.length > 55 ? 'text-amber-700' : 'text-gray-400'}`}>
+                      {tagline.length}/60 chars (Max 60)
+                    </span>
+                  </div>
                   <input
                     type="text"
+                    maxLength={60}
                     value={tagline}
                     onChange={(e) => setTagline(e.target.value)}
-                    placeholder="e.g. Hand-harvested elderberry & lowcountry nettle remedies"
+                    placeholder="e.g. Hand-harvested elderberry & nettle remedies"
                     className="w-full bg-[#FAF5EE]/50 border border-gray-300 focus:border-[#B87333] rounded-xl px-3 py-2 text-xs text-[#1F1813] font-medium"
                   />
                 </div>
@@ -608,6 +696,7 @@ export default function BusinessAdvertisingPortal({
                   </label>
                   <input
                     type="text"
+                    maxLength={30}
                     value={callToActionText}
                     onChange={(e) => setCallToActionText(e.target.value)}
                     placeholder="e.g. Shop Herbal Collection"
@@ -617,12 +706,18 @@ export default function BusinessAdvertisingPortal({
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[10px] uppercase font-mono font-bold text-gray-600">
-                  Ad Description / Value Proposition *
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-[10px] uppercase font-mono font-bold text-gray-600">
+                    Ad Description / Value Proposition *
+                  </label>
+                  <span className={`text-[10px] font-mono font-bold ${description.length > 165 ? 'text-amber-700' : 'text-gray-400'}`}>
+                    {description.length}/180 chars (Max 180)
+                  </span>
+                </div>
                 <textarea
                   rows={3}
                   required
+                  maxLength={180}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Share what makes your craft unique and how it blesses melanated families..."
@@ -674,52 +769,67 @@ export default function BusinessAdvertisingPortal({
               </div>
             </div>
 
-            {/* Banner Creative / Image Selection */}
-            <div className="space-y-2.5 pt-2 border-t border-gray-100">
-              <div className="flex items-center justify-between">
-                <label className="block text-[10px] uppercase font-mono font-bold text-gray-600">
-                  Banner / Product Photo Image URL *
+            {/* Banner Creative / Free Image-to-Link Converter & Uploader */}
+            <div className="space-y-3 pt-2 border-t border-gray-100">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <label className="block text-[10px] uppercase font-mono font-bold text-gray-700 flex items-center space-x-1.5">
+                  <ImageIcon className="w-3.5 h-3.5 text-[#B87333]" />
+                  <span>Upload Image or Free Image-to-Link Converter *</span>
                 </label>
-                <span className="text-[10px] font-mono text-gray-400">
-                  Header: 1200x300 px &bull; Sidebar: 300x250 px
+                <span className="text-[9px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  Instant Link Generation (Free)
                 </span>
               </div>
+              <p className="text-[10px] text-gray-600 leading-snug">
+                Select an image file from your device or paste a direct image URL. It instantly converts into a web-ready link that displays visually across your ad preview.
+              </p>
 
-              <input
-                type="text"
-                required
-                value={bannerImageUrl}
-                onChange={(e) => setBannerImageUrl(e.target.value)}
-                placeholder="Image URL or choose from presets below"
-                className="w-full bg-[#FAF5EE]/50 border border-gray-300 focus:border-[#B87333] rounded-xl px-3 py-2 text-xs font-mono text-[#1F1813]"
-              />
-
-              {/* Quick Preset Selector */}
-              <div className="space-y-1 pt-1">
-                <span className="text-[10px] font-mono text-gray-500">Or pick from sample library:</span>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {SAMPLE_PRESET_IMAGES.map((preset) => (
-                    <button
-                      key={preset.name}
-                      type="button"
-                      onClick={() => {
-                        setBannerImageUrl(preset.url);
-                        setTargetCategory(preset.category);
-                      }}
-                      className={`p-1.5 rounded-xl border text-left cursor-pointer transition-all ${
-                        bannerImageUrl === preset.url
-                          ? 'border-[#D4AF37] bg-amber-50 shadow-sm'
-                          : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
-                    >
-                      <div className="aspect-[16/9] w-full rounded-lg overflow-hidden bg-gray-100 mb-1">
-                        <img src={preset.url} alt={preset.name} className="w-full h-full object-cover" />
-                      </div>
-                      <span className="text-[9px] font-bold text-[#1F1813] block line-clamp-1">{preset.name}</span>
-                    </button>
-                  ))}
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-center">
+                <input
+                  type="text"
+                  required
+                  value={bannerImageUrl}
+                  onChange={(e) => setBannerImageUrl(e.target.value)}
+                  placeholder="https://... or upload file"
+                  className="w-full bg-[#FAF5EE]/50 border border-gray-300 focus:border-[#B87333] rounded-xl px-3 py-2 text-xs font-mono text-[#1F1813]"
+                />
+                <label className="px-4 py-2 bg-[#1F1813] hover:bg-[#2A221B] text-[#D4AF37] font-mono font-bold text-xs rounded-xl cursor-pointer text-center transition-all flex items-center justify-center space-x-1.5 shrink-0">
+                  <span>Upload File</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (uploadEvent) => {
+                          if (uploadEvent.target?.result) {
+                            setBannerImageUrl(uploadEvent.target.result as string);
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="hidden"
+                  />
+                </label>
               </div>
+
+              {/* Visual Preview of converted image */}
+              {bannerImageUrl && (
+                <div className="flex items-center space-x-3 bg-white p-2.5 rounded-xl border border-[#D4AF37]/40 shadow-2xs">
+                  <div className="w-20 h-12 rounded-lg overflow-hidden bg-neutral-900 shrink-0 border border-gray-200">
+                    <img src={bannerImageUrl} alt="Ad banner preview" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="min-w-0 flex-1 text-[10px] font-sans">
+                    <span className="font-bold text-emerald-700 flex items-center space-x-1">
+                      <Check className="w-3 h-3" />
+                      <span>Image Link Converted &amp; Verified</span>
+                    </span>
+                    <span className="font-mono text-gray-500 truncate block">{bannerImageUrl}</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Confirmation Checkbox */}
@@ -751,116 +861,256 @@ export default function BusinessAdvertisingPortal({
           </form>
         </div>
 
-        {/* RIGHT COLUMN: LIVE REAL-TIME PREVIEW CONTAINER (5 Cols) */}
+        {/* RIGHT COLUMN: LIVE REAL-TIME PREVIEW CONTAINER (5 Cols) - TRUE SIZES & TIER HIGHLIGHTING */}
         <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-24">
           <div className="flex items-center justify-between border-b border-gray-200 pb-2">
             <div className="flex items-center space-x-1.5 text-[#B87333]">
               <Eye className="w-4 h-4 text-[#D4AF37]" />
               <h3 className="font-serif font-bold text-sm uppercase tracking-wider">
-                Live Interactive Ad Preview
+                Live Interactive Ad Preview (True Sizing)
               </h3>
             </div>
-            <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-              Live Rendering
+            <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 font-bold">
+              ★ Tier: {pricingTier.toUpperCase()}
             </span>
           </div>
 
-          {/* PREVIEW 1: TOP HEADER FEATURE BANNER (1200 x 300) */}
-          {(placementType === 'header_banner' || placementType === 'both_bundle') && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-[11px] font-mono font-bold text-[#1F1813]">
+          {/* PREVIEW 1: TOP HEADER FEATURE BANNER (1200 x 400 px / 3:1) */}
+          <div className={`space-y-2 transition-all duration-300 p-2 rounded-2xl ${
+            pricingTier === 'header_monthly' || pricingTier === 'member_header' || pricingTier === 'bundle_monthly' || pricingTier === 'pioneer_free'
+              ? 'ring-4 ring-[#D4AF37] bg-amber-50/40 shadow-lg'
+              : 'opacity-85'
+          }`}>
+            <div className="flex items-center justify-between text-[11px] font-mono font-bold text-[#1F1813]">
+              <span className="flex items-center space-x-1">
                 <span>1. Top Header Feature Banner</span>
-                <span className="text-gray-400 text-[10px]">Ratio: 1200 x 300 (4:1)</span>
+                <span className="text-[9px] px-1.5 py-0.2 bg-amber-100 text-amber-900 rounded font-bold">True Size: 1200 x 400 px</span>
+              </span>
+              <span className="text-emerald-700 text-[10px]">
+                {pricingTier === 'header_monthly' || pricingTier === 'member_header' || pricingTier === 'bundle_monthly' || pricingTier === 'pioneer_free' ? '● Active for Tier' : ''}
+              </span>
+            </div>
+
+            <div className="relative rounded-2xl overflow-hidden shadow-xl border-2 border-[#D4AF37] bg-white">
+              <div className="bg-gradient-to-r from-[#1F1813] via-[#2A221B] to-[#1F1813] px-3 py-2 flex items-center justify-between border-b border-[#D4AF37]/30 text-white">
+                <div className="flex items-center space-x-2 min-w-0">
+                  <span className="inline-flex rounded-full h-2 w-2 bg-[#D4AF37] animate-pulse shrink-0" />
+                  <span className="text-[10px] font-mono font-extrabold uppercase tracking-widest text-[#D4AF37] truncate">
+                    Featured Sister Partner &bull; {targetCategory}
+                  </span>
+                </div>
+                <span className="text-[9px] font-mono font-bold bg-[#D4AF37]/20 text-[#D4AF37] px-2 py-0.5 rounded-full border border-[#D4AF37]/40 shrink-0">
+                  Verified
+                </span>
               </div>
 
-              <div className="relative rounded-2xl overflow-hidden shadow-xl border-2 border-[#D4AF37] bg-gradient-to-r from-[#1F140E] via-[#2A1D16] to-[#140F0B] text-[#FAF5EE]">
-                {/* Background image preview with darkened gradient */}
-                <div className="absolute inset-0 z-0">
-                  <img
-                    src={bannerImageUrl || '/apothecary_sister_herbal.jpg'}
-                    alt="Preview"
-                    className="w-full h-full object-cover opacity-25 scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-transparent" />
-                </div>
-
-                {/* Banner Content */}
-                <div className="relative z-10 p-4 sm:p-5 space-y-2.5">
-                  <div className="flex items-center space-x-2">
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase bg-[#D4AF37] text-[#1F140E]">
-                      Featured Sister Partner
-                    </span>
-                    <span className="text-[9px] font-mono text-[#D4AF37]/90">{targetCategory}</span>
-                  </div>
-
-                  <div className="space-y-1">
-                    <h4 className="font-serif font-black text-sm sm:text-base text-white line-clamp-1">
-                      {headline || 'Your Catchy Headline Appears Here'}
-                    </h4>
-                    {tagline && (
-                      <p className="text-[10px] text-[#D4AF37] font-sans font-medium line-clamp-1">
-                        {tagline}
+              <div className="p-3.5 sm:p-4 bg-gradient-to-br from-[#FFFDF9] via-[#FAF5EE] to-[#F5ECE1] text-[#1F1813]">
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_210px] gap-3 items-stretch">
+                  <div className="flex flex-col justify-between space-y-2 min-w-0">
+                    <div className="space-y-0.5">
+                      <h4 className="font-serif font-black text-sm sm:text-base text-[#1F1813] leading-tight line-clamp-1 truncate">
+                        {headline || businessName || 'Highland Heritage Botanical Co.'}
+                      </h4>
+                      <p className="text-[10px] font-mono text-[#B87333] font-bold uppercase tracking-wider line-clamp-1 truncate">
+                        {tagline || businessName || 'Ancestral Holistic Botanicals'}
                       </p>
-                    )}
-                    <p className="text-[10px] text-white/80 line-clamp-2 leading-relaxed font-sans">
-                      {description || 'Your product or service story and description will appear right here for all visiting mothers to see.'}
+                    </div>
+
+                    <div className="relative rounded-xl overflow-hidden border border-[#B87333]/30 shadow-xs h-28 sm:h-32 bg-neutral-900 group">
+                      <img
+                        src={bannerImageUrl || '/apothecary_sister_herbal.jpg'}
+                        alt="Header Feature Preview"
+                        className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute top-1.5 right-1.5 bg-[#1F1813]/85 text-[#FAF5EE] text-[8px] font-mono font-bold px-2 py-0.5 rounded border border-[#D4AF37]/40 backdrop-blur-xs flex items-center space-x-1">
+                        <span>{callToActionText || 'Visit Shop'}</span>
+                        <ExternalLink className="w-2.5 h-2.5 text-[#D4AF37]" />
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] text-[#2A221B]/90 line-clamp-2 leading-relaxed font-sans">
+                      {description || 'Hand-harvested remedies crafted by traditional southern rootworkers. Solar-steeped in raw wild honey for whole-body family vitality.'}
                     </p>
                   </div>
 
-                  {/* Promo Badge & CTA */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-white/10">
-                    <div className="flex items-center space-x-1.5 bg-white/10 px-2 py-1 rounded-lg border border-white/15">
-                      <Tag className="w-3 h-3 text-[#D4AF37]" />
-                      <span className="text-[9px] font-mono text-[#D4AF37] font-bold">
-                        Code: {exclusiveDiscountCode || 'COPPER15'}
+                  <div className="bg-[#1F1813] text-white border-2 border-[#D4AF37]/50 rounded-2xl p-3 shadow-md flex flex-col justify-between space-y-2 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-[#D4AF37]/10 rounded-full blur-xl pointer-events-none" />
+                    <div className="border-b border-[#D4AF37]/20 pb-1 flex items-center justify-between">
+                      <span className="text-[9px] font-mono font-extrabold uppercase tracking-wider text-[#D4AF37] truncate block">
+                        Exclusive Benefit
                       </span>
-                      <span className="text-[8px] text-white/70">({discountOfferText || '15% Off'})</span>
+                      <span className="text-[9px] font-mono text-emerald-400 font-bold">Verified</span>
                     </div>
-
+                    <div>
+                      <span className="text-base sm:text-lg font-mono font-black text-[#D4AF37] glow-gold-text block truncate">
+                        {discountOfferText || '15% Off'}
+                      </span>
+                      <p className="text-[9px] text-gray-300 font-mono leading-tight mt-0.5 line-clamp-2">
+                        for Copper Mommies community
+                      </p>
+                    </div>
+                    <div className="bg-white/10 border border-[#D4AF37]/40 rounded-xl px-2 py-1 flex items-center justify-between gap-1">
+                      <div className="min-w-0">
+                        <span className="text-[7.5px] uppercase font-mono text-gray-400 block leading-none">Code:</span>
+                        <span className="font-mono font-black text-xs text-[#D4AF37] tracking-wider truncate block">
+                          {exclusiveDiscountCode || 'COPPER15'}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyCode(exclusiveDiscountCode || 'COPPER15')}
+                        className="px-2 py-0.5 bg-[#D4AF37] hover:bg-[#b59226] text-[#1F140E] text-[9px] font-bold rounded shadow-xs active:scale-95 transition-all flex items-center space-x-1 cursor-pointer shrink-0"
+                      >
+                        {copiedCode ? <Check className="w-2.5 h-2.5 text-emerald-800" /> : <Copy className="w-2.5 h-2.5" />}
+                        <span>{copiedCode ? 'Copied' : 'Copy'}</span>
+                      </button>
+                    </div>
                     <a
                       href={websiteUrl || '#'}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-3 py-1 rounded-lg bg-[#D4AF37] text-[#1F140E] font-bold text-[10px] flex items-center space-x-1 shadow-sm hover:bg-[#C5A02E] transition-colors"
+                      className="w-full py-1.5 bg-gradient-to-r from-[#D4AF37] to-[#B87333] hover:from-[#e0bc46] hover:to-[#c47f3e] text-[#1F140E] font-serif font-black text-[10px] rounded-xl shadow-xs transition-all flex items-center justify-center space-x-1 text-center"
                     >
-                      <span>{callToActionText || 'Visit Shop'}</span>
-                      <ExternalLink className="w-2.5 h-2.5" />
+                      <span className="truncate">{callToActionText || 'Visit Shop'}</span>
+                      <ExternalLink className="w-2.5 h-2.5 shrink-0" />
                     </a>
                   </div>
                 </div>
               </div>
             </div>
-          )}
+          </div>
 
-          {/* PREVIEW 2: VILLAGE COMMONS SIDEBAR AD CARD (300 x 250 / 300 x 360) */}
-          {(placementType === 'commons_sidebar' || placementType === 'both_bundle') && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-[11px] font-mono font-bold text-[#1F1813]">
-                <span>2. Village Commons Sidebar Card</span>
-                <span className="text-gray-400 text-[10px]">Ratio: 300 x 250 px (Card)</span>
+          {/* PREVIEW 1.5: HEADER FEATURE BANNER WITHOUT EXCLUSIVE COMMUNITY OFFER / VERIFIED SECTION (Clean Editorial Mode) */}
+          <div className="space-y-2 pt-2">
+            <div className="flex items-center justify-between text-[11px] font-mono font-bold text-[#1F1813]">
+              <span className="flex items-center space-x-1">
+                <span>1b. Header Banner (No Offer / Clean Showcase)</span>
+                <span className="text-[9px] px-1.5 py-0.2 bg-gray-200 text-gray-800 rounded font-bold">Editorial Layout</span>
+              </span>
+              <span className="text-gray-400 text-[10px]">True Size: 1200 x 400 px</span>
+            </div>
+
+            <div className="relative rounded-2xl overflow-hidden shadow-md border-2 border-gray-300 bg-[#1F1813] text-[#FAF5EE] p-4 sm:p-5">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="space-y-1.5 min-w-0 flex-1">
+                  <span className="text-[9px] font-mono text-[#D4AF37] uppercase tracking-widest font-bold block">
+                    {targetCategory} &bull; Brand Showcase
+                  </span>
+                  <h4 className="font-serif font-black text-base text-[#FAF5EE] truncate">
+                    {headline || businessName}
+                  </h4>
+                  <p className="text-xs text-gray-300 line-clamp-2">
+                    {description}
+                  </p>
+                </div>
+                <div className="w-24 h-24 rounded-xl overflow-hidden bg-neutral-800 shrink-0 border border-[#D4AF37]/40">
+                  <img src={bannerImageUrl || '/apothecary_sister_herbal.jpg'} alt="Editorial Showcase" className="w-full h-full object-cover" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* PREVIEW 2: VILLAGE COMMONS IN-FEED SPOTLIGHT CARD (800 x 450 px / 16:9) & NEWEST FEATURED SISTER ENTERPRISE BANNER */}
+          <div className={`space-y-4 pt-2 transition-all duration-300 p-2 rounded-2xl ${
+            pricingTier === 'sidebar_monthly' || pricingTier === 'member_sidebar' || pricingTier === 'bundle_monthly' || pricingTier === 'pioneer_free'
+              ? 'ring-4 ring-emerald-500 bg-emerald-50/40 shadow-lg'
+              : 'opacity-85'
+          }`}>
+            <div className="flex items-center justify-between text-[11px] font-mono font-bold text-[#1F1813]">
+              <span className="flex items-center space-x-1">
+                <span>2. Village Commons In-Feed Spotlight &amp; Featured Sister Enterprise Banner</span>
+                <span className="text-[9px] px-1.5 py-0.2 bg-emerald-100 text-emerald-900 rounded font-bold">True Size: 800 x 450 px</span>
+              </span>
+              <span className="text-emerald-700 text-[10px]">
+                {pricingTier === 'sidebar_monthly' || pricingTier === 'member_sidebar' || pricingTier === 'bundle_monthly' || pricingTier === 'pioneer_free' ? '● Active for Tier' : ''}
+              </span>
+            </div>
+
+            <div className="w-full rounded-3xl bg-gradient-to-br from-[#1C1510] via-[#2A1D16] to-[#120D0A] p-4 sm:p-5 border-2 border-[#D4AF37]/40 shadow-md text-[#FAF5EE] space-y-2.5">
+              <div className="flex items-center justify-between border-b border-[#D4AF37]/20 pb-2">
+                <div className="flex items-center space-x-2 min-w-0">
+                  <span className="w-6 h-6 rounded-lg bg-[#D4AF37] text-[#1F140E] flex items-center justify-center font-bold text-[11px] shadow-xs shrink-0">
+                    ⭐
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex items-center space-x-1.5">
+                      <span className="font-serif font-black text-xs sm:text-sm text-[#FAF5EE] truncate">
+                        {businessName || 'Business Name'}
+                      </span>
+                      <span className="px-1.5 py-0.2 rounded-full text-[8px] font-mono font-bold bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40 uppercase tracking-widest shrink-0">
+                        Featured Sister Enterprise
+                      </span>
+                    </div>
+                    <span className="text-[9px] font-mono text-soft-sage truncate block">
+                      Vouched Partner &bull; {targetCategory}
+                    </span>
+                  </div>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/35 flex items-center space-x-1 shrink-0">
+                  <ShieldCheck className="w-3 h-3 text-[#D4AF37]" />
+                  <span>Verified</span>
+                </span>
               </div>
 
-              {/* Exact sidebar card mimic */}
-              <div className="max-w-sm mx-auto bg-white rounded-3xl border-2 border-[#D4AF37]/50 shadow-md p-4 space-y-3 group hover:border-[#D4AF37] transition-all">
-                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                  <div className="flex items-center space-x-1.5">
-                    <Building2 className="w-4 h-4 text-[#B87333]" />
-                    <h5 className="font-serif font-black text-xs text-[#1F140E]">
+              <p className="text-[11px] text-[#FAF5EE]/90 font-sans leading-snug line-clamp-1">
+                {tagline || headline || 'Hand-harvested botanicals & sovereign wellness solutions.'}
+              </p>
+
+              <div className="relative aspect-[16/9] w-full rounded-2xl overflow-hidden bg-neutral-900 border border-[#D4AF37]/35 shadow-inner group">
+                <img
+                  src={bannerImageUrl || '/apothecary_sister_herbal.jpg'}
+                  alt="In-Feed Spotlight Preview"
+                  className="w-full h-full object-cover object-center opacity-90 group-hover:scale-[1.02] transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex items-end p-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 w-full">
+                    <div className="space-y-0.5 min-w-0">
+                      <span className="text-[9px] font-mono uppercase tracking-wider text-[#D4AF37] font-bold block">
+                        Community Offer:
+                      </span>
+                      <span className="text-xs font-mono font-black text-emerald-300 truncate block">
+                        {discountOfferText || '15% Off'} (Code: {exclusiveDiscountCode || 'COPPER15'})
+                      </span>
+                    </div>
+                    <a
+                      href={websiteUrl || '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#B87333] hover:from-[#e0bc46] hover:to-[#c47f3e] text-[#1F140E] font-serif font-black text-[11px] shadow-md transition-all self-start sm:self-auto flex items-center space-x-1 shrink-0"
+                    >
+                      <span>{callToActionText || 'Visit Shop'}</span>
+                      <ArrowRight className="w-3 h-3 text-[#1F140E]" />
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* PREVIEW 3: COMPANION SIDEBAR CARD (300 x 250 px spec) */}
+            <div className="space-y-1.5 pt-2">
+              <span className="text-[10px] font-mono font-bold text-gray-500 block">
+                3. Companion Sidebar Card &bull; True Size: 300 x 250 px
+              </span>
+              <div className="max-w-sm mx-auto bg-white rounded-2xl border-2 border-[#D4AF37]/50 shadow-md p-3.5 space-y-2.5">
+                <div className="flex items-center justify-between border-b border-gray-100 pb-1.5">
+                  <div className="flex items-center space-x-1.5 min-w-0">
+                    <Building2 className="w-3.5 h-3.5 text-[#B87333] shrink-0" />
+                    <h5 className="font-serif font-black text-xs text-[#1F140E] truncate">
                       Sister Business Spotlight
                     </h5>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full text-[8px] font-mono font-bold bg-[#FAF5EE] text-[#B87333] border border-[#D4AF37]/30">
+                  <span className="px-2 py-0.5 rounded-full text-[8px] font-mono font-bold bg-[#FAF5EE] text-[#B87333] border border-[#D4AF37]/30 shrink-0">
                     Verified
                   </span>
                 </div>
 
-                <div className="relative aspect-[16/10] w-full rounded-2xl overflow-hidden bg-gray-100 border border-gray-200">
+                <div className="relative aspect-[16/10] w-full rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
                   <img
                     src={bannerImageUrl || '/apothecary_sister_herbal.jpg'}
                     alt="Sidebar Preview"
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute top-2 left-2 bg-[#1F140E]/85 text-[#D4AF37] text-[8px] font-mono font-bold px-2 py-0.5 rounded-md">
+                  <div className="absolute top-1.5 left-1.5 bg-[#1F140E]/85 text-[#D4AF37] text-[8px] font-mono font-bold px-2 py-0.5 rounded-md">
                     {targetCategory}
                   </div>
                 </div>
@@ -900,7 +1150,7 @@ export default function BusinessAdvertisingPortal({
                 </div>
               </div>
             </div>
-          )}
+          </div>
 
           {/* Quick Info Box on How It Benefits the Business */}
           <div className="p-4 bg-white rounded-2xl border border-gray-200 text-xs font-sans text-gray-600 space-y-1.5 shadow-xs">
